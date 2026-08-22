@@ -867,11 +867,14 @@ export const S_SAMPLE_PROBES = [
 ];
 
 // ── TurboCore ─────────────────────────────────────────────────────────────────
-// 主开关在顶栏（turbocore_enabled）；本页为高级参数。不重复暴露大开关。
+// turbocore_enabled 是本段的主开关。旧注释说「主开关在顶栏」指的是 launcher web UI
+// 的 AppFooter TurboCore 芯片（backend/launcher/web），本 UI 没有那个控件，
+// 所以这里必须自带主开关，否则 turbocore_* 高级参数全都无法生效。
 // 不暴露 turbocore_update_shadow_* / turbocore_native_update_* 诊断族。
 export const S_TURBOCORE = [
-  { key: 'turbocore_enabled', type: 'hidden', defaultValue: false },
-  { key: 'turbocore_mode', type: 'select', label: 'TurboCore 模式（开发者选项）', desc: '由顶栏启用 TurboCore 后生效。', defaultValue: 'off', options: [
+  { key: 'turbocore_enabled', type: 'boolean', label: 'TurboCore 优化器加速（主开关）', title: 'turbocore_enabled', desc: '开启后优化器 step 走 CUDA/Triton 加速内核；关闭=标准 PyTorch 路径。开启时「优化器后端」隐藏，Lulynx Triton 优化器自动置 off。', defaultValue: false },
+  { key: 'lulynx_optimization_enabled', type: 'boolean', label: 'Lulynx 优化', title: 'lulynx_optimization_enabled', desc: '稳态加速组合：BlockSwap auto→pipeline、Anima 块 offload 异步 D2H 与 stream-ordered 预取、TREAD/DiffCR 走 Triton compact 索引。', defaultValue: false },
+  { key: 'turbocore_mode', type: 'select', label: 'TurboCore 模式（开发者选项）', desc: '需先开启上面的 TurboCore 主开关。', defaultValue: 'off', options: [
     { value: 'off', label: 'off（关闭）' },
     { value: 'profile', label: 'profile（性能分析）' },
     { value: 'native_experimental', label: 'native_experimental（加速）' },

@@ -32,8 +32,9 @@ import {
   LAB_DISTILLER_SECTIONS, SDXL_TURBO_LORA_SECTIONS, ANIMA_FEW_STEP_LORA_SECTIONS, NEWBIE_FEW_STEP_LORA_SECTIONS,
 } from './experimentalTrainingSchemas.js';
 import { CONCEPT_EDIT_UNIFIED_SECTIONS } from './conceptEditUnifiedSchema.js';
-import { S_TRAINING_INTENT_PROFILE, S_DATASET_INTELLIGENCE } from './schemaFrontierGroups.js';
+import { S_TRAINING_INTENT_PROFILE, S_DATASET_INTELLIGENCE, S_TURBOCORE } from './schemaFrontierGroups.js';
 import {
+  sec,
   applyAdapterFamilyCapabilities,
   getAdapterFamilyCapabilities,
   getBackendAdapterFamilyCapabilities,
@@ -159,6 +160,41 @@ function withDatasetIntelligence(sections) {
     : section));
 }
 
+// TurboCore / Lulynx 优化开关的可见面。turbocore_* 与 lulynx_optimization_enabled 由
+// UnifiedTrainingConfig(configs_performance.ConfigsPerformanceMixin) 承载,只有真正走
+// entry_train + UnifiedTrainingConfig 的训练类型才读得到这些键。
+//
+// 下面这几族走的是别的进程边界,给它们挂开关只会渲染出一个提交后被丢弃的字段:
+//   yolo / aesthetic-scorer  → entry_yolo.py / core.scorers,不构造 UnifiedTrainingConfig
+//   lab-distiller / sdxl-turbo-lora / *-few-step-lora
+//                            → core/runners/lab.py 的 LabSubprocessRunner 子进程工具
+// 其余每个族都必须有这一段:原先只有 15 个族在自己的 schema 文件里手写了
+// turbocore-settings,另外 23 个族(sd-*/flux/lumina/qwen/hunyuan/concept-edit 系列/
+// anima-finetune/controlnet/TI/minimax-h3 等)在新 UI 里根本没有入口,导致后端支持
+// 但 UI 无法开启。这里集中派生而不是往 23 个文件里各贴一遍,避免再次漂移。
+const TURBOCORE_UNSUPPORTED_TYPES = new Set([
+  'yolo',
+  'aesthetic-scorer',
+  'lab-distiller',
+  'sdxl-turbo-lora',
+  'anima-few-step-lora',
+  'newbie-few-step-lora',
+]);
+const TURBOCORE_SECTION = sec(
+  'turbocore-settings',
+  'speed',
+  'TurboCore 内核优化',
+  'TurboCore 主开关 + Lulynx 优化,以及 CUDA/Triton 内核自动调优的高级参数。',
+  [...S_TURBOCORE],
+  { expert: true },
+);
+
+function withTurboCore(sections, typeId) {
+  if (TURBOCORE_UNSUPPORTED_TYPES.has(typeId)) return sections;
+  if (sections.some((section) => section.id === 'turbocore-settings')) return sections;
+  return [...sections, TURBOCORE_SECTION];
+}
+
 // 兼容旧名
 export const SDXL_SECTIONS = SDXL_LORA_SECTIONS;
 
@@ -175,7 +211,7 @@ export function getSectionsForType(typeId) {
   const source = SECTIONS_MAP[resolvedTypeId];
   if (!source) return [];
   if (!_profiledSectionsCache[resolvedTypeId]) {
-    const base = withDatasetIntelligence(source);
+    const base = withTurboCore(withDatasetIntelligence(source), resolvedTypeId);
     _profiledSectionsCache[resolvedTypeId] = TRAINING_INTENT_SUPPORTED_TYPES.has(resolvedTypeId)
       ? [TRAINING_INTENT_PROFILE_SECTION, UNIVERSAL_DIT_SECTION, ...base]
       : base;
