@@ -1,0 +1,21 @@
+{
+  "key": "lycoris_preset",
+  "title": "LyCORIS Preset（preset）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "传给 LyCORIS 库的 preset。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "传给 LyCORIS 库的 preset。通常留空即可，等同于使用其默认 preset。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

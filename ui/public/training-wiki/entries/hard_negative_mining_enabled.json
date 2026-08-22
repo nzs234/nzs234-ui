@@ -1,0 +1,21 @@
+{
+  "key": "hard_negative_mining_enabled",
+  "title": "启用困难样本挖掘 (Hard Negative Mining)",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "只回传 loss 最高的 top-k% 样本梯度",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "只回传 loss 最高的 top-k% 样本梯度，聚焦困难样本训练。类似 Focal Loss 思想。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

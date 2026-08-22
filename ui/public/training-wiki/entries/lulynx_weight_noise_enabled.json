@@ -1,0 +1,21 @@
+{
+  "key": "lulynx_weight_noise_enabled",
+  "title": "LoRA 权重噪声",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "每个 optimizer.",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "每个 optimizer.step 后对可训练 LoRA/适配器参数加零均值高斯扰动（不碰底模）。默认关闭；小数据集抗过拟合/促 flat-minima 可试。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

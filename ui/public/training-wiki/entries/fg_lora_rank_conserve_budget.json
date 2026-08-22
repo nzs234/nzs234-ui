@@ -1,0 +1,21 @@
+{
+  "key": "fg_lora_rank_conserve_budget",
+  "title": "保持总 Rank 预算",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "orthogonal 重分配时，确保总 rank 数不超过传统",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "orthogonal 重分配时，确保总 rank 数不超过传统 LoRA（所有层 × network_dim）。关闭则允许重点层获得更多 rank。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

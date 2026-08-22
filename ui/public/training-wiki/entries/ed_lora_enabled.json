@@ -1,0 +1,21 @@
+{
+  "key": "ed_lora_enabled",
+  "title": "ED-LoRA (Embedding Decomposed)",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Text embedding 分解为 V=V_rand+V_class",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "Text embedding 分解为 V=V_rand+V_class 用于多概念定制，保留概念身份。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

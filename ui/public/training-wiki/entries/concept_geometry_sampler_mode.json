@@ -1,0 +1,27 @@
+{
+  "key": "concept_geometry_sampler_mode",
+  "title": "采样模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "curriculum / density /",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "curriculum": "由易到难那样采。",
+      "density": "难的地方采得密。",
+      "density_curriculum": "密度和课程混。",
+      "concept_batch": "按概念组 batch。"
+    }
+  },
+  "advanced": {
+    "principle": "curriculum / density / density_curriculum / concept_batch。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

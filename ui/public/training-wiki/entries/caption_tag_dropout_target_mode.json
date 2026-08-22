@@ -1,0 +1,25 @@
+{
+  "key": "caption_tag_dropout_target_mode",
+  "title": "指定 Tag 处理方式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "drop_all 全部移除，random_n 仅在命中 tag",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "drop_all": "命中的 tag 全扔。",
+      "random_n": "命中里随机扔 N 个。"
+    }
+  },
+  "advanced": {
+    "principle": "drop_all 全部移除，random_n 仅在命中 tag 中随机丢弃 N 个",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,20 @@
+{
+  "key": "easycontrol_v2_control_kind",
+  "title": "控制类型",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "控制类型 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "reference_latent": "用参考 latent 当条件。",
+      "control_image": "用控制图（线稿/深度之类）。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

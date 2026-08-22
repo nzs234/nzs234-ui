@@ -1,0 +1,30 @@
+{
+  "key": "anima_cache_target_resolution",
+  "title": "Anima 缓存目标分辨率",
+  "category": "Anima / 配置",
+  "appliesTo": [
+    "anima-lora",
+    "anima-finetune"
+  ],
+  "layers": [
+    "数据层"
+  ],
+  "standard": {
+    "summary": "Anima 缓存构建前把源图缩放到的目标分辨率：0（默认）保持源图尺寸，>0 时按 anima_cache_resize_mode 的语义缩放到该目标。",
+    "effect": "非 0 时所有进缓存的图先做保比缩放（longest：最长边=目标；shortest：最短边=目标；freefit：等效面积档位），再进 VAE 编码；0 时源图什么样就编码什么样。",
+    "whenToUse": "数据集分辨率参差不齐、想统一训练尺度并控制缓存体积时（如设 1024）；源图普遍超大想省缓存磁盘和编码时间时。",
+    "avoidWhen": "源图已经是统一目标分辨率时不必设置；设得比训练 resolution 小会让缓存成为分辨率上限、白白损失细节。"
+  },
+  "advanced": {
+    "principle": "缓存训练的分辨率链路是「源图 → 缓存前缩放 → VAE latent → 训练桶」，本键控制第一次几何变换。在缓存阶段就归一尺寸，比训练时再缩放省去每 epoch 的重复计算，也让缓存尺寸可预算。",
+    "intervention": "trainer_anima_cache_runtime.py：target_resolution=int(anima_cache_target_resolution or 0) 传入缓存构建器，与 resize_mode、resize_max_edge 联合作用。",
+    "expectedImpact": "缓存体积与编码耗时随目标分辨率平方缩放；训练可见细节以此为上限。",
+    "tradeoffs": "改动后需重建缓存；与训练 resolution 不匹配时以两者中较小者决定实际细节水平。",
+    "codePath": "trainer_anima_cache_runtime.py：target_resolution 传参；configs_anima.py 定义（0 = keep source size）"
+  },
+  "relatedConfigs": [
+    "anima_cache_resize_mode",
+    "resolution",
+    "anima_cached_training"
+  ]
+}

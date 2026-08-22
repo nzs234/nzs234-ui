@@ -1,0 +1,21 @@
+{
+  "key": "smart_rank_enabled",
+  "title": "SmartRank 动态区间",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "按间隔在 [min,max] 内调整有效 rank。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "按间隔在 [min,max] 内调整有效 rank。与「Lulynx 实验核心」里的 SmartRank keep_ratio 不同。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

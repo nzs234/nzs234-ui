@@ -1,0 +1,20 @@
+{
+  "key": "teacher_lora_scope",
+  "title": "Teacher LoRA 加载范围（teacher_lora_scope）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "Teacher LoRA 加载范围（teacher_lora_scope） 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "unet_only": "教师只上 UNet LoRA。",
+      "unet_and_text_encoder_experimental": "UNet 加 TE，实验向。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

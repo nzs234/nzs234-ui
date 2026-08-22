@@ -1,0 +1,34 @@
+{
+  "key": "keep_tokens_separator",
+  "title": "保留 Token 输出分隔符",
+  "category": "数据集 / 图说",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora",
+    "finetune",
+    "flux-lora"
+  ],
+  "aliases": [
+    "shuffle_caption_tags_only",
+    "weighted_captions"
+  ],
+  "standard": {
+    "summary": "在 keep_tokens 保留前缀与其余 tag 之间插入的输出分隔符。它是输出插入语义，不是解析保护区边界。",
+    "effect": "例如 keep_tokens=1 且 keep_tokens_separator=\"|||\" 时，输出类似 \"trigger, |||, tag2, tag3\"。分隔符本身会作为 token 插入列表。",
+    "whenToUse": "需要在固定前缀与可打乱部分之间显式插入标记时使用。",
+    "avoidWhen": "若目标是「标注里已有 |||，只 drop/shuffle 后半段」，请用 caption_tag_mutate_scope=after_separator，不要依赖本字段解析保护区。"
+  },
+  "advanced": {
+    "principle": "代码路径：先按 keep_tokens 切前缀/后缀，再可选插入 keep_tokens_separator，再 join。不会用该分隔符去解析原始 caption 的保护区。真正的解析保护区是 caption_tag_mutate_scope + caption_tag_scope_separator。",
+    "tradeoffs": "与 caption_tag_mutate_scope 语义不同；混用时务必分清「输出插入」与「解析保护」。"
+  },
+  "relatedConfigs": [
+    "keep_tokens",
+    "shuffle_caption",
+    "caption_tag_mutate_scope",
+    "caption_tag_scope_separator",
+    "caption_tag_dropout_rate"
+  ]
+}

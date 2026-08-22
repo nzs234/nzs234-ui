@@ -1,0 +1,28 @@
+{
+  "key": "h3_block_swap_strategy",
+  "title": "H3 Block Swap 策略",
+  "category": "显存 / 自动策略",
+  "appliesTo": [
+    "minimax-h3-lora"
+  ],
+  "layers": [
+    "内存层"
+  ],
+  "standard": {
+    "summary": "H3 block 交换的调度策略：async（默认，异步预取）、sync（同步搬运）、pipeline（流水线深度预取）、auto。",
+    "effect": "async 是 16GB 实测默认，用独立 CUDA stream 把权重搬运与计算重叠；pipeline 增加约 0.75GB reserved 显存做更深预取，当前实测没有吞吐收益；sync 最简单但每个 block 都要等待搬运。非法取值配置校验直接报错。",
+    "whenToUse": "保持 async 即可；只有在排查搬运相关的数值/稳定性问题时用 sync 做对照。",
+    "avoidWhen": "h3_blocks_to_swap=0 时无意义；pipeline 在当前实现下只多占显存不提速，不建议选。"
+  },
+  "advanced": {
+    "principle": "block 顺序执行使「下一个 block 的权重搬运」可以与「当前 block 的计算」并行；async 用事件同步保证权重就位，pipeline 进一步预取多个 block（显存换潜在延迟余量），在 PCIe 带宽已饱和时不产生额外收益。",
+    "intervention": "trainer_prepare_mixin.py：config.block_swap_strategy = h3_block_swap_strategy 传给通用 block swap 机制；configs_h3.py：取值校验（auto/async/pipeline/sync）。",
+    "expectedImpact": "async 相对 sync 通常有明显吞吐优势；pipeline 相对 async 当前无收益且 +0.75GB reserved。",
+    "tradeoffs": "异步路径的显存峰值略高于 sync（在途 block 副本）；调试数值问题时 sync 的确定性更好。",
+    "codePath": "trainer_prepare_mixin.py：h3_block_swap_strategy → block_swap_strategy；configs_h3.py 取值校验"
+  },
+  "relatedConfigs": [
+    "h3_blocks_to_swap",
+    "h3_checkpoint_mode"
+  ]
+}

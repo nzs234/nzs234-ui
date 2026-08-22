@@ -1,0 +1,21 @@
+{
+  "key": "vram_swap_to_ram",
+  "title": "VRAM Swap to RAM",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "让原生 LoRA / LoRA-FA / T-LoRA / VeRA",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "让原生 LoRA / LoRA-FA / T-LoRA / VeRA 适配器权重常驻 CPU RAM，前向时再按需拉回训练设备。更省显存，但通常更慢；暂不支持 LyCORIS、DeepSpeed、多进程、full_fp16/full_bf16 以及部分 8bit/paged 优化器",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "newbie_auto_swap_release",
+  "title": "自动 Swap 释放（newbie_auto_swap_release）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "开启后会在显存占用持续偏低时逐步减少",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "开启后会在显存占用持续偏低时逐步减少 blocks_to_swap，以回收一部分训练速度",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

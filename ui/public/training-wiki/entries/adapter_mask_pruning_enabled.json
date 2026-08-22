@@ -1,0 +1,21 @@
+{
+  "key": "adapter_mask_pruning_enabled",
+  "title": "Adapter Mask 剪枝",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "训练中按 adapter rank 重要性更新稳定",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "训练中按 adapter rank 重要性更新稳定 mask。只做逻辑 mask，不改变 tensor shape 或 optimizer state。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

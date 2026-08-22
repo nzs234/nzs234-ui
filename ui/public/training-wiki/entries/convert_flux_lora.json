@@ -1,0 +1,21 @@
+{
+  "key": "convert_flux_lora",
+  "title": "LoRA 文件路径",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "在 ai-toolkit 和 sd-scripts",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "在 ai-toolkit 和 sd-scripts 格式之间转换 FLUX LoRA。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

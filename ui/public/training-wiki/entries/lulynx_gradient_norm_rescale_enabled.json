@@ -1,0 +1,34 @@
+{
+  "key": "lulynx_gradient_norm_rescale_enabled",
+  "title": "lulynx 梯度范数重缩放（工程启发式）",
+  "category": "优化器 / 进阶",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "在优化器 step 前把每个可训练参数的梯度按 grad/(||param||₂+eps) 重缩放（arXiv:2410.09692），让参数范数小的方向获得相对更大的更新。",
+    "effect": "开启后优化器被包上一层梯度重缩放包装器；关闭（默认）时训练与基础优化器逐位一致。范数低于 allora_norm_threshold 的参数（如零初始化的 LoRA B 矩阵）跳过缩放，避免除小数爆炸。",
+    "whenToUse": "LoRA 训练中觉得不同层收敛速度差异大、想要免调参的逐参数自适应步长时；与任意优化器后端可组合。",
+    "avoidWhen": "追求与既有配方位级复现时；已用 Prodigy/D-Adaptation 等强自适应优化器时叠加收益不明、行为更难解释。"
+  },
+  "advanced": {
+    "principle": "当前实现对所有 optimizer-owned 参数应用梯度范数重缩放，不移除 LoRA dropout/scaling，也不保证论文 ALLoRA 的 LoRA-only、per-sample 完整语义。",
+    "intervention": "trainer_optimizer_factory.py:_maybe_wrap_allora 在优化器构建后包装；包装器在 optimizer.step 前就地改写 param.grad。与 gradient_release 模式组合时由 flux_trainer_optimization_mixin 分支处理。",
+    "expectedImpact": "各层收敛更均衡，对欠训练的层有提速效果；总体质量提升幅度依赖数据与 rank 配置。",
+    "tradeoffs": "改变了梯度的数值语义，与依赖原始梯度范数的功能（梯度裁剪阈值、梯度监控指标）解释性变差；runtime profile 会记录 wired/default_off 契约便于审计。",
+    "codePath": "trainer_optimizer_factory.py:_maybe_wrap_allora；allora_optimizer_wrapper.py（use_allora 主开关、allora_eps、allora_norm_threshold）"
+  },
+  "relatedConfigs": [
+    "allora_eps",
+    "allora_norm_threshold",
+    "optimizer_type",
+    "lora_plus_enabled"
+  ],
+  "summary": "在 optimizer step 前按 1/(||param||₂+eps) 重缩放 optimizer-owned 参数梯度；这是 lulynx 工程启发式，不是完整论文 ALLoRA。"
+}

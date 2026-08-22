@@ -1,0 +1,21 @@
+{
+  "key": "llm_path",
+  "title": "文本/语义模型路径（llm_path）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "可填本地 Gemma/Jina CLIP/文本模型目录",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "可填本地 Gemma/Jina CLIP/文本模型目录；留空使用 runner 默认。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

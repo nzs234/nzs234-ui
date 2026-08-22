@@ -1,0 +1,21 @@
+{
+  "key": "module_offload_exclude_patterns",
+  "title": "Offload 排除模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "不要 offload 的模块名称模式（逗号分隔）。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "不要 offload 的模块名称模式（逗号分隔）。例如 \"*.norm,*.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "loftq_bits",
+  "title": "LoftQ 量化位宽",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "LoftQ 首版使用 fake-quant/dequant 权重残差初始化",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "LoftQ 首版使用 fake-quant/dequant 权重残差初始化；不是持久 4bit base runtime。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

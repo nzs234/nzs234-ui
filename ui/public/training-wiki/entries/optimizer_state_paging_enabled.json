@@ -1,0 +1,37 @@
+{
+  "key": "optimizer_state_paging_enabled",
+  "title": "优化器状态分页",
+  "category": "显存 / Offload",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora",
+    "finetune"
+  ],
+  "layers": [
+    "内存层",
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "将 optimizer state 在 step 间按 storage_device 停放到 CPU 或参数设备；CPU 副本可选 preserve/fp16/bf16/fp32，step 前恢复原计算精度。",
+    "effect": "CPU 驻留可降低 optimizer state 的常驻显存；storage dtype 可进一步降低主存占用，但低精度驻留会量化动量与方差。",
+    "whenToUse": "大 rank LoRA、全量微调或 optimizer state 明显挤占显存时。先用 preserve 签字，再评估 bf16/fp16 的收敛影响。",
+    "avoidWhen": "state 很小时 PCIe 开销通常不值得；不要把参数设备模式误认为 offload，也不要用它复活逐层 weight bounce。"
+  },
+  "advanced": {
+    "principle": "optimizer.step() 前将符合阈值的 state 恢复到参数设备和原计算 dtype，step 后停放到 storage_device。pinned 模式复用持久 CPU mirror 与独立 CUDA copy stream；step 标量保持原 dtype。",
+    "intervention": "包装既有 optimizer，不移动模型权重；同一 wrapper 负责运行、checkpoint metadata、resume 和 telemetry。",
+    "expectedImpact": "真实 Anima 1-block/2-step 短测中峰值 GPU 使用约下降 255MB，steady step 增加约 0.21s；结果依赖 state 规模和 PCIe，不能外推。",
+    "tradeoffs": "这是显存换 RAM/PCIe。bf16/fp16 storage 会量化 state；pinned mirror 增加锁页内存，param_device 模式不节省显存。",
+    "codePath": "optimizer_state_paging.py → trainer_execution_optimizer_setup.py → optimizer execution profile / run manifest"
+  },
+  "relatedConfigs": [
+    "optimizer_state_paging_min_tensor_mb",
+    "optimizer_state_paging_storage_device",
+    "optimizer_state_paging_storage_dtype",
+    "optimizer_state_paging_pin_memory",
+    "quantization_offload_optimizer_states",
+    "optimizer_type"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "key": "h3_blocks_to_swap",
+  "title": "H3 交换 Block 数",
+  "category": "显存 / 自动策略",
+  "appliesTo": [
+    "minimax-h3-lora"
+  ],
+  "layers": [
+    "内存层"
+  ],
+  "standard": {
+    "summary": "MiniMax H3 训练时交换到 CPU 的 Transformer block 数量。16GB 显存的默认配方是交换全部 48 个。",
+    "effect": "被交换的 block 权重常驻 CPU，前向按需搬运到 GPU；数值越大显存越省、PCIe 传输越多。>0 时后端把 swap_granularity 设为 block，并要求激活检查点为 unsloth 模式（full/selective 无法重载已释放的 block 权重，配置校验直接报错）。",
+    "whenToUse": "16GB 级显卡训练 H3 保持默认 48；显存更大时逐步调低换吞吐（每保留一个 block 常驻省一次往返搬运）。",
+    "avoidWhen": "h3_checkpoint_mode 不是 unsloth 时非零值会被配置校验拒绝；显存充足（>40GB）时交换只会白白付出传输开销。"
+  },
+  "advanced": {
+    "principle": "H3 Transformer 的 block 前向是顺序的，block 权重可以在使用前异步预取、用完立即释放，显存峰值从「全部 block」降为「常驻 + 少数在途 block」。与激活检查点的 unsloth 模式配合是因为反传需要按同样的调度重载权重。",
+    "intervention": "trainer_prepare_mixin.py：model_arch=minimax_h3 时 config.blocks_to_swap = h3_blocks_to_swap、swap_granularity=block；minimax_h3/loader.py 把该值传入模型构建；configs_h3.py 校验与 checkpoint 模式的互斥关系。",
+    "expectedImpact": "48 全交换时 16GB 卡可跑；吞吐受 PCIe 带宽影响，async 策略下传输大部分被计算掩盖。",
+    "tradeoffs": "交换数量与吞吐近似单调互换；与 h3_block_swap_strategy 联合决定实际重叠效率。",
+    "codePath": "trainer_prepare_mixin.py：h3_blocks_to_swap → blocks_to_swap/swap_granularity；minimax_h3/loader.py：blocks_to_swap 传参；configs_h3.py 校验"
+  },
+  "relatedConfigs": [
+    "h3_block_swap_strategy",
+    "h3_checkpoint_mode",
+    "h3_activation_offload_min_tensor_mb"
+  ]
+}

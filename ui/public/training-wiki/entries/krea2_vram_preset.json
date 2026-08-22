@@ -1,0 +1,25 @@
+{
+  "key": "krea2_vram_preset",
+  "title": "显存预设（krea2_vram_preset）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "控制 Krea-2 block offload 的默认 GPU 常驻档位。（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "standard": "大概 4 个 GPU 常驻槽。",
+      "aggressive": "大概 3 个槽，更省显存，步时慢一点。"
+    }
+  },
+  "advanced": {
+    "principle": "控制 Krea-2 block offload 的默认 GPU 常驻档位。Standard = 4 个 GPU slots，作为默认平衡档；Aggressive = 3 个 GPU slots，进一步压低显存占用但步时会略慢一些。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

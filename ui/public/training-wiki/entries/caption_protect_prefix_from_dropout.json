@@ -1,0 +1,34 @@
+{
+  "key": "caption_protect_prefix_from_dropout",
+  "title": "前缀防丢弃",
+  "category": "Caption / 丢弃",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora"
+  ],
+  "layers": [
+    "数据层",
+    "Caption 层"
+  ],
+  "standard": {
+    "summary": "开启后，uniform / targeted tag dropout 不会丢弃 keep_tokens 前缀。default-off，与旧 parity 兼容。",
+    "effect": "scope=all 时保护前 keep_tokens 个 tag；scope=after_separator 时 head 本就保护，此开关再保护 tail 的 keep_tokens 前缀。",
+    "whenToUse": "触发词/主体必须出现、但仍要对后续 tag 做 dropout 时。",
+    "avoidWhen": "keep_tokens=0 或完全不需要保护前缀时保持关闭。"
+  },
+  "advanced": {
+    "principle": "keep_tokens 默认只影响 shuffle 前缀固定，不阻止 drop。本开关把 keep_tokens 前缀也排除在 dropout 之外。",
+    "intervention": "dataset_loader 在 drop_tags / targeted / sFAD 路径传入 protect_prefix。",
+    "expectedImpact": "触发词更稳定，避免全丢导致空 caption。",
+    "tradeoffs": "降低 dropout 强度；需与 keep_tokens 配合。",
+    "codePath": "dataset_loader.CaptionDataset._process_caption + caption_augment.mutate_scoped_tags(protect_prefix_from_dropout)"
+  },
+  "relatedConfigs": [
+    "keep_tokens",
+    "tag_dropout_rate",
+    "caption_tag_mutate_scope",
+    "caption_tag_dropout_targets"
+  ]
+}

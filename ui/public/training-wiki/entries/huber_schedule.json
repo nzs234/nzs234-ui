@@ -1,0 +1,27 @@
+{
+  "key": "huber_schedule",
+  "title": "Huber 调度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "constant 固定",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "constant": "Huber 阈值一直固定。",
+      "exponential": "阈值按指数变。",
+      "snr": "跟着 SNR 变。",
+      "auto": "运行时自己选日程。"
+    }
+  },
+  "advanced": {
+    "principle": "constant 固定；exponential/snr 随训练/SNR 变化；auto 按 batch 残差分位估计。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "random_triggers",
+  "title": "随机触发词",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "逗号分隔的触发词列表或文件路径。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "逗号分隔的触发词列表或文件路径。每个 batch 随机选一个注入到 caption 中",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

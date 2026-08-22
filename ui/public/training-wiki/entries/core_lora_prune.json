@@ -1,0 +1,21 @@
+{
+  "key": "core_lora_prune",
+  "title": "LoRA 文件路径",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "按区块保留或移除 LoRA 张量，生成新的",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "按区块保留或移除 LoRA 张量，生成新的 safetensors。默认不覆盖源文件。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

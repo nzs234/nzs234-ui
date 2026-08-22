@@ -1,0 +1,21 @@
+{
+  "key": "__ui_group_compile_expert_collapsed",
+  "title": "高级 Compile 策略已收起",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "基础 Compile 运行策略可在普通模式选择",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "基础 Compile 运行策略可在普通模式选择；shape / target / cudagraph 等复杂覆盖项仍收在专家模式。关闭专家模式时不会发送 shape/target 等复杂覆盖项，后端会继续按显式启动参数优先并自动 fallback。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "lokr_train_norm",
+  "title": "LoKr 训练 Norm（lokr_train_norm）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "LoKr 同时训练模型中的归一化层可学习参数（如 LayerNorm",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "LoKr 同时训练模型中的归一化层可学习参数（如 LayerNorm/RMSNorm 的缩放/偏置），可增强特征尺度与风格适配；会小幅增加显存占用和 LoRA 文件大小，并增加过拟合风险，普通训练建议先关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

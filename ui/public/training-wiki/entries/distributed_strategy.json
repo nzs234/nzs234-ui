@@ -1,0 +1,34 @@
+{
+  "key": "distributed_strategy",
+  "title": "分布式策略",
+  "category": "训练 / 分布式",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora",
+    "finetune"
+  ],
+  "layers": [
+    "并行层"
+  ],
+  "standard": {
+    "summary": "选择多卡/多机并行算法：auto（按 GPU 数推断，多卡→ddp、单卡→none）、none（单进程）、ddp（数据并行）、fsdp2（参数分片）、deepspeed（需额外安装）。",
+    "effect": "决定进程组初始化与模型包装方式。fsdp2 用 fully_shard 做 leaf-first 参数分片，省单卡显存；fully_shard API 不可用或包装失败（未开始分片前）会自动回退 DDP 并记录 notes；deepspeed 未安装时预检会拦截。",
+    "whenToUse": "多卡训练默认 auto/ddp 即可；模型参数量大到单卡放不下 optimizer state + 参数副本时选 fsdp2；已有 DeepSpeed 配置经验且需要其特性时选 deepspeed。",
+    "avoidWhen": "单卡训练不要手动选 ddp/fsdp2（徒增开销）；fsdp2 分片已开始后失败会直接报错拒绝不安全的 DDP 回退，遇到需排查而非重试。"
+  },
+  "advanced": {
+    "principle": "DDP 每卡保留完整模型副本、只同步梯度；FSDP2（PyTorch fully_shard）把参数/梯度/优化器状态按 leaf module 分片到各卡，显存占用近似除以卡数，通信量增加。本实现 leaf 选择为「直接持有参数的子模块、深度优先、冻结优先」，包装前后校验参数可训练性不变、优化器参数集合一致。",
+    "intervention": "distributed_strategy.py:resolve_distributed_strategy 统一解析（queue 调度、资源预算、launch 决策共用）；distributed_runtime.py:build_distributed_runtime → _wrap_fsdp2/_wrap_ddp 在模型准备后包装；多进程策略仍由 torchrun 启动。",
+    "expectedImpact": "ddp：吞吐近似线性扩展；fsdp2：单卡显存大幅下降、吞吐低于 DDP（通信换显存）。",
+    "tradeoffs": "fsdp2 与部分显存优化（block swap、模块 offload）机制重叠，不建议叠加；checkpoint 保存/恢复语义随策略变化，队列侧会把 strategy 元数据写入训练记录。",
+    "codePath": "distributed_strategy.py:resolve_distributed_strategy；distributed_runtime.py:_wrap_fsdp2（leaf-first fully_shard、失败回退 DDP）；configs_base.py 定义"
+  },
+  "relatedConfigs": [
+    "enable_distributed_training",
+    "num_processes",
+    "num_machines",
+    "ddp_timeout"
+  ]
+}

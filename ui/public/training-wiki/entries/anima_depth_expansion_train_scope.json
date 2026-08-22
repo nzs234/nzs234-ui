@@ -1,0 +1,28 @@
+{
+  "key": "anima_depth_expansion_train_scope",
+  "title": "扩层训练范围",
+  "category": "Anima / 高级",
+  "appliesTo": [
+    "anima-finetune"
+  ],
+  "layers": [
+    "模型结构层"
+  ],
+  "standard": {
+    "summary": "Anima 扩层后哪些参数参与训练：new_layers（默认，只训练新增层）、new_layers_periphery（新层+外围模块：输入、时间嵌入、最终输出层）、all（全部参数）。",
+    "effect": "new_layers 冻结全部原有层，只让零初始化的新层学习——最接近标准 Depth Up-Scaling；periphery 额外放开输入/时间嵌入/输出头以适配新深度；all 是全参微调。",
+    "whenToUse": "标准 DUS 配方用 new_layers；发现新层学习受限于输入输出适配时升级到 periphery；数据充足、算力充裕、追求最大改造空间时用 all。",
+    "avoidWhen": "扩层未开启时无效；all 范围在小数据集上极易灾难性遗忘原模型能力。"
+  },
+  "advanced": {
+    "principle": "扩层后的最优训练自由度是个层级：只训新层保证原能力零损失（原层参数字面不变）；外围模块是深度改变后最需要重校准的接口层；全参则把扩层当作普通微调的更大起点。",
+    "intervention": "config_adapter_conversion_context.py：scope 归一化（new_layers/new_layers_periphery/all，enabled 时非法值抛错）；anima_depth_expansion_runtime.py：按 scope 设置 requires_grad 集合。",
+    "expectedImpact": "new_layers 显存最省（优化器状态只覆盖新层）、行为最可控；all 显存与遗忘风险最大。",
+    "tradeoffs": "范围越大需要的正则与数据越多；periphery 是性价比折中，但输出头解冻后原模型的输出分布也开始漂移。",
+    "codePath": "config_adapter_conversion_context.py：train_scope 校验；anima_depth_expansion_runtime.py：TRAIN_SCOPES 与 requires_grad 划分"
+  },
+  "relatedConfigs": [
+    "anima_depth_expansion_enabled",
+    "anima_depth_expansion_target_layers"
+  ]
+}

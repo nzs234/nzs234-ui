@@ -1,0 +1,32 @@
+{
+  "key": "fused_backward_grad_clip_mode",
+  "title": "LOMO 梯度裁剪档位",
+  "category": "优化器 / 进阶",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "finetune"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "为 LOMO/AdaLOMO 这类「反传中逐参数就地更新」的融合反传优化器选择梯度裁剪档位：default 单遍反传不裁剪，full 额外跑一次预反传让 max_grad_norm 真正生效。",
+    "effect": "default（默认）：保持单遍反传，梯度算完立即用掉并释放，max_grad_norm 拿不到全局梯度范数，裁剪被上报为 not_applied；full：每步先做一次 retain_graph 的 grad_norm 预反传，再做正式反传，裁剪真实生效，但反传开销约翻倍。",
+    "whenToUse": "用 LOMO/AdaLOMO 做全参微调且训练发散、确实需要梯度裁剪兜底时选 full；显存和速度优先、训练本身稳定时保持 default。",
+    "avoidWhen": "非 LOMO 家族优化器时此项不生效；max_grad_norm ≤ 0 时选 full 也会被自动回落为 default（后端配置校验器会主动降级，避免白付预反传成本）。"
+  },
+  "advanced": {
+    "principle": "LOMO 的省显存来源是「反传到哪个参数就立即更新并丢掉梯度」，因此永远不存在完整梯度向量，常规 clip_grad_norm 无从谈起。full 档通过先跑一次只求全局梯度范数的反传（retain_graph=True），把范数传给优化器的 clip_grad_norm 属性，第二次反传时按比例缩放更新。",
+    "intervention": "配置层：configs.py 的 model_validator 归一化取值并在 max_grad_norm≤0 时降级为 default；执行层：training_step_optimizer_execution_handler.py 按档位组装 fused_grad_clip_contract，档位为 default 时上报 fallback_reason=fused_backward_grad_clip_mode_default 与补救提示。",
+    "expectedImpact": "full 档使 LOMO 训练在梯度尖峰时更稳；代价是每步两次反传，吞吐约减半。",
+    "tradeoffs": "default 最快最省显存但放弃裁剪保护；full 抵消了 LOMO 的一部分速度优势。运行契约（applied/not_applied）会写进训练报告，便于事后核对裁剪是否真实生效。",
+    "codePath": "configs.py:_validate_fused_backward_grad_clip_mode；training_step_optimizer_execution_handler.py:fused_grad_clip 契约组装；optimizer_step_contracts.py 说明 full 档的 grad_norm 预反传语义"
+  },
+  "relatedConfigs": [
+    "max_grad_norm",
+    "optimizer_type",
+    "gradient_release_grad_clip_mode"
+  ]
+}

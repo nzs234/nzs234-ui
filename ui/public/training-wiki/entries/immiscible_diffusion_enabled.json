@@ -1,0 +1,32 @@
+{
+  "key": "immiscible_diffusion_enabled",
+  "title": "Immiscible（标准与 lulynx 配对方案）",
+  "category": "训练 / Flow",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "训练控制层"
+  ],
+  "standard": {
+    "summary": "l2 路径提供 standard 全局最小成本 Hungarian assignment 与 lulynx_greedy 逐行贪心；cosine 继续使用既有 flow OT 路径。",
+    "effect": "standard 保证 batch 内全局最小 L2 配对成本；lulynx_greedy 保持历史行为、开销更低但不保证全局最优。两者质量收益都需要同条件 A/B 验证。",
+    "whenToUse": "仅在已验证当前 batch size 与数据分布适合时启用；默认关闭。",
+    "avoidWhen": "batch size 太小时排序效果有限。有轻微排序开销。"
+  },
+  "advanced": {
+    "principle": "两种 l2 模式共享 O(B^2) 距离矩阵。standard 用 Hungarian 求全局最优双射；lulynx_greedy 按样本顺序选择未使用的最小距离。cosine 是独立的 flow OT 近似，不受 assignment mode 影响。",
+    "intervention": "immiscible_assignment_mode=standard|lulynx_greedy 由既有 request/config 进入 training_step_noise_timestep_handler.py → immiscible_diffusion.py。",
+    "expectedImpact": "standard 与 lulynx 模式的速度、收敛和质量必须按相同模型、数据、seed、步数做 A/B；不能从论文外推 lulynx 结果。",
+    "tradeoffs": "需要 batch 内计算配对距离，有 O(N²) 排序开销。",
+    "codePath": "backend/core/lulynx_trainer/training_step_noise_timestep_handler.py → immiscible_diffusion.py"
+  },
+  "relatedConfigs": [
+    "immiscible_metric",
+    "immiscible_assignment_mode"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "key": "repa_log_memory",
+  "title": "REPA 首次打显存日志",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "第一次真正算 REPA loss 时打 shape / pool /",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "第一次真正算 REPA loss 时打 shape / pool / cuda_max_alloc。默认开。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

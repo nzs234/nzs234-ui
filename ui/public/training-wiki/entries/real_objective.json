@@ -1,0 +1,25 @@
+{
+  "key": "real_objective",
+  "title": "真实短测目标（real_objective）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "LCM consistency 会用 teacher 生成",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "lcm_consistency_probe": "短测 LCM consistency，教师出 x0。",
+      "epsilon_lora_probe": "短测 ε-LoRA。"
+    }
+  },
+  "advanced": {
+    "principle": "LCM consistency 会用 teacher 生成 x0 target。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

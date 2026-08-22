@@ -1,0 +1,29 @@
+{
+  "key": "lora_rank",
+  "title": "DreamBooth LoRA Rank",
+  "category": "训练 / DreamBooth",
+  "appliesTo": [
+    "sd-dreambooth"
+  ],
+  "layers": [
+    "网络结构层"
+  ],
+  "standard": {
+    "summary": "DreamBooth 的 use_lora 开启时使用的 LoRA 秩（rank）。默认 16。是 network_dim 在 DreamBooth 路线上的别名入口。",
+    "effect": "队列侧解析配置时把本值写入 network_dim（use_lora=true 时 network_dim = lora_rank），后续 adapter 注入按该 rank 构建低秩矩阵。",
+    "whenToUse": "单主体 DreamBooth 通常 8~32 足够；细节复杂的主体（服饰、纹身）可提高到 32~64。",
+    "avoidWhen": "use_lora 关闭（全参模式）时无效；盲目拉高 rank 只会增大产物体积和过拟合风险。"
+  },
+  "advanced": {
+    "principle": "rank 决定 ΔW = B·A 的秩上限，即可学习子空间的维度。DreamBooth 场景目标是绑定单一主体，本征维度低，小 rank 即可覆盖且自带正则化效果。",
+    "intervention": "training_queue_support.py：training_type=dreambooth 且 use_lora 时 network_dim = int(lora_rank or network_dim or 16)；field_alias_map.py 把 lora_rank 别名映射到 network_dim。",
+    "expectedImpact": "rank 翻倍 → 产物体积与 LoRA 参数量近似翻倍；质量收益在 16~32 后趋于平缓。",
+    "tradeoffs": "与通用路线的 network_dim 是同一自由度的两个入口，混用两个键时以 DreamBooth 队列解析的合并结果为准。",
+    "codePath": "training_queue_support.py：use_lora 分支 network_dim=lora_rank；field_alias_map.py:'lora_rank'→'network_dim'；configs_dataset.py 定义"
+  },
+  "relatedConfigs": [
+    "use_lora",
+    "network_dim",
+    "network_alpha"
+  ]
+}

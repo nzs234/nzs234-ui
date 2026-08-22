@@ -1,0 +1,43 @@
+{
+  "key": "adapter_type",
+  "title": "适配器类型（adapter_type）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Newbie 适配器类型，会映射到原生 LoRA",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "lora": "标准 LoRA，兼容最好，参数大概 2·r·d。",
+      "lora_plus": "LoRA+，A/B 学习率可以拆开；比设歪了一侧会学不动。",
+      "rs_lora": "rsLoRA 缩放，rank 高时不那么容易数值炸。",
+      "lora_fa": "LoRA-FA，冻住一部分，能训的参数更少。",
+      "vera": "VeRA，文件特别小，难概念容易不够用。",
+      "tlora": "T-LoRA，同样参数隐式秩更高，算得更慢。",
+      "flexrank": "各层 rank 可以不一样。",
+      "fera": "FeRA，实验向。",
+      "gdlokr": "GDLoKr，Kronecker + 幅度，表达强、实现重。",
+      "locon": "卷积也挂低秩，吃纹理，文件常更大。",
+      "loha": "Hadamard 积，同预算表达常常比 LoRA 丰一点，也更贵。",
+      "lokr": "Kronecker 分解，省参数；factor 走极端会难训。",
+      "glora": "GLoRA。",
+      "glokr": "GLoKr。",
+      "ia3": "几乎只学通道缩放，文件最小。",
+      "dora": "方向加幅度，常比纯 LoRA 贴底，一步稍慢。（本选择器里没有：DoRA 走的是独立入口 network_module='networks.lora' + use_dora 开关，不是本字段的取值。）",
+      "oft": "正交约束着改，块和秩设错会学不动。",
+      "diag-oft": "对角版 OFT，更轻一点。",
+      "full": "几乎按全参那档上，最能改也最吃显存、最好过拟合。",
+      "hydralora": "多专家路由，路由不稳算力就白扔。（本选择器里没有：HydraLoRA 由独立开关 hydralora_enabled 驱动，配套 hydralora_num_experts / hydralora_top_k 等字段。）"
+    }
+  },
+  "advanced": {
+    "principle": "Newbie 适配器类型，会映射到原生 LoRA、LyCORIS 或对应扩展注入器。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

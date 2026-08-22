@@ -1,0 +1,32 @@
+{
+  "key": "quality_evaluation_compare_base",
+  "title": "质量评估对比基础模型",
+  "category": "质量评估",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "评估层"
+  ],
+  "standard": {
+    "summary": "质量评估时用 LoRA 权重 0 与 1 各生成一组样本（同 prompt 同 seed），产出「底模 vs 训练产物」的成对增量证据。默认开启。",
+    "effect": "每个验证用例生成两份图：一份关闭 LoRA（权重 0）、一份开启（权重 1），指标分别计算，报告能回答「LoRA 究竟带来了多少变化」。",
+    "whenToUse": "想确认训练真的产生了预期改变、而不是把底模本来就会的东西归功于 LoRA 时；写训练报告需要 before/after 证据时。",
+    "avoidWhen": "评估时间预算紧张时可关闭（采样量减半）；quality_evaluation_enabled 关闭时无效。"
+  },
+  "advanced": {
+    "principle": "绝对分数受底模水平主导，无法区分「LoRA 的贡献」与「底模的底子」；固定 prompt/seed 下的成对对照消去了底模与采样随机性两个混杂变量，是最小成本的因果证据。",
+    "intervention": "quality/validation_suite.py：compare_base=bool(quality_evaluation_compare_base) 进入套件定义，评估执行时按 LoRA scale 0/1 两次采样。",
+    "expectedImpact": "评估采样成本翻倍；报告增加逐用例的增量维度。",
+    "tradeoffs": "权重 0/1 的两点对照不覆盖中间权重的行为；如需权重扫描请配合 XY 网格功能。",
+    "codePath": "quality/validation_suite.py：compare_base 读取；configs_validators.py：quality_evaluation 块 compare_base 归一化"
+  },
+  "relatedConfigs": [
+    "quality_evaluation_enabled",
+    "quality_evaluation_validation_seeds",
+    "quality_evaluation_xy_grid"
+  ]
+}

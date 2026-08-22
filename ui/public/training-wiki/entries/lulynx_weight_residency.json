@@ -1,0 +1,26 @@
+{
+  "key": "lulynx_weight_residency",
+  "title": "Layer-level Residency",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "控制 native SDXL 冻结 base",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "resident": "冻结底权重常驻 GPU。",
+      "linear_cpu_pinned": "Linear 放 CPU pinned 流过来。",
+      "linear_conv_cpu_pinned": "Linear 和 Conv 都 pinned，更省更慢。"
+    }
+  },
+  "advanced": {
+    "principle": "控制 native SDXL 冻结 base 权重的驻留策略。显存足够选常驻 GPU；显存紧张可选 CPU pinned，Conv2d 模式更省显存但可能略慢。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

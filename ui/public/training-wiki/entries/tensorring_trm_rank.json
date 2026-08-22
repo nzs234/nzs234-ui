@@ -1,0 +1,21 @@
+{
+  "key": "tensorring_trm_rank",
+  "title": "TensorRing TRM rank",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "TRM 变换 rank (0/≤rank → 低秩 I+UVᵀ",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "TRM 变换 rank (0/≤rank → 低秩 I+UVᵀ；≥in → dense T)。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

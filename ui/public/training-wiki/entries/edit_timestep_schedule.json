@@ -1,0 +1,38 @@
+{
+  "key": "edit_timestep_schedule",
+  "title": "Edit Timestep Schedule",
+  "category": "Edit-LoRA / 时间步",
+  "appliesTo": [
+    "anima-lora",
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "layers": [
+    "Edit runtime",
+    "噪声调度"
+  ],
+  "standard": {
+    "summary": "控制 reference strength 随 denoising 时间变化。off 关闭调度；early_lock 在高噪声阶段更强；mid_edit 在中段更强；mask_preserve 保留低噪声尾部约束。",
+    "effect": "早期高噪声阶段更影响构图和姿态，后期低噪声阶段更影响纹理和细节。schedule 可以避免全程强注入导致编辑失效，也避免完全不注入导致漂移。",
+    "whenToUse": "训练 Edit-LoRA 时想保持 source 结构，又允许 target 指令改变局部内容或风格。",
+    "avoidWhen": "只是普通 LoRA 训练或没有 reference latent 时保持 off。",
+    "optionDescriptions": {
+      "off": "参考强度不随时间变。",
+      "early_lock": "高噪声（搭结构）时参考更强，版式/身份锁得死。",
+      "mid_edit": "中段参考更强，编辑落在语义段。",
+      "mask_preserve": "低噪声尾巴还拽着，细节不易漂，改幅也可能变小。"
+    }
+  },
+  "advanced": {
+    "principle": "runtime 将 timestep/sigma/flow 值归一为 0..1 phase。phase=1 表示高噪声结构阶段，phase=0 表示低噪声细节阶段。",
+    "intervention": "edit_injection_strategy 消费 schedule 输出，而不是直接读取 raw timestep。",
+    "expectedImpact": "让保结构和可编辑之间有可控切换，减少 copy source 或大幅漂移两种极端。",
+    "tradeoffs": "不同模型族的 timestep 方向可能不同；需要 adapter 级校准后再做质量声明。",
+    "codePath": "core/lulynx_trainer/edit_timestep_schedule.py"
+  },
+  "relatedConfigs": [
+    "edit_timestep_schedule",
+    "edit_reference_strength",
+    "edit_injection_strategy"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "key": "concept_edit_timestep_curriculum",
+  "title": "概念编辑时间步课程学习",
+  "category": "训练 / 高级",
+  "appliesTo": [
+    "concept-edit"
+  ],
+  "layers": [
+    "采样层"
+  ],
+  "standard": {
+    "summary": "概念编辑训练中把 timestep 采样限制在一个逐步轮换的窄 band 内，按「由易到难」的课程顺序覆盖整个时间步区间。默认关闭（保持全窗口均匀采样）。",
+    "effect": "开启后每一步只从当前 band 采样 timestep，band 随步数循环推进；关闭时在 [min_timestep, max_timestep) 内均匀采样，行为不变。",
+    "whenToUse": "iLECO/ADDifT 训练不稳定、loss 在不同 timestep 区间震荡剧烈时；步数较多（≥300）足够完成多个 band 循环的任务。",
+    "avoidWhen": "极短训练（几十步）时 band 覆盖不完整、部分时间步学不到；已经手动收窄 min/max_timestep 到很小区间时课程化意义不大。"
+  },
+  "advanced": {
+    "principle": "不同 timestep 对应不同学习难度与内容（高噪声学结构、低噪声学细节），全窗口随机采样使梯度方向在难度间跳变。band 课程把每步的监督集中在窄区间内，降低批间梯度方差，循环推进保证最终覆盖完整窗口。",
+    "intervention": "concept_edit_curriculum.py：读取开关与 concept_edit_timestep_curriculum_buckets（band 数，默认 10，非整数时告警回落）；concept_edit_anima_timestep.py 在采样 timestep 时把均匀抽样限制到当前 band。",
+    "expectedImpact": "loss 曲线更平滑、概念编辑方向更一致；同等步数下每个 timestep 区间的有效步数不变，只是重新排序。",
+    "tradeoffs": "band 轮换引入训练进程的周期性（loss 有锯齿是正常现象）；与手动 min/max_timestep 组合时 band 在收窄后的窗口内划分。",
+    "codePath": "concept_edit_curriculum.py：开关与 band 解析；concept_edit_anima_timestep.py：band 内受限采样；configs_anima.py 定义"
+  },
+  "relatedConfigs": [
+    "concept_edit_timestep_curriculum_buckets",
+    "min_timestep",
+    "max_timestep",
+    "concept_edit_method"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "key": "multi_scale_supervision_enabled",
+  "title": "启用多尺度 DiT 监督 (Multi-Scale Supervision)",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "在 DiT 中间层 (4/8/12) 上做 student-teacher",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "在 DiT 中间层 (4/8/12) 上做 student-teacher 自蒸馏，引导网络学习更平滑的语义空间。需要两次 forward，显存开销较大。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

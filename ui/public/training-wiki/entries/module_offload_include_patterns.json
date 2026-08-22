@@ -1,0 +1,21 @@
+{
+  "key": "module_offload_include_patterns",
+  "title": "Offload 包含模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "要 offload 的模块名称模式（逗号分隔",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "要 offload 的模块名称模式（逗号分隔，支持通配符）。例如 \"*.mlp,*.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

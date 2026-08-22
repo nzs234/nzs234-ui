@@ -1,0 +1,21 @@
+{
+  "key": "network_alpha_map_json",
+  "title": "分层 Alpha 映射",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "按目标模块分别设置 LoRA alpha",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "按目标模块分别设置 LoRA alpha。每行「目标模块=alpha」（如 attention.qkv=16），或 JSON（如 {\"attention.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

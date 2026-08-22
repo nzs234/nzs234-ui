@@ -1,0 +1,30 @@
+{
+  "key": "concept_edit_timestep_curriculum_buckets",
+  "title": "课程 Band 数",
+  "category": "训练 / 高级",
+  "appliesTo": [
+    "concept-edit"
+  ],
+  "layers": [
+    "采样层"
+  ],
+  "standard": {
+    "summary": "概念编辑时间步课程每个循环划分的 band 数量。默认 10，范围 2~50。",
+    "effect": "band 越多每个 band 越窄、单步监督越集中，但完成一轮完整覆盖需要的步数越多；非整数输入会告警并回落默认 10。",
+    "whenToUse": "总步数多（≥500）可以用更细的 band（15~20）获得更平滑的课程；短训练用较粗的 band（5~8）保证覆盖完整。",
+    "avoidWhen": "concept_edit_timestep_curriculum 关闭时无效；band 数超过总步数除以合理循环次数时部分 band 只被访问一两次，课程失去意义。"
+  },
+  "advanced": {
+    "principle": "band 宽度 = 时间步窗口 / band 数。窄 band 使批内与批间的 timestep 方差都更小（梯度更一致），但课程周期变长；band 数是「梯度一致性 ↔ 覆盖速度」的调节旋钮。",
+    "intervention": "concept_edit_curriculum.py：解析 band 数（异常输入 warning + 回落 10），据此计算每步所属 band 与其 timestep 范围。",
+    "expectedImpact": "细 band 下 loss 锯齿更细密、编辑方向更纯；粗 band 接近关闭课程的行为。",
+    "tradeoffs": "建议 band 数 × 每 band 期望步数 ≤ 总步数，否则最后的 band 训练不足。",
+    "codePath": "concept_edit_curriculum.py：concept_edit_timestep_curriculum_buckets 解析（默认 10）"
+  },
+  "relatedConfigs": [
+    "concept_edit_timestep_curriculum",
+    "max_train_steps",
+    "min_timestep",
+    "max_timestep"
+  ]
+}

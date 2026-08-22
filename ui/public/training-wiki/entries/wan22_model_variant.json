@@ -1,0 +1,25 @@
+{
+  "key": "wan22_model_variant",
+  "title": "变体（wan22_model_variant）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "TI2V-5B 使用单塔；A14B 目录含 high/low 两套权重，但每次训练只加载所选单塔",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "ti2v-5b": "TI2V 5B 单塔。",
+      "t2v-a14b": "T2V A14B；训练时必须在 high/low 中选择一塔。"
+    }
+  },
+  "advanced": {
+    "principle": "TI2V-5B 单塔；A14B 根目录含 high/low 权重，当前训练契约只接受 high 或 low 单塔，不提供 both。VAE 与 latent C 按变体 fail-closed。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,26 @@
+{
+  "key": "krea2_block_residency",
+  "title": "Krea2 Block 驻留",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "resident=全 GPU（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "resident": "全 GPU。",
+      "block_offload": "按 block 卸。",
+      "layer_offload": "按层卸，更细更慢。"
+    }
+  },
+  "advanced": {
+    "principle": "resident=全 GPU；block_offload=按 block LRU；layer_offload=按层 offload。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

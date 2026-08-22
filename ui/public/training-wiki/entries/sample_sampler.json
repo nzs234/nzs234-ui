@@ -1,0 +1,43 @@
+{
+  "key": "sample_sampler",
+  "title": "预览采样器",
+  "category": "训练 / 预览",
+  "appliesTo": [
+    "anima-lora",
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "aliases": [
+    "sample_steps",
+    "sample_height",
+    "sample_width",
+    "sample_seed",
+    "sample_smoothcache_error_threshold"
+  ],
+  "standard": {
+    "summary": "控制训练过程中生成预览图使用的采样器（如 euler / euler_a / dpm++ 等）和生成参数（步数、分辨率、种子）。",
+    "effect": "euler/euler_a 速度快（适合预览）；dpm++ 质量更高（需要更多步数）。sample_steps 通常设 15~25（快速预览），不需要像推理时那么多步。",
+    "whenToUse": "euler 配合 15~20 步是最快的预览方案，足以判断 LoRA 训练方向是否正确。",
+    "avoidWhen": "预览不需要使用最高质量采样器，避免浪费训练时间（生成预览会暂停训练）。",
+    "optionDescriptions": {
+      "ddim": "DDIM，步数少也还行，预览常拿来用。",
+      "pndm": "PNDM，老一点的采样。",
+      "lms": "LMS，多步线性，味道跟 Euler 不太一样。",
+      "euler": "Euler，简单直接。",
+      "euler_a": "Euler Ancestral，带点随机，图会「活」一点，不好完全复现。",
+      "heun": "Heun，二阶，往往比 Euler 细一点，也更贵。",
+      "dpm_2": "DPM 2 阶，确定性。",
+      "dpm_2_a": "DPM 2 阶 ancestral，带随机。",
+      "dpmsolver": "DPM-Solver 这一家。",
+      "dpmsolver++": "DPM-Solver++，少步出图质量一般不错。"
+    }
+  },
+  "advanced": {
+    "principle": "预览生成使用与推理相同的采样器逻辑，但步数更少。sample_smoothcache_error_threshold 控制 SmoothCache 的误差容忍度（用于加速预览生成）。sample_seed 固定后每次预览使用相同种子，方便对比不同步数的变化。",
+    "tradeoffs": "sample_width/height 应与 resolution 匹配，分辨率不匹配时预览效果可能误导（预览清晰但实际生成不同分辨率时效果可能不同）。"
+  },
+  "relatedConfigs": [
+    "sample_every_n_steps",
+    "output_dir"
+  ]
+}

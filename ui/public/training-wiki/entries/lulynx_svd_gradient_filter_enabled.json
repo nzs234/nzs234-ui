@@ -1,0 +1,33 @@
+{
+  "key": "lulynx_svd_gradient_filter_enabled",
+  "title": "lulynx SVD 梯度过滤",
+  "category": "优化器 / 实验性",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "通过双侧 SVD 低秩投影后重构全形状梯度；基础优化器状态仍为全尺寸。这是 lulynx 工程近似，不是 GaLore 的低秩 optimizer-state 路径。",
+    "effect": "lulynx_svd_gradient_filter_rank 控制投影子空间维度；update_interval、warmup_steps 与 scale 控制更新频率、启用时机和重构梯度缩放。",
+    "whenToUse": "把它当作实验性梯度谱过滤器，在同模型、数据和 seed 下做短程 A/B 后再决定是否保留。",
+    "avoidWhen": "rank 很低时不需要。投影可能丢失有用的梯度信息。"
+  },
+  "advanced": {
+    "principle": "每隔 update_interval 步，对当前梯度矩阵做双侧 SVD 低秩投影，再重构回原始全形状梯度；warmup 与 scale 控制启用时机和幅度。完整 optimizer state 仍由基础优化器维护，因此不能宣称 GaLore 的显存节省。",
+    "intervention": "backward 后、optimizer.step 前，将梯度乘以投影矩阵。",
+    "expectedImpact": "可能改变梯度的低秩谱结构；当前不承诺显存下降、速度提升或论文等价，效果需本地 A/B。",
+    "tradeoffs": "投影基需要定期更新以适应训练动态。",
+    "codePath": "svd_grad_projection.py → 双侧低秩投影并重构全形状梯度 → 基础 optimizer.step()"
+  },
+  "relatedConfigs": [
+    "lulynx_svd_gradient_filter_rank",
+    "lulynx_svd_gradient_filter_update_interval",
+    "lulynx_svd_gradient_filter_warmup_steps",
+    "lulynx_svd_gradient_filter_scale"
+  ]
+}

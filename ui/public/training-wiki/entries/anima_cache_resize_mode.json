@@ -1,0 +1,30 @@
+{
+  "key": "anima_cache_resize_mode",
+  "title": "Anima 缓存前缩放模式",
+  "category": "Anima / 配置",
+  "appliesTo": [
+    "anima-lora",
+    "anima-finetune"
+  ],
+  "layers": [
+    "数据层"
+  ],
+  "standard": {
+    "summary": "Anima 首轮 VAE 缓存构建前对源图的缩放方式：longest（默认，最长边对齐目标）、shortest（最短边对齐）、freefit（自由适配多档位）。所有模式都保持宽高比。",
+    "effect": "与 anima_cache_target_resolution 配合决定进缓存的图像尺寸：longest 保证整图不超目标（可能短边偏小）；shortest 保证短边达标（长边可能超出后再按桶处理）；freefit 为 within_epoch_free_fit 混合分辨率训练生成多档 latent。",
+    "whenToUse": "常规训练用 longest；数据多为长条构图且想保住短边信息时用 shortest；要启用 epoch 内自由分辨率（mixed_resolution_strategy=within_epoch_free_fit）必须用 freefit。",
+    "avoidWhen": "改动本键后旧缓存的几何语义已失效，需要重建缓存；freefit 缓存体积更大，不打算用 free-fit 训练就别选。"
+  },
+  "advanced": {
+    "principle": "缓存训练把 VAE 编码前置，缩放策略在此刻固定了训练可见的图像几何。longest/shortest 是单档缩放的两种边界语义；freefit 按「恒定 token 预算」为同一图生成多个等效面积档位（等价方形换算），供 free-fit epoch 逐样本选档。",
+    "intervention": "trainer_anima_cache_runtime.py：构建缓存时传 resize_mode 与 target_resolution（另有 anima_cache_resize_max_edge 在 shortest 模式下限制长边，0 时派生为 2×target）。",
+    "expectedImpact": "决定训练时的有效分辨率分布，从而影响细节水平与显存；freefit 模式解锁多分辨率训练能力。",
+    "tradeoffs": "shortest 模式长边可能很大导致个别样本显存尖峰（用 max_edge 兜底）；缓存与训练配置强耦合，切模式需重建。",
+    "codePath": "trainer_anima_cache_runtime.py：resize_mode=anima_cache_resize_mode 传入缓存构建；configs_anima.py 定义与「恒定 token 预算」语义注释"
+  },
+  "relatedConfigs": [
+    "anima_cache_target_resolution",
+    "mixed_resolution_strategy",
+    "anima_cached_training"
+  ]
+}

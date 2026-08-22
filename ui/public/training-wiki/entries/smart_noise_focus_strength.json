@@ -1,0 +1,21 @@
+{
+  "key": "smart_noise_focus_strength",
+  "title": "Smart Noise 聚焦强度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "聚焦强度，范围 [0,1]。0.0 = 均匀分布（关闭），1.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

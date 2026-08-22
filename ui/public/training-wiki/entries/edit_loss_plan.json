@@ -1,0 +1,37 @@
+{
+  "key": "edit_loss_plan",
+  "title": "Edit Loss Plan",
+  "category": "Edit-LoRA / Loss",
+  "appliesTo": [
+    "anima-lora",
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "layers": [
+    "Loss 层",
+    "Edit runtime"
+  ],
+  "standard": {
+    "summary": "编辑训练的监督 loss 以 target denoising/flow/noise loss 为基线，可额外使用 edit_mask_weight 强化编辑区域，用 edit_preserve_weight 约束保留区域。",
+    "effect": "edit_mask_weight > 1 时，mask 区域的 target 误差会更重要。edit_preserve_weight > 0 时，preserve_mask 区域会额外加入保持损失。",
+    "whenToUse": "paired 数据有编辑 mask 或保留 mask 时。没有 mask 时保持默认 target loss。",
+    "avoidWhen": "mask 与 target 不对齐、mask 来源不可靠，或只是普通 LoRA caption 训练时。",
+    "optionDescriptions": {
+      "target": "以 target 扩散/flow 损失打底，可再叠 mask/preserve 权重。"
+    }
+  },
+  "advanced": {
+    "principle": "第一版不引入 VLM/CLIP reward 依赖，只在已有 diffusion target loss 上叠加确定性的 mask/preserve delta，避免训练路径膨胀。",
+    "intervention": "loss execution stage 在基础 target loss 后追加 edit loss delta，并记录小型 edit_loss 报告。",
+    "expectedImpact": "让模型把学习容量集中到目标编辑区域，同时减少非编辑区域漂移。",
+    "tradeoffs": "preserve loss 目前复用 target-space 误差；source-vs-target latent preservation 需要后续 source encode 路径。",
+    "codePath": "core/lulynx_trainer/edit_loss_plan.py"
+  },
+  "relatedConfigs": [
+    "edit_loss_plan",
+    "edit_mask_field",
+    "edit_preserve_mask_field",
+    "edit_mask_weight",
+    "edit_preserve_weight"
+  ]
+}

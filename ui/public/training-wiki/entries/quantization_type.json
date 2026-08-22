@@ -1,0 +1,22 @@
+{
+  "key": "quantization_type",
+  "title": "量化类型",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "量化类型：下列可选值说明含换档影响。 真正的 FP4 开关是独立字段 bnb_4bit_quant_type，不在本字段的可选值里。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "qlora_nf4": "QLoRA NF4。",
+      "int8": "INT8，比 4bit 肥一点。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": [
+    "bnb_4bit_quant_type"
+  ]
+}

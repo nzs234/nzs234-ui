@@ -1,0 +1,24 @@
+{
+  "key": "negative_semantic_regularization_mode",
+  "title": "负面语义正则模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "当前后端实现为 lora_delta：约束负面提示词下",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "lora_delta": "压一压负面提示下的 LoRA 增量，少把不该出现的负面语义学进去。"
+    }
+  },
+  "advanced": {
+    "principle": "当前后端实现为 lora_delta：约束负面提示词下 LoRA 开启与关闭的预测差异。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

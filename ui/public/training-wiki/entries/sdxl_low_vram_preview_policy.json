@@ -1,0 +1,21 @@
+{
+  "key": "sdxl_low_vram_preview_policy",
+  "title": "预览策略",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "预览策略 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "every_2_epochs": "每 2 个 epoch 预览一次，反馈勤。",
+      "every_4_epochs": "每 4 个 epoch 一次。",
+      "disable": "不预览。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

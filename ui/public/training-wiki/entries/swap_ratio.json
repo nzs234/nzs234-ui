@@ -1,0 +1,21 @@
+{
+  "key": "swap_ratio",
+  "title": "显存交换比例（swap_ratio）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "按原始 block/layer 总数计算交换比例。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "按原始 block/layer 总数计算交换比例。0 表示只在 auto 或 swap_count 下生效。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

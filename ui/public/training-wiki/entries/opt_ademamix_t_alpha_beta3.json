@@ -1,0 +1,21 @@
+{
+  "key": "opt_ademamix_t_alpha_beta3",
+  "title": "AdEMAMix T_alpha_beta3",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "预热步数，在此步数内 alpha/beta3",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "预热步数，在此步数内 alpha/beta3 从初始值线性增大到目标值。0 = 无预热。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

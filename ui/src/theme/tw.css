@@ -1,0 +1,2 @@
+/* 仅引入 Tailwind utilities(布局工具类);preflight/base 由 theme/base.css 自管 */
+@tailwind utilities;

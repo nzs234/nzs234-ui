@@ -1,0 +1,35 @@
+{
+  "key": "tag_group_shuffle",
+  "title": "标签组打乱",
+  "category": "Caption / 打乱",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora"
+  ],
+  "layers": [
+    "数据层",
+    "Caption 层"
+  ],
+  "standard": {
+    "summary": "将 caption 按分隔符分为多个组，在每个组内部打乱标签顺序，但保持组之间的相对顺序。比全局 shuffle 更精细。default-off。",
+    "effect": "tag_group_separator 指定分隔符（默认 '|||'）。组内标签随机排列，组之间保持原始顺序。开启时优先于全局 shuffle_caption。",
+    "whenToUse": "caption 有明确的分层结构时（如 '触发词 ||| 外观描述 ||| 背景描述'）。想保持描述层级但增加组内多样性。",
+    "avoidWhen": "caption 没有分层结构时。需要整段完全随机时用 shuffle_caption。"
+  },
+  "advanced": {
+    "principle": "caption 示例：'sks girl, 1girl ||| red hair, blue eyes ||| outdoor, sunset'。组内打乱后可能变成：'sks girl, 1girl ||| blue eyes, red hair ||| sunset, outdoor'。与 caption_tag_mutate_scope=after_separator 叠加时：先切 head/tail，只对可变区做 group shuffle，head 不动。",
+    "intervention": "CaptionDataset._process_caption → shuffle_tags_groups_flexible（token 边界或字符串级多组）。group on 时替换全局 random.shuffle。",
+    "expectedImpact": "比全局 shuffle 更好地保持 prompt 结构理解。多概念训练中减少概念混淆。",
+    "tradeoffs": "需要标注时就有意识地分层。分隔符需与数据一致。",
+    "codePath": "backend/core/lulynx_trainer/caption/caption_augment.py:shuffle_tags_groups_flexible → dataset_loader.CaptionDataset._process_caption"
+  },
+  "relatedConfigs": [
+    "tag_group_separator",
+    "shuffle_caption",
+    "keep_tokens",
+    "caption_tag_mutate_scope",
+    "caption_protect_prefix_from_dropout"
+  ]
+}

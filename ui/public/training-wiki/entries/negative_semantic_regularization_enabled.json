@@ -1,0 +1,21 @@
+{
+  "key": "negative_semantic_regularization_enabled",
+  "title": "负面语义正则",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "训练时用负面提示词做 LoRA-on / LoRA-off 差异约束",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "训练时用负面提示词做 LoRA-on / LoRA-off 差异约束，压制靠近负面语义的 LoRA 增量。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,26 @@
+{
+  "key": "gradient_release_mode",
+  "title": "梯度释放模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "compatible=支持梯度累积的安全档（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "compatible": "释放激进程度中等，大多数优化器都能用。",
+      "full": "放得更狠，显存更省，个别优化器/累加组合可能别扭。（本选择器里没有：与梯度累积、梯度裁剪、fp16 互斥，后端会按实际配置自动降级并把原因写进「梯度释放降级原因」，故不开放手选。）",
+      "post_step": "step 完再放，省得最少，当对照。（本选择器里没有：它是后端自动降级的落点之一，由后端按优化器与并行配置决定，不由用户直接指定。）"
+    }
+  },
+  "advanced": {
+    "principle": "compatible=支持梯度累积的安全档；full=立即释放（更省显存，不兼容 accum/clip/fp16）；post_step=基线。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

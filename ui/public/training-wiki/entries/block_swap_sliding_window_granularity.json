@@ -1,0 +1,25 @@
+{
+  "key": "block_swap_sliding_window_granularity",
+  "title": "滑动窗口交换粒度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "标准 (block级): 14GB显存，速度快 2-3秒/步",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "standard": "标准滑动窗口粒度。",
+      "extreme": "更细/更狠。"
+    }
+  },
+  "advanced": {
+    "principle": "标准 (block级): 14GB显存，速度快 2-3秒/步；极限 (layer级): 3.7GB显存，7秒/步，适合6-12GB显卡微调底模",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

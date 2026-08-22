@@ -1,0 +1,28 @@
+{
+  "key": "anima_depth_expansion_target_layers",
+  "title": "扩层目标层数",
+  "category": "Anima / 高级",
+  "appliesTo": [
+    "anima-finetune"
+  ],
+  "layers": [
+    "模型结构层"
+  ],
+  "standard": {
+    "summary": "Anima 扩层后的 DiT 总层数，必须大于底座实际层数。Anima Base 28 层常见扩到 40。默认 40。",
+    "effect": "决定交错复制的插入数量与最终模型深度；<2 的输入被归一化回默认 40。",
+    "whenToUse": "跟随验证过的配方（28→40）最稳妥；小步扩层（28→32）适合显存有限的探索。",
+    "avoidWhen": "anima_depth_expansion_enabled 关闭时无效；设成小于等于底座层数没有意义（无层可扩）。"
+  },
+  "advanced": {
+    "principle": "扩层数决定新容量的规模：新增层数 = 目标 - 原层数，交错分布在原有层之间保持信息流均匀。扩得越多初始「恒等冗余」越多，需要更多训练量把冗余变成有效容量。",
+    "intervention": "config_adapter_conversion_context.py：target 归一化（>=2 否则回 40）；anima_depth_expansion_runtime.py：按目标层数计算复制方案；anima_full_finetune.py：resume 时与 checkpoint 实际层数比对。",
+    "expectedImpact": "显存、每步耗时、产物体积都随层数近似线性增长。",
+    "tradeoffs": "一旦以某层数训练并保存，后续 resume 与推理都锁定该层数。",
+    "codePath": "config_adapter_conversion_context.py：anima_depth_expansion_target_layers 归一化；anima_depth_expansion_runtime.py"
+  },
+  "relatedConfigs": [
+    "anima_depth_expansion_enabled",
+    "anima_depth_expansion_train_scope"
+  ]
+}

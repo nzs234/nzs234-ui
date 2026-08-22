@@ -1,0 +1,22 @@
+{
+  "key": "teacher_scheduler",
+  "title": "Teacher Scheduler（teacher_scheduler）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "Teacher Scheduler（teacher_scheduler） 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "euler_a": "教师 Euler A，带随机。",
+      "dpmpp_2m_karras": "DPM++ 2M Karras。",
+      "ddim": "DDIM，确定性。",
+      "lcm": "LCM 调度，配 LCM 蒸馏。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

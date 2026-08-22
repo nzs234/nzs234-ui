@@ -1,0 +1,21 @@
+{
+  "key": "ltx23_timestep_sampling",
+  "title": "时间步采样（ltx23_timestep_sampling）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "时间步采样（ltx23_timestep_sampling） 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "shift": "shift。",
+      "uniform": "均匀。",
+      "sigma": "按 σ。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

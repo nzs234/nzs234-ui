@@ -1,0 +1,21 @@
+{
+  "key": "loss_scheduler_min_delta",
+  "title": "有效下降阈值",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "EMA loss 至少下降这么多才算“仍在变好”。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "EMA loss 至少下降这么多才算“仍在变好”。默认偏保守，避免微小波动长期锁住余弦。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

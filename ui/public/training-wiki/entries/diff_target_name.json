@@ -1,0 +1,21 @@
+{
+  "key": "diff_target_name",
+  "title": "目标图后缀",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "例如 `_closed_eyes`，则会把 `image.",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "例如 `_closed_eyes`，则会把 `image.png` 与 `image_closed_eyes.png` 配对。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

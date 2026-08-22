@@ -1,0 +1,19 @@
+{
+  "key": "flux2_model_version",
+  "title": "模型版本（flux2_model_version）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "模型版本（flux2_model_version） 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "klein-base-9b": "FLUX.2 Klein Base 9B。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

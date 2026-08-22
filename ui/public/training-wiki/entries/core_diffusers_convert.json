@@ -1,0 +1,21 @@
+{
+  "key": "core_diffusers_convert",
+  "title": "输出格式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "手动把单文件 checkpoint/safetensors 转成",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "手动把单文件 checkpoint/safetensors 转成 Diffusers 目录，依赖 diffusers 环境。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

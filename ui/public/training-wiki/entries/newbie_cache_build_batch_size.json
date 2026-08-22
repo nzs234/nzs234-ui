@@ -1,0 +1,21 @@
+{
+  "key": "newbie_cache_build_batch_size",
+  "title": "缓存构建批大小（newbie_cache_build_batch_size）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "首轮缓存构建时每批编码的图像数。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "首轮缓存构建时每批编码的图像数。1 为逐图串行（慢）；8（默认）批量编码 VAE/Gemma/CLIP，首轮构建约 7× 加速。显存紧张可降到 4。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,33 @@
+{
+  "key": "quality_evaluation_validation_seeds",
+  "title": "质量评估固定验证 Seeds",
+  "category": "质量评估",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "评估层"
+  ],
+  "standard": {
+    "summary": "质量评估生成样本时使用的固定随机种子列表（逗号分隔）。相同 prompt/seed 组合会同时用于基础模型与当前 LoRA，产生严格可比的成对样本。",
+    "effect": "填写后评估采样不再随机，每次评估的生成条件完全一致；留空时回落为 sample_seed（或 42）作为基准种子。字符串输入会被解析为整数列表，非法项跳过。",
+    "whenToUse": "需要跨 checkpoint 追踪质量变化趋势时必填——随机种子下的分数波动会淹没真实差异；配合 compare_base 做「底模 vs LoRA」增量对比时。",
+    "avoidWhen": "quality_evaluation_enabled 关闭时无效；只看单次大致水平、不做对比时可以不填。"
+  },
+  "advanced": {
+    "principle": "生成式评估的方差主要来自采样随机性；固定 seeds 把评估变成确定性函数，分数差异才能归因于权重变化。种子数 × prompt 数 = 评估样本量，受 quality_evaluation_num_samples 上限截断。",
+    "intervention": "configs_validators.py：从配置块或扁平字符串解析整数列表（两种来源都支持）；quality/validation_suite.py：seeds = quality_evaluation_validation_seeds or [sample_seed or 42]，进入验证用例矩阵。",
+    "expectedImpact": "评估可重复性从「±几个点的随机波动」提升到确定性；评估耗时随种子数线性增长。",
+    "tradeoffs": "种子太少（1~2 个）评估对该种子的特异性敏感；建议 3~5 个平衡成本与代表性。",
+    "codePath": "quality/validation_suite.py：seeds 解析与用例组装；configs_validators.py：字符串→整数列表归一化"
+  },
+  "relatedConfigs": [
+    "quality_evaluation_suite_id",
+    "quality_evaluation_compare_base",
+    "quality_evaluation_num_samples",
+    "sample_seed"
+  ]
+}

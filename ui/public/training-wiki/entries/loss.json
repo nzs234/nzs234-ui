@@ -1,0 +1,20 @@
+{
+  "key": "loss",
+  "title": "损失函数（loss）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "损失函数（loss） 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "mse": "MSE。",
+      "smooth_l1": "Smooth L1。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

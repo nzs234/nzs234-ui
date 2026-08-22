@@ -1,0 +1,33 @@
+{
+  "key": "te_dropout",
+  "title": "文本编码器条件丢弃",
+  "category": "训练 / 噪声控制",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "条件层"
+  ],
+  "standard": {
+    "summary": "训练时以给定概率把整个文本条件（编码器输出）置空，相当于对条件做 classifier-free 风格的 dropout。0 = 关闭。",
+    "effect": "每个 batch 按概率采样丢弃掩码，被选中的样本其 encoder hidden states、pooled embedding、attention mask（含 Qwen3 双编码路线的对应张量）统一置为无条件形式，模型这一步按无条件目标学习。",
+    "whenToUse": "训练出的 LoRA 在低 CFG 或无提示词场景表现差、想增强无条件分支时；防止模型过度依赖 caption、提升对提示词缺失的鲁棒性时（常用 0.05~0.1）。",
+    "avoidWhen": "数据量很小或步数很少时，丢弃会进一步稀释有效监督；caption 质量本来就是训练重点（如概念绑定）时高丢弃率会削弱触发词学习。"
+  },
+  "advanced": {
+    "principle": "与 CFG 训练同源：以概率 p 用空条件替换真实条件，让模型同时拟合有条件与无条件分布，改善推理时 CFG 外推的质量。按样本粒度共享同一份丢弃掩码，保证同一样本的所有条件张量（hs/pooled/mask）一致地被置空。",
+    "intervention": "training_loop_loss_mixin.py 的条件组装阶段：te_dropout > 0 时 _sample_drop_mask 生成掩码，_drop_tensor_samples 依次作用于 encoder_hs、pooled、attn_mask、qwen3_hs、qwen3_mask；Anima cached 路线由 trainer 侧解析出「有效 te dropout」（_resolve_anima_cached_effective_te_dropout）再注入循环。",
+    "expectedImpact": "无条件/低 CFG 生成质量提升，条件泛化更好；触发词响应强度可能轻微下降。",
+    "tradeoffs": "丢弃率越高无条件分支越强、条件精度越弱；Anima cached 训练需要缓存里存有无条件张量，后端会按缓存能力换算实际生效的丢弃率。",
+    "codePath": "training_loop_loss_mixin.py：te_dropout 掩码采样与逐张量置空；trainer_execution_optimizer_setup.py:effective_te_dropout 解析（Anima cached 特殊处理）"
+  },
+  "relatedConfigs": [
+    "clip_l_dropout_rate",
+    "clip_g_dropout_rate",
+    "t5_dropout_rate",
+    "caption_dropout_rate"
+  ]
+}

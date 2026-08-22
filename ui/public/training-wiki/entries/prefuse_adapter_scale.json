@@ -1,0 +1,31 @@
+{
+  "key": "prefuse_adapter_scale",
+  "title": "预融合 LoRA 倍率",
+  "category": "训练 / 适配器",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "权重层"
+  ],
+  "standard": {
+    "summary": "预融合 LoRA 合并进底座时的缩放系数，等价于推理时给该 LoRA 设的权重。默认 1.0。",
+    "effect": "融合公式 W' = W + scale × ΔW；0.5 表示按半强度融合。仅在 prefuse_adapter_path 非空时生效。",
+    "whenToUse": "推理时习惯以 0.6~0.8 权重挂那个 LoRA，就用同样的值融合，让训练起点与实际使用场景一致。",
+    "avoidWhen": "prefuse_adapter_path 为空时无意义；超过 1.0 的过融合容易把底座推出正常分布，训练稳定性下降。"
+  },
+  "advanced": {
+    "principle": "LoRA 权重的线性可加性使 scale 与推理时的 adapter weight 严格等价；训练在 scale 化的底座上进行，新 LoRA 的最优解依赖这个 scale，改变它等于改变训练目标。",
+    "intervention": "trainer_prepare_finalize_mixin.py 读取后传入 prefuse_adapter_into_model(model, path, scale=...)，日志记录融合层数与 scale。",
+    "expectedImpact": "scale 越接近实际推理用法，训练/推理分布差越小、组合效果越可靠。",
+    "tradeoffs": "发布训练产物时需要注明「配套 LoRA + scale」，否则使用者无法复现训练分布。",
+    "codePath": "trainer_prepare_finalize_mixin.py——prefuse_adapter_into_model(..., scale=prefuse_adapter_scale)；configs_monitoring.py 定义"
+  },
+  "relatedConfigs": [
+    "prefuse_adapter_path",
+    "base_weights_multiplier"
+  ]
+}

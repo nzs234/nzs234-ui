@@ -1,0 +1,21 @@
+{
+  "key": "smart_noise_logsnr_focus",
+  "title": "Smart Noise 焦点 logSNR",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "焦点在 logSNR 空间的位置。0.0 = σ=0.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,26 @@
+{
+  "key": "module_offload_profile",
+  "title": "Module Offload 配置",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "预设的 offload 策略（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "conservative": "少卸，快，占显存。",
+      "balanced": "中间。",
+      "aggressive": "多卸，峰值最低，空等也多。"
+    }
+  },
+  "advanced": {
+    "principle": "预设的 offload 策略：balanced=平衡；aggressive=激进（最省显存）；conservative=保守（更快）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

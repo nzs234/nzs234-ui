@@ -1,0 +1,34 @@
+{
+  "key": "huber_scale",
+  "title": "Huber 阈值缩放系数",
+  "category": "正则 / Loss",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora",
+    "concept-edit"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "对 Huber 损失阈值做整体缩放的系数，实际生效阈值 = huber_c × huber_scale。",
+    "effect": "在不改动 huber_c 基准值的情况下整体收紧或放宽 L2→L1 的切换点；huber_schedule=auto 时还作为分位数估计结果的乘子和下限约束参与计算。默认 1.0（不缩放）。",
+    "whenToUse": "想在保留 huber_c 语义的前提下快速试验「更鲁棒 / 更接近 MSE」两个方向时：调小更鲁棒，调大更像 MSE。",
+    "avoidWhen": "loss_type 不是 Huber 家族时无效；同时大幅改 huber_c 和 huber_scale 会让阈值语义难以追踪，建议只动其中一个。"
+  },
+  "advanced": {
+    "principle": "分离「基准阈值」与「全局缩放」两个自由度：schedule 模式（exponential/snr/auto）会在 huber_c 基础上做逐 timestep 或逐样本调制，huber_scale 则在最外层统一乘上去，便于跨 schedule 比较实验。",
+    "intervention": "training_loop_loss_mixin.py 阈值解析：scale = max(huber_scale, 1e-6)；auto 模式下 delta = clamp(分位数, min=huber_c×huber_scale) × huber_scale。",
+    "expectedImpact": "与直接改 huber_c 等效的鲁棒性调节，但在 auto 模式下额外影响分位数下限，防止阈值塌缩到 0。",
+    "tradeoffs": "auto 模式中缩放被应用两次（下限与乘子），调得过大时阈值增长比直觉快，建议 0.5~2.0 区间内微调。",
+    "codePath": "training_loop_loss_mixin.py:_huber 阈值解析——scale=max(float(huber_scale),1e-6)，auto 分支 clamp(min=base*scale)*scale"
+  },
+  "relatedConfigs": [
+    "huber_c",
+    "huber_schedule",
+    "huber_auto_percentile",
+    "loss_type"
+  ]
+}

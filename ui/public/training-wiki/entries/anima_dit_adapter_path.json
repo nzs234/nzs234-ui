@@ -1,0 +1,31 @@
+{
+  "key": "anima_dit_adapter_path",
+  "title": "Anima DiT Adapter 路径",
+  "category": "Anima / 配置",
+  "appliesTo": [
+    "anima-lora",
+    "anima-finetune"
+  ],
+  "layers": [
+    "权重层"
+  ],
+  "standard": {
+    "summary": "训练开始前应用到 Anima DiT 的 adapter checkpoint（如已有 LoRA/adapter 权重）；留空则不加载。UI 上以 dit_adapter_path 填写时会自动映射到本键。",
+    "effect": "模型加载后、训练开始前，通过 LoRA 注入器把该 adapter 加载到 DiT 上，训练在「底座+adapter」的组合行为上进行。与 network_weights（续训同一 LoRA）不同：这是叠加一个外部 adapter 作为环境。",
+    "whenToUse": "想在某个已有 Anima adapter 的效果基础上训练新 LoRA（类似 SDXL 的预融合场景，但以可卸载 adapter 形式生效）时。",
+    "avoidWhen": "与 assistant_lora_path、prefuse_adapter_path 属于互斥/易混淆的路径族（assistant_lora 有显式冲突校验）；不需要外部 adapter 环境时留空。"
+  },
+  "advanced": {
+    "principle": "把外部 adapter 作为训练环境的一部分：新 LoRA 学到的是相对「底座+adapter」的残差，推理时需同时挂载两者才能还原训练分布。",
+    "intervention": "trainer_prepare_mixin.py：Anima 加载参数中传入 dit_adapter_path；anima_loader.py 把路径记到 model 上；trainer_prepare_finalize_mixin.py：model_arch=anima 且路径非空时经 lora_injector.load_lora 应用；别名 dit_adapter_path 由 config_adapter 与 field_alias_map 归一。",
+    "expectedImpact": "训练起点分布对齐目标组合；产物对该 adapter 形成配套依赖。",
+    "tradeoffs": "路径受 training_path_contract 校验；adapter 与底模版本不匹配时注入报错。",
+    "codePath": "trainer_prepare_finalize_mixin.py：anima_dit_adapter_path 注入；anima_loader.py；field_alias_map.py:'dit_adapter_path'→'anima_dit_adapter_path'"
+  },
+  "relatedConfigs": [
+    "prefuse_adapter_path",
+    "network_weights",
+    "anima_llm_adapter_path",
+    "assistant_lora_path"
+  ]
+}

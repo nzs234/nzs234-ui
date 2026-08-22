@@ -1,0 +1,23 @@
+{
+  "key": "weighting_scheme",
+  "title": "权重策略（weighting_scheme）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "权重策略（weighting_scheme）：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "none": "每个时间步一样重。",
+      "sigma_sqrt": "按 √σ 加权，高噪声/结构段更重。",
+      "logit_normal": "中等噪声更重，语义段吃得多一点。",
+      "mode": "跟 mode 时间分布配套的权重。",
+      "cosmap": "另一条中频偏好曲线，可跟 logit_normal 对着试。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

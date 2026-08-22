@@ -1,0 +1,21 @@
+{
+  "key": "sdxl_model_prediction_type",
+  "title": "Flow 预测目标（sdxl_model_prediction_type）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "Flow 预测目标（sdxl_model_prediction_type）：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "epsilon": "预测噪声 ε。",
+      "velocity": "预测速度场 v，flow/RF 常见。",
+      "sample": "直接预测干净图；高噪声段往往更难训。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

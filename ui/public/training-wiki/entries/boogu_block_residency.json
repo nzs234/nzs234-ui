@@ -1,0 +1,25 @@
+{
+  "key": "boogu_block_residency",
+  "title": "Boogu Block 驻留",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "默认 resident（Layer Offload",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "resident": "block 常驻 GPU。",
+      "block_offload": "按 block 卸，省显存，步进可能变慢。"
+    }
+  },
+  "advanced": {
+    "principle": "默认 resident（Layer Offload OFF）。OOM 再开 block_offload；勿未测抄 Klein 4/3。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

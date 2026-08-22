@@ -1,0 +1,21 @@
+{
+  "key": "newbie_cache_build_prefetch",
+  "title": "缓存构建 CPU 预取（newbie_cache_build_prefetch）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "首轮缓存构建时在 CPU 线程预解码下一批图像，与 GPU",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "首轮缓存构建时在 CPU 线程预解码下一批图像，与 GPU 编码重叠。仅批大小 > 1 时生效。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

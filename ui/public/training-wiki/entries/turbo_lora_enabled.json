@@ -1,0 +1,31 @@
+{
+  "key": "turbo_lora_enabled",
+  "title": "TurboLoRA 投机采样",
+  "category": "推理加速 /",
+  "appliesTo": [
+    "anima-lora"
+  ],
+  "aliases": [
+    "turbo_lora_draft_steps",
+    "turbo_lora_draft_hidden_dim",
+    "turbo_lora_draft_num_layers",
+    "turbo_lora_acceptance_threshold_high",
+    "turbo_lora_acceptance_threshold_low",
+    "turbo_lora_distill_cosine_weight",
+    "turbo_lora_distill_trajectory_ratio",
+    "turbo_lora_draft_checkpoint"
+  ],
+  "standard": {
+    "summary": "（实验性）TurboLoRA 投机采样：训练轻量草稿网络（约2%参数量），推理时草稿网络盲猜 K 个去噪步骤，大模型一次批量验证，通过验证的步骤几乎免费获得，理论加速 2-4x。",
+    "effect": "草稿网络在每步训练中通过轨迹感知蒸馏（trajectory-aware distillation）+ 余弦方向对齐损失自动学习目标模型的速度场分布。推理时采用马氏距离自适应阈值判断接受/拒绝，高噪声端阈值宽松，低噪声端严格。",
+    "whenToUse": "需要加速 Anima DiT 推理速度时可开启。草稿网络参数量仅 2%，几乎不增加训练开销，推理加速在接受率 >30% 时显著。",
+    "avoidWhen": "推理步数极少（<8步）时投机收益有限。检查点加载需指定 turbo_lora_draft_checkpoint 路径。"
+  },
+  "relatedConfigs": [
+    "distillation_enabled",
+    "anyflow_student_steps"
+  ],
+  "advanced": {
+    "principle": "草稿网络盲猜 K 步，大模型批量验证，接受的步骤几乎\"免费\"。理论 2-4× 推理加速。默认关闭。"
+  }
+}

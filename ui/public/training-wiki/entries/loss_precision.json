@@ -1,0 +1,25 @@
+{
+  "key": "loss_precision",
+  "title": "Loss 精度策略",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "fp32_loss 保持当前稳定路径",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "fp32_loss": "loss 用 fp32 算再写回去，数干净一点，多占点临时显存。",
+      "mixed_loss": "尽量用模型输出精度算 loss，少拷一份 fp32；特别小的 loss 时可能更噪。"
+    }
+  },
+  "advanced": {
+    "principle": "fp32_loss 保持当前稳定路径；mixed_loss 保留模型输出精度计算核心 loss，减少临时 FP32 副本，但属于实验选项。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

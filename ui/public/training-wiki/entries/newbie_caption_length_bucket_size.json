@@ -1,0 +1,21 @@
+{
+  "key": "newbie_caption_length_bucket_size",
+  "title": "Caption Bucket 大小（newbie_caption_length_bucket_size）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "caption 长度 bucket 大小。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "caption 长度 bucket 大小。0 表示关闭，仅按分辨率 bucket，更贴近官方",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

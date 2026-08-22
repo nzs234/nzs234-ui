@@ -1,0 +1,21 @@
+{
+  "key": "activation_compression_dtype",
+  "title": "激活压缩精度",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "激活压缩精度：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "fp16": "激活压 fp16。",
+      "bf16": "激活压 bf16。",
+      "fp8_e4m3": "激活压 fp8，最省，误差也最大。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

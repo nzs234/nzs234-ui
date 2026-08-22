@@ -1,0 +1,33 @@
+{
+  "key": "sample_scheduler",
+  "title": "采样调度器覆盖",
+  "category": "训练 / 采样",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "预览层"
+  ],
+  "standard": {
+    "summary": "预览采样器的 scheduler 覆盖字段（如 karras/simple 等噪声调度变体）；留空使用采样器默认调度。",
+    "effect": "非空时预览/评估采样按该调度器变体组织噪声步；与 sample_sampler（采样算法）是两个正交维度。配置检查器会对不识别的取值给出提示。",
+    "whenToUse": "想让预览图的采样调度与你推理端习惯一致（如 dpmpp_2m + karras）时。",
+    "avoidWhen": "enable_preview 关闭时无效；不确定调度器名称时留空，错误取值不会带来收益。"
+  },
+  "advanced": {
+    "principle": "采样器（算法：euler/dpm++ 等）与调度器（sigma 序列的分布：karras/simple 等）共同决定生成轨迹；分开配置让预览尽量复现用户推理端的组合。",
+    "intervention": "配置定义在 configs_monitoring.py（空 = 默认）；warehouse/training_features/training_config_checks.py 对取值做检查；预览与验证采样链路（router_facade.py 的 preview 键集合、validation_suite）读取传递。",
+    "expectedImpact": "只影响预览/评估图的观感一致性，不影响训练。",
+    "tradeoffs": "训练器内置采样器对调度器变体的支持面小于专业推理端，不支持的组合会回落默认并提示。",
+    "codePath": "configs_monitoring.py:sample_scheduler 定义；training_config_checks.py 取值检查；services/training/router_facade.py 预览键传递"
+  },
+  "relatedConfigs": [
+    "sample_sampler",
+    "sample_steps",
+    "sample_cfg",
+    "enable_preview"
+  ]
+}

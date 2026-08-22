@@ -1,0 +1,21 @@
+{
+  "key": "torch_compile_scope",
+  "title": "torch.compile 作用域",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "torch.compile 作用域 的可选值说明（自动补全骨架，可继续润色）。",
+    "effect": "切换不同枚举值会改变训练行为或资源占用，详见各子项。",
+    "whenToUse": "按任务与硬件选择；不确定时用产品默认。",
+    "avoidWhen": "未理解子项含义时不要盲选实验/激进档。",
+    "optionDescriptions": {
+      "默认（跟随 runtime）": "不强制改，跟着 runtime 默认走。",
+      "per_block": "一块一块编，挂了也好定位。",
+      "full": "大片一起编，潜力大，图一变也容易炸。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

@@ -1,0 +1,30 @@
+{
+  "key": "use_lora",
+  "title": "DreamBooth LoRA 模式",
+  "category": "训练 / DreamBooth",
+  "appliesTo": [
+    "sd-dreambooth"
+  ],
+  "layers": [
+    "网络结构层"
+  ],
+  "standard": {
+    "summary": "DreamBooth 路线的训练形态开关：开启后训练 LoRA 适配器而非全参微调；关闭（默认）为经典 DreamBooth 全参。",
+    "effect": "开启时训练准备阶段走 adapter 注入路径（rank 由 lora_rank 决定，队列侧会把 lora_rank 写入 network_dim），产物是 LoRA 文件；关闭时更新整个 UNet，产物是完整模型。",
+    "whenToUse": "显存有限（全参 DreamBooth 需要完整梯度+优化器状态）、想要小体积可组合的产物时开启；追求最高保真且资源充足时用全参。",
+    "avoidWhen": "需要修改模型深层行为（LoRA 表达力受 rank 限制）时关闭；开启后与 network_dim/lora_rank 的取值需保持一致预期。"
+  },
+  "advanced": {
+    "principle": "DreamBooth 论文原始形态是全参微调 + 先验保持；LoRA 模式把可训练自由度替换为低秩残差，先验保持损失同样作用于 LoRA 化的前向，大幅降低显存与产物体积，代价是表达能力受 rank 上限约束。",
+    "intervention": "trainer_prepare_train_mode_mixin.py：training_type=dreambooth 时读取 use_lora，True 则记录「DreamBooth + LoRA mode」并继续进入常规 adapter 注入流程；training_queue_support.py 在配置解析阶段把 lora_rank 映射为 network_dim。",
+    "expectedImpact": "LoRA 模式显存需求降到常规 LoRA 训练量级、产物几十 MB；全参模式保真上限更高但需数 GB 产物与更多显存。",
+    "tradeoffs": "同样的步数下 LoRA 模式收敛特性与全参不同（学习率区间也不同：LoRA 常用 1e-4 量级，全参 1e-6~1e-5 量级），切换模式时学习率要一起改。",
+    "codePath": "trainer_prepare_train_mode_mixin.py：dreambooth 分支 use_lora 判定；training_queue_support.py：use_lora 时 network_dim=lora_rank"
+  },
+  "relatedConfigs": [
+    "lora_rank",
+    "instance_prompt",
+    "prior_loss_weight",
+    "learning_rate"
+  ]
+}

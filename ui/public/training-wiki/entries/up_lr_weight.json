@@ -1,0 +1,21 @@
+{
+  "key": "up_lr_weight",
+  "title": "Decoder 分层权重 (12层)",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "U-Net Decoder 各层的学习率权重，逗号分隔共 12",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "U-Net Decoder 各层的学习率权重，逗号分隔共 12 个值。设为 0 可冻结该层",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

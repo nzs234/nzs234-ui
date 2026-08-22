@@ -1,0 +1,28 @@
+{
+  "key": "weight_compression_preset",
+  "title": "冻结主干量化（weight_compression_preset）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "冻结基座权重压缩预设",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "off": "加载时不压缩权重。",
+      "stable_backbone_int8": "主干 INT8。",
+      "experimental_float8": "主干 FP8，偏 40 系，实验味。",
+      "text_encoder_int8": "只压文本编码器。",
+      "both_int8": "主干和文本编码器都 INT8。"
+    }
+  },
+  "advanced": {
+    "principle": "Krea-2 当前正式推荐使用这里选择冻结主干压缩方案。experimental_float8 对应 qfloat8 / torchao Float8 权重压缩：它只压冻结 DiT 主干权重，不会把 LoRA、text fusion 等可训练参数改成原生 FP8，数值更稳，也更符合当前低显存训练目标。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

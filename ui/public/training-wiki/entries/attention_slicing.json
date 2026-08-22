@@ -1,0 +1,32 @@
+{
+  "key": "attention_slicing",
+  "title": "Attention 分片",
+  "category": "显存优化 / 激活",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "finetune"
+  ],
+  "layers": [
+    "内存层"
+  ],
+  "standard": {
+    "summary": "把 UNet attention 计算按 head/batch 切成小片顺序执行，降低注意力矩阵的峰值显存。默认开启。",
+    "effect": "模型准备阶段对 UNet 调用 enable_attention_slicing('auto')；每次只算一部分 attention head，峰值激活显存下降，速度略微变慢。",
+    "whenToUse": "显存吃紧的 SD/SDXL 训练（低显存 profile 会强制开启）；高分辨率或大 batch 下 attention 矩阵成为显存峰值来源时。",
+    "avoidWhen": "已使用 xformers/FlashAttention/SDPA 等内存高效 attention 后端时收益重复且可能互斥——现代后端本身就不物化完整注意力矩阵；追求极限吞吐且显存富余时可关闭。"
+  },
+  "advanced": {
+    "principle": "朴素 attention 需要物化 [batch×heads, seq, seq] 的注意力得分矩阵；按 head 维切片后每次只保留 1/N 的矩阵，峰值显存近似降为 1/N，代价是 kernel 串行化带来的时间开销。",
+    "intervention": "trainer_prepare_mixin.py 构造显存 slicer 时读取（与 vae_slicing/vae_tiling 并列），memory_optimization_formats.py 对 pipeline 或裸 UNet 调用 enable_attention_slicing('auto')；低显存 profile（sdxl_lora_low_vram_profile.py、trainer_model_prep_runtime_profiles.py）会强制置 True；显存预估器（training_advisor_vram.py）对开启状态按 ×0.92 折算激活显存。",
+    "expectedImpact": "峰值显存降低约 5%~15%（取决于分辨率与 batch），吞吐轻微下降。",
+    "tradeoffs": "对 DiT 族（Anima 等）此路径不适用（原生 UNet stub 为 no-op）；与 attention 后端选择（attention_backend）解耦，两者的显存收益不叠加。",
+    "codePath": "trainer_prepare_mixin.py:slicer 构造；memory_optimization_formats.py:enable_attention_slicing('auto')；training_advisor_vram.py 显存折算"
+  },
+  "relatedConfigs": [
+    "vae_slicing",
+    "vae_tiling",
+    "attention_backend",
+    "sdxl_low_vram_optimization"
+  ]
+}

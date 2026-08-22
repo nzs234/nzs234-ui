@@ -1,0 +1,27 @@
+{
+  "key": "experimental_attention_profile_backend",
+  "title": "窗口注意力后端",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "auto 优先使用启动器/预检传入的 attention 参数",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "auto": "跟启动器/预检的 attention。",
+      "flex": "FlexAttention。",
+      "sdpa_masked": "SDPA 加 mask。",
+      "torch_fallback": "纯 torch 兜底。"
+    }
+  },
+  "advanced": {
+    "principle": "auto 优先使用启动器/预检传入的 attention 参数；FlexAttention 需要 CUDA 与对应 PyTorch 支持。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

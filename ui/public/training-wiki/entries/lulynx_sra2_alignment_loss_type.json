@@ -1,0 +1,21 @@
+{
+  "key": "lulynx_sra2_alignment_loss_type",
+  "title": "对齐损失类型",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "对齐损失类型：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "cosine": "只对齐方向，不管特征有多长。",
+      "l2": "方向幅度一起压，信号猛，也容易去贴教师的范数。",
+      "l1": "特征 L1，比 L2 钝一点。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "lulynx_ema_cosine_self_distill_student_layers",
+  "title": "lulynx EMA Student 层",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "逗号分隔的 student 层索引，如 \"4\"",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "逗号分隔的 student 层索引，如 \"4\"；长度需与 teacher 一致。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,34 @@
+{
+  "key": "lulynx_hidden_state_prelude_length",
+  "title": "lulynx Hidden-State Prelude Prompt",
+  "category": "训练 / lulynx 实验性",
+  "aliases": [
+    "prefix_tuning_length"
+  ],
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora"
+  ],
+  "layers": [
+    "选定模块的输出隐藏状态序列"
+  ],
+  "standard": {
+    "summary": "在选定模块完成 forward 后，将可学习向量拼接到输出 hidden-state sequence 前部；0 表示关闭。这是 lulynx 工程 prompt，不是论文 Prefix-Tuning。",
+    "effect": "控制 prelude 向量数量；可与 epilogue 同时使用，参数进入现有优化器与产物保存链。",
+    "whenToUse": "需要用少量额外参数实验性改写已选模块的输出序列，并且训练与推理端都明确支持该附加状态时。",
+    "avoidWhen": "需要论文 Prefix-Tuning 的逐层 attention K/V 注入语义、标准 LoRA 互操作，或下游严格要求原序列长度时。"
+  },
+  "advanced": {
+    "principle": "实现通过 post-forward hook 修改已选模块的输出；不会为每层 attention 生成或注入 prefix key/value，也不能表述为论文 Prefix-Tuning。",
+    "intervention": "安装器选择现有模块并注册 forward hook，将 prelude 向量拼接到输出 hidden states 前部；仅在输出结构允许安全同步 attention mask 时扩展 mask，否则 fail-fast。",
+    "expectedImpact": "增加 length × hidden_size 个可训练参数；实际效果依赖插入模块、下游 shape 契约和推理端是否重现同一 hook。",
+    "tradeoffs": "产物包含 lulynx 专用附加状态，第三方推理端可能忽略；序列长度改变也可能与下游固定 shape 契约冲突。",
+    "codePath": "lulynx_trainer/prefix_tuning.py → install_lulynx_hidden_state_prompts → register_forward_hook"
+  },
+  "relatedConfigs": [
+    "lulynx_hidden_state_epilogue_length",
+    "lulynx_hidden_state_prompt_init"
+  ]
+}

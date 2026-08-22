@@ -1,0 +1,32 @@
+{
+  "key": "torch_compile_block_indices",
+  "title": "Compile Block 索引子集",
+  "category": "性能 / 加速",
+  "appliesTo": [
+    "anima-lora",
+    "sdxl-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "前向层"
+  ],
+  "standard": {
+    "summary": "torch_compile_scope=per_block 模式下只编译指定索引的 block，格式如 \"0,3,5-8\"；留空 = 编译全部 block。",
+    "effect": "缩小编译范围：只有列出的 block 走 compile 路径，其余保持 eager。解析失败或选不出任何 block 时会告警并「一个都不编译」，而不是静默编译全部。",
+    "whenToUse": "编译耗时过长想先验证收益时只编译少数几个热点 block；排查某个 block 的 compile 数值/崩溃问题时二分定位。",
+    "avoidWhen": "torch_compile_scope 不是 per_block 时无效；正常生产训练留空让全部 block 受益即可。"
+  },
+  "advanced": {
+    "principle": "逐块编译把大图拆成 N 个小图，索引子集进一步允许 eager 与 compiled block 混跑：编译时间与缓存体积随选中块数线性下降，也让「哪个 block 编译出问题」可以二分。",
+    "intervention": "runtime_optimizations_attention_compile.py 解析字符串（支持逗号与连字符区间），解析异常时写入 plan.warnings 并返回空选择；model_compile_registry.py:resolve_compile_block_selection 提供解析语义；编译报告记录 requested_block_indices 与实际 block_selection。",
+    "expectedImpact": "编译预热时间和编译缓存占用下降；只编译部分 block 时整体加速比例也按比例缩水。",
+    "tradeoffs": "失败语义是「宁可全不编译」——填错格式会导致整个 per_block 编译静默失去加速（有 warning），排查时先看编译报告里的 block_selection。",
+    "codePath": "runtime_optimizations_attention_compile.py：解析与告警；model_compile_registry.py:resolve_compile_block_selection；configs_performance.py 定义"
+  },
+  "relatedConfigs": [
+    "torch_compile_scope",
+    "torch_compile",
+    "compile_shape_strategy",
+    "dynamo_recompile_limit"
+  ]
+}

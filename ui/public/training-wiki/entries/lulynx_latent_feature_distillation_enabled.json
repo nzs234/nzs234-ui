@@ -1,0 +1,21 @@
+{
+  "key": "lulynx_latent_feature_distillation_enabled",
+  "title": "启用 lulynx Latent 特征蒸馏",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "利用 DiT 中间层特征做归一化可选的加权 MSE；这是 lulynx latent 特征蒸馏，不是 LPIPS。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "利用 DiT 中间层特征做可选归一化的加权 MSE，并可限制 sigma 窗口。它没有 LPIPS 的预训练视觉 backbone/感知距离语义，默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

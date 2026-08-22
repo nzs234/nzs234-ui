@@ -1,0 +1,28 @@
+{
+  "key": "data_backend",
+  "title": "数据后端（data_backend）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "auto/caption 当前继续走 CaptionDataset",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "auto": "还是现在的 CaptionDataset 稳路径。",
+      "caption": "CaptionDataset。",
+      "raw": "旧别名，最后还是归到 CaptionDataset。",
+      "webdataset": "WebDataset，偏探测。",
+      "dali": "DALI，要额外环境。"
+    }
+  },
+  "advanced": {
+    "principle": "auto/caption 当前继续走 CaptionDataset；webdataset 会探测 Python 包与 tar shard ，但暂不替换训练主路径；dali 目前只做预留 profile。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,39 @@
+{
+  "key": "edit_injection_strategy",
+  "title": "Edit Injection Strategy",
+  "category": "Edit-LoRA / 注入策略",
+  "appliesTo": [
+    "anima-lora",
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "layers": [
+    "Edit runtime",
+    "前向输入层"
+  ],
+  "standard": {
+    "summary": "控制 source/reference 信息如何影响 target noisy latent。默认 none 不注入；latent_residual 和 masked_residual 是不增加 token 数的安全策略。",
+    "effect": "latent_residual 使用 sample + strength * (source - sample)。masked_residual 会用 edit_mask 抑制编辑区域的 reference residual，并用 preserve_mask 锁住保留区域。",
+    "whenToUse": "paired edit batch 已提供 source_latents 或后续 adapter 能提供参考 latent 时。masked_residual 适合有编辑区域或保留区域 mask 的数据。",
+    "avoidWhen": "还没有 source/target latent 或 mask 语义不确定时先用 none。cross_attention_reference_tokens、self_attention_kv_reference、native_control_path 目前需要模型族 adapter 显式支持。",
+    "optionDescriptions": {
+      "none": "不往 noisy latent 里塞参考残差。",
+      "latent_residual": "整图 residual，不涨 token。",
+      "masked_residual": "只在 mask 里 residual，区外更好保原。"
+    }
+  },
+  "advanced": {
+    "principle": "第一版避免直接 2L self-attention 拼接，先用 shape-compatible latent residual 降低激活显存风险。更强的 attention/token 注入策略保留为 adapter-hooked 合同。",
+    "intervention": "forward-input stage 在模型 forward 前改写 sample 或记录 adapter-hook 需求。",
+    "expectedImpact": "降低像素漂移，同时避免早期实现引入 attention 激活爆炸。",
+    "tradeoffs": "reference_strength 太高会复印 source，太低会保留不足；应配合 edit_timestep_schedule 调整。",
+    "codePath": "core/lulynx_trainer/edit_injection_strategy.py"
+  },
+  "relatedConfigs": [
+    "edit_injection_strategy",
+    "edit_reference_strength",
+    "edit_reference_field",
+    "edit_mask_field",
+    "edit_preserve_mask_field"
+  ]
+}

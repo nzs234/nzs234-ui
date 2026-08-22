@@ -1,0 +1,21 @@
+{
+  "key": "dropout",
+  "title": "LyCORIS Dropout",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "LyCORIS 主 dropout 概率。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "LyCORIS 主 dropout 概率。当前后端在 LoCon / LoHa / LoKr / Full 路线消费该字段。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

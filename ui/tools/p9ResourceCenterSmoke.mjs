@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const api = fs.readFileSync(new URL('../src/api/resourceCenterApi.ts', import.meta.url), 'utf8');
+const page = fs.readFileSync(new URL('../src/pages/resources/ResourceCenterPage.tsx', import.meta.url), 'utf8');
+for (const token of ['provider_role', 'runtime_provider_id', 'adapter_status', 'install_policy', 'compound_grounded', 'mask_proposal', 'can_select', 'can_download', 'buildSemanticProviderPatch']) assert.ok(api.includes(token) || page.includes(token), `missing ${token}`);
+assert.match(api, /\/api\/dataset\/semantic-segmentation\/providers/);
+assert.match(api, /\/api\/dataset\/semantic-segmentation\/local-scan/);
+assert.match(api, /\/api\/dataset\/semantic-segmentation\/download/);
+assert.match(api, /allow_network: true/);
+assert.match(api, /semantic_segmentation_provider: item\.runtime_provider_id/);
+assert.match(api, /'resource-only'/);
+assert.match(page, /只有 ready \+ direct_semantic/);
+assert.match(page, /不能直接输出面部\/身体/);
+assert.match(page, /token 仅用于本次请求/);
+assert.match(page, /来源/);
+assert.match(page, /安装策略/);
+console.log('P9 React resource-center contract smoke: PASS');

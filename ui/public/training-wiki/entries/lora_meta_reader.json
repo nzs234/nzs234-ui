@@ -1,0 +1,21 @@
+{
+  "key": "lora_meta_reader",
+  "title": "LoRA 权重元数据读取",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "读取现有 LoRA 文件的训练参数元数据（network_dim",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "读取现有 LoRA 文件的训练参数元数据（network_dim、alpha、学习率、分辨率等），用于参考或复现训练配置。仅读取文件头部，不加载权重。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

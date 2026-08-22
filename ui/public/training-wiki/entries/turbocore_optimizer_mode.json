@@ -1,0 +1,26 @@
+{
+  "key": "turbocore_optimizer_mode",
+  "title": "Lulynx Triton 优化器",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "off": "优化器 step 走原生 PyTorch。",
+      "auto": "条件够就走 Lulynx Triton 优化器。",
+      "force": "硬走 Triton；环境不够会直接挂。（本选择器里没有：force 在原生模块缺失或优化器不受支持时会直接抛错中断训练，属于调试用途，界面只提供 off / auto。）"
+    }
+  },
+  "advanced": {
+    "principle": "让 PyTorch 优化器的 step 走 Triton 内核后端（非顶栏 TurboCore CUDA 路径）。off=原生 step；auto=支持则加速；force=强制（不支持则报错）。与顶栏 TurboCore CUDA 硬互斥：顶栏开时本项强制 off。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

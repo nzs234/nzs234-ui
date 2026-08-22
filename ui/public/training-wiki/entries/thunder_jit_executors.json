@@ -1,0 +1,27 @@
+{
+  "key": "thunder_jit_executors",
+  "title": "Thunder 执行后端",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "auto 自动选择",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "auto": "Thunder 后端自动。",
+      "nvfuser": "走 nvFuser。",
+      "torchcompile": "走 torch.compile。",
+      "sdpa": "偏 SDPA，查问题用。"
+    }
+  },
+  "advanced": {
+    "principle": "auto 自动选择；nvfuser / torchcompile / sdpa 用于对照或排障。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

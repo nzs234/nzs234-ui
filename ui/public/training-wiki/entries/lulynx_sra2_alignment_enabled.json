@@ -1,0 +1,32 @@
+{
+  "key": "lulynx_sra2_alignment_enabled",
+  "title": "lulynx SRA2 表征对齐调度",
+  "category": "Loss / 辅助",
+  "appliesTo": [
+    "anima-lora",
+    "newbie-lora"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "lulynx SRA2 中间层表征对齐 loss：将 DiT 中间层特征与 VAE 编码的 GT latent 对齐，并由本仓 step/decay/plateau heuristic 调度权重；不是已核验的论文 HASTE 复现。",
+    "effect": "lulynx_sra2_alignment_loss_type 控制对齐方式（cosine/l2/l1）；其他 lulynx_sra2_alignment_* key 控制本仓 heuristic schedule。历史 sra2_haste_* 只作读取 alias。",
+    "whenToUse": "DiT 训练中想让模型中间表示更好地对齐 VAE latent 空间时。",
+    "avoidWhen": "额外计算开销。与 cudagraph/offload 可能冲突。"
+  },
+  "advanced": {
+    "principle": "SRA2 在 DiT 的指定层捕获隐藏状态，与 VAE 编码的 GT latent 做对齐；本仓 schedule 只实现 start/stop、linear decay 与 plateau stop。没有找到能唯一对应 HASTE 的权威论文，因此这是 lulynx heuristic，不是 HASTE 论文复现。",
+    "intervention": "DiT forward 中捕获中间层特征 → 计算对齐 loss → lulynx heuristic 调度权重 → 加到总 loss。",
+    "expectedImpact": "理论上提升 latent 空间的表示质量。实际效果需 验证。",
+    "tradeoffs": "decay_start_step/decay_end_step 控制衰减窗口。",
+    "codePath": "core/lulynx_trainer/sra2_haste_alignment_facade.py → sra2_haste_alignment_loss + haste_alignment_schedule.py；用户配置使用 lulynx_sra2_alignment_*"
+  },
+  "relatedConfigs": [
+    "lulynx_sra2_alignment_capture_layers",
+    "lulynx_sra2_alignment_loss_type",
+    "lulynx_sra2_alignment_base_weight",
+    "lulynx_sra2_alignment_start_step",
+    "lulynx_sra2_alignment_stop_step"
+  ]
+}

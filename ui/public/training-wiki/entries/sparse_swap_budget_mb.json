@@ -1,0 +1,21 @@
+{
+  "key": "sparse_swap_budget_mb",
+  "title": "稀疏交换 Warm 预算 MB（sparse_swap_budget_mb）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "限制 warm prefetch 的 FP16 等效预算。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "限制 warm prefetch 的 FP16 等效预算。0 表示不额外限制，只按 Warm 比例。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

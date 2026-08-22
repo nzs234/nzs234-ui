@@ -1,0 +1,21 @@
+{
+  "key": "anima_llm_adapter_lr",
+  "title": "LLM Adapter 学习率",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Anima LLM Adapter 的独立学习率。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "Anima LLM Adapter 的独立学习率。0 = 使用全局学习率。仅在训练 LLM Adapter 时生效。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

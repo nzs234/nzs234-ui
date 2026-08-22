@@ -1,0 +1,26 @@
+{
+  "key": "turbocore_mode",
+  "title": "TurboCore 模式（开发者选项）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "由顶栏启用 TurboCore 后生效。（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "off": "关 TurboCore。",
+      "profile": "只做性能观察。",
+      "native_experimental": "实验加速，开发向。"
+    }
+  },
+  "advanced": {
+    "principle": "由顶栏启用 TurboCore 后生效。profile=性能分析；native_experimental=实验性加速。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

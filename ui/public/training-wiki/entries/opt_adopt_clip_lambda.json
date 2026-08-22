@@ -1,0 +1,21 @@
+{
+  "key": "opt_adopt_clip_lambda",
+  "title": "ADOPT clip_lambda",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "梯度裁剪系数 λ，防止早期步的梯度爆炸。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "梯度裁剪系数 λ，防止早期步的梯度爆炸。推荐 0.1 ~ 1.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

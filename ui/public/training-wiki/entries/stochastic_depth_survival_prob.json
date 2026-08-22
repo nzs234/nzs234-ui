@@ -1,0 +1,21 @@
+{
+  "key": "stochastic_depth_survival_prob",
+  "title": "随机深度保留概率",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "每层被保留（不跳过）的概率。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "每层被保留（不跳过）的概率。0.8 表示平均保留 80% 的层。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

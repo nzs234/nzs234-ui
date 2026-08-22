@@ -1,0 +1,28 @@
+{
+  "key": "sdxl_unet_backend",
+  "title": "SDXL U-Net 后端",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "diffusers 为稳定默认",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "diffusers": "Diffusers UNet，兼容优先。",
+      "native_shadow": "影子记 block 图，不算真接管。",
+      "native_proxy": "代理对照。",
+      "native_skeleton": "看原生覆盖到哪，开发向。",
+      "lulynx_native": "完整原生 wrapper 接管。"
+    }
+  },
+  "advanced": {
+    "principle": "diffusers 为稳定默认；native_shadow 记录 block graph；native_proxy 代理参考 U-Net；native_skeleton 报告原生覆盖；lulynx_native 使用完整 provenance wrapper 接管 U-Net",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

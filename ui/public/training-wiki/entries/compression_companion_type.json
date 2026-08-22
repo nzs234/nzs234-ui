@@ -1,0 +1,19 @@
+{
+  "key": "compression_companion_type",
+  "title": "伴生适配器类型",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "伴生适配器类型：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "lora": "伴生类型是 LoRA。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

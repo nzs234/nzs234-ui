@@ -1,0 +1,28 @@
+{
+  "key": "wan22_depth_expansion_target_layers",
+  "title": "Wan2.2 TI2V-5B 扩层目标层数",
+  "category": "Wan2.2 / 高级",
+  "appliesTo": [
+    "wan22-finetune"
+  ],
+  "layers": [
+    "模型结构层"
+  ],
+  "standard": {
+    "summary": "扩层后的 blocks（TI2V-5B 原生 30） 总数，必须大于原生层数。默认 38。",
+    "effect": "新增层数 = 目标层数 − 原生层数，按交错插入分布到主干中；参数量、显存与保存体积随之增加。仅支持 TI2V-5B 单塔；T2V-A14B 双塔需保持两塔深度一致且与 sigma 分段路由耦合，扩层直接拒绝。",
+    "whenToUse": "小步扩层（原生的 1.2~1.4 倍）更容易训练收敛；大幅扩层需要更多数据与训练步数。",
+    "avoidWhen": "小于等于原生层数会直接报错；显存紧张时不要激进扩层。"
+  },
+  "advanced": {
+    "principle": "交错插入使新增层均匀分布在原有层之间，每个新层深拷贝相邻源层的权重后归零输出投影。",
+    "intervention": "wan22/wan22_depth_expansion_runtime.py：expand 时校验目标层数并重建 block 容器与 config。",
+    "expectedImpact": "线性增加主干计算量与参数量。",
+    "tradeoffs": "层数越多训练与推理成本越高；恒等初始化保证起点无损，但收益需训练兑现。",
+    "codePath": "wan22/wan22_depth_expansion_runtime.py"
+  },
+  "relatedConfigs": [
+    "wan22_depth_expansion_enabled",
+    "wan22_depth_expansion_train_scope"
+  ]
+}

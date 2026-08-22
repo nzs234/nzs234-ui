@@ -1,0 +1,21 @@
+{
+  "key": "lulynx_weight_residency_min_params",
+  "title": "Residency 最小参数量",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "只托管参数量达到该阈值的 Linear/Conv2d。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "只托管参数量达到该阈值的 Linear/Conv2d。0 表示全部托管；调高可保留小层在 GPU，减少频繁传输。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

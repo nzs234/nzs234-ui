@@ -1,0 +1,25 @@
+{
+  "key": "repa_mode",
+  "title": "REPA 对齐模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "absolute=同维 cosine/L2（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "absolute": "同维特征直接对齐。",
+      "relational": "用关系/Gram 对齐，维可以不对齐。"
+    }
+  },
+  "advanced": {
+    "principle": "absolute=同维 cosine/L2；relational=Gram（维可不齐，latent_identity 推荐）。默认 absolute。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

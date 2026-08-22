@@ -1,0 +1,26 @@
+{
+  "key": "runtime_features_detail",
+  "title": "运行时统计输出",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "off": "不多打 runtime 明细。",
+      "compact": "精简明细。",
+      "full": "明细打满。"
+    }
+  },
+  "advanced": {
+    "principle": "每步 PROGRESS_JSON 运行时特性详细度。不输出=默认(仅 loss/lr,控制台清爽);精简=压缩版(去掉逐层/基准大块);完整=全量。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

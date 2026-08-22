@@ -1,0 +1,104 @@
+/* 主题 Glass (Refined Slate / Deep Space Console)
+   深石板蓝研创台 · 靛蓝/青绿双色 · 半透明精致微层级 · 现代克制质感 */
+html[data-theme='glass'] { color-scheme: dark; }
+html[data-theme='glass'] body {
+  --lx-bg: #0b0f17;
+  --lx-bg-soft: #111726;
+  --lx-surface: #141c2e;
+  --lx-surface-color: #141c2e;
+  --lx-surface-2: #1b253c;
+  --lx-border: #24324f;
+  --lx-border-strong: #384d78;
+  --lx-border-w: 1px;
+  --lx-text: #f0f4fc;
+  --lx-dim: #adc1e2;
+  --lx-muted: #8ca3c7;
+  --lx-accent: #2563eb;
+  --lx-accent-hover: #1d4ed8;
+  --lx-accent-contrast: #ffffff;
+  --lx-accent-text: #70aaff;
+  --lx-accent-soft: rgba(59, 130, 246, 0.15);
+  --lx-accent-glow: rgba(59, 130, 246, 0.3);
+  --lx-primary-bg: #1d4ed8;
+  --lx-primary-text: #ffffff;
+  --lx-ok: #10b981;
+  --lx-ok-text: #34d399;
+  --lx-ok-soft: rgba(16, 185, 129, 0.15);
+  --lx-warn: #f59e0b;
+  --lx-warn-text: #fbbf24;
+  --lx-warn-soft: rgba(245, 158, 11, 0.15);
+  --lx-danger: #ef4444;
+  --lx-danger-text: #f87171;
+  --lx-danger-soft: rgba(239, 68, 68, 0.15);
+  --lx-danger-glow: rgba(239, 68, 68, 0.3);
+  --lx-field-bg: #0f1624;
+  --lx-bar-bg: #1c273e;
+  --lx-grid-line: #1c273e;
+  --lx-radius: 6px;
+  --lx-radius-lg: 10px;
+  --lx-btn-radius: 6px;
+  --lx-switch-radius: 999px;
+  --lx-thumb-radius: 999px;
+  --lx-bar-radius: 4px;
+  --lx-title-size: clamp(28px, 3.8vw, 42px);
+  --lx-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme='glass'] .lx-page-title {
+  color: var(--lx-text);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+html[data-theme='glass'] .lx-page-title .line.outline {
+  color: var(--lx-dim);
+  font-weight: 400;
+}
+
+html[data-theme='glass'] .lx-panel {
+  background: var(--lx-surface);
+  border-color: var(--lx-border);
+  box-shadow: var(--lx-shadow);
+}
+html[data-theme='glass'] .lx-panel.hoverable:hover {
+  border-color: var(--lx-border-strong);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme='glass'] .lx-btn {
+  background: var(--lx-surface);
+  border-color: var(--lx-border);
+  color: var(--lx-text);
+  font-weight: 600;
+}
+html[data-theme='glass'] .lx-btn:hover {
+  background: var(--lx-surface-2);
+  border-color: var(--lx-border-strong);
+}
+html[data-theme='glass'] .lx-btn.primary {
+  background: var(--lx-accent);
+  color: #ffffff;
+  border-color: var(--lx-accent);
+  box-shadow: 0 0 12px var(--lx-accent-soft);
+}
+html[data-theme='glass'] .lx-btn.primary:hover {
+  background: var(--lx-accent-hover);
+  border-color: var(--lx-accent-hover);
+  box-shadow: 0 0 18px var(--lx-accent-glow);
+}
+html[data-theme='glass'] .lx-btn.danger {
+  border-color: var(--lx-danger);
+  color: var(--lx-danger);
+  background: var(--lx-surface);
+}
+html[data-theme='glass'] .lx-btn.danger:hover {
+  background: var(--lx-danger);
+  color: #fff;
+}
+
+html[data-theme='glass'] .lx-input:focus,
+html[data-theme='glass'] .lx-textarea:focus,
+html[data-theme='glass'] .lx-select:focus {
+  border-color: var(--lx-accent);
+  box-shadow: 0 0 0 3px var(--lx-accent-soft);
+}
+

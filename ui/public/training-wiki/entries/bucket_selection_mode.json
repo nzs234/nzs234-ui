@@ -1,0 +1,38 @@
+{
+  "key": "bucket_selection_mode",
+  "title": "分桶策略（bucket_selection_mode）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "决定每张图被分到哪个桶。10 个取值实际是 4 组语义：aspect 比宽高比（默认）、area/pixel/pixels 比面积、larger/ceil/no_downscale 永不缩小、smaller/floor/no_upscale 永不放大。",
+    "effect": "只影响「图片 → 桶」的匹配方式，不改变桶表本身。填了自定义桶列表（bucket_custom_resos）时，桶表以那边为准，本字段仍决定怎么往里分。",
+    "whenToUse": "素材构图重要就用 aspect；素材尺寸杂但想保住细节量可试 area；明确不想让训练图被放大（怕糊）用 smaller 一族，不想被缩小（怕丢细节）用 larger 一族。",
+    "avoidWhen": "larger 一族在素材普遍大于所有桶时会筛空，smaller 一族在素材普遍小于所有桶时同理，此时会回落到兜底桶。素材尺寸跨度很大时优先 aspect。",
+    "optionDescriptions": {
+      "aspect": "默认。挑宽高比最接近原图的桶，最不容易改变构图。",
+      "area": "挑总像素数最接近原图的桶，倾向保住细节量而不是构图比例。",
+      "pixel": "与 area 等价（后端同一分支）。",
+      "pixels": "与 area 等价（后端同一分支）。",
+      "larger": "只考虑宽高都不小于原图的桶，再取其中最小的一个 —— 永不缩小，代价是可能留边。",
+      "ceil": "与 larger 等价（后端同一分支）。",
+      "no_downscale": "与 larger 等价（后端同一分支）。",
+      "smaller": "只考虑宽高都不大于原图的桶，再取其中最大的一个 —— 永不放大，代价是丢一点分辨率。",
+      "floor": "与 smaller 等价（后端同一分支）。",
+      "no_upscale": "与 smaller 等价（后端同一分支）。"
+    }
+  },
+  "advanced": {
+    "principle": "后端 dataset_bucketing.py:111-129 对每个候选桶算一个 diff 再取最小：area/pixel/pixels 用 |原图面积 - 桶面积|；larger/ceil/no_downscale 先跳过任一维小于原图的桶、再用 桶面积 - 原图面积；smaller/floor/no_upscale 先跳过任一维大于原图的桶、再用 原图面积 - 桶面积；其余（含 aspect）用 |原图宽高比 - 桶宽高比|。",
+    "intervention": "改本字段不需要重建缓存桶表，但会改变已有图片落到哪个桶，等价于换了一次数据分布。",
+    "expectedImpact": "对 loss 曲线通常是二阶影响；对「训练图有没有被拉伸/留边」是一阶影响。",
+    "tradeoffs": "aspect 保构图但可能改变有效分辨率；area 保细节量但可能轻微拉伸；larger/smaller 各自单边牺牲。",
+    "codePath": "backend/core/lulynx_trainer/dataset_bucketing.py:111-129"
+  },
+  "relatedConfigs": [
+    "enable_bucket",
+    "bucket_custom_resos",
+    "min_bucket_reso",
+    "max_bucket_reso"
+  ]
+}

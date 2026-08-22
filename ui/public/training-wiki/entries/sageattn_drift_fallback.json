@@ -1,0 +1,30 @@
+{
+  "key": "sageattn_drift_fallback",
+  "title": "SageAttn 漂移回退策略",
+  "category": "性能 / 内核",
+  "appliesTo": [
+    "sdxl-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "前向层"
+  ],
+  "standard": {
+    "summary": "SageAttn 漂移检测超阈值后的处置：warn 只记日志继续用 SageAttn；fallback_sdpa 自动把 attention 后端切回 SDPA。",
+    "effect": "warn（默认）保留速度、把风险交给人看日志；fallback_sdpa 牺牲 SageAttn 的加速换取数值安全，切换后本次训练不再切回。",
+    "whenToUse": "无人值守的长训任务建议 fallback_sdpa，漂移时自动降级保平安；有人盯日志的短实验用 warn 即可。",
+    "avoidWhen": "sageattn_drift_check_interval=0（检测关闭）时本项不参与；对速度极端敏感且已确认模型与 SageAttn 兼容时无需 fallback。"
+  },
+  "advanced": {
+    "principle": "量化漂移通常随训练分布变化渐进出现，一次超阈值往往预示后续持续劣化；自动回退把「发现问题→人工干预」的延迟压缩为零，代价是从此失去量化加速。",
+    "intervention": "training_loop_init_core.py 把 fallback 策略传入 AttentionDriftMonitor；监视器在对比误差超 sageattn_drift_threshold 时执行对应动作。",
+    "expectedImpact": "fallback_sdpa 触发后吞吐回落到 SDPA 水平，训练数值恢复全精度 attention 语义。",
+    "tradeoffs": "warn 模式下漂移持续存在可能积累训练偏差；fallback 模式误报（阈值过严）会白白丢掉加速。",
+    "codePath": "training_loop_init_core.py：AttentionDriftMonitor(threshold=sageattn_drift_threshold, fallback=sageattn_drift_fallback)；attention_drift_monitor.py"
+  },
+  "relatedConfigs": [
+    "sageattn_drift_check_interval",
+    "attention_backend"
+  ]
+}

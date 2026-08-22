@@ -1,0 +1,21 @@
+{
+  "key": "contrastive_latent_noise_pairs",
+  "title": "对比对数",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "对比对数。1=简化模式 (只用当前批次)；>=2 需额外前向传播 (+20-30% 时间)。推荐 1。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

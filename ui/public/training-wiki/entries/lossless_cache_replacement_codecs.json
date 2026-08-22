@@ -1,0 +1,27 @@
+{
+  "key": "lossless_cache_replacement_codecs",
+  "title": "压缩编码",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "sidecar 压缩编码。（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "lz4fast": "压得快，体积一般。",
+      "zstd1": "压得更小，编解码更重。",
+      "raw": "不压。",
+      "fast-cache": "快路径组合。"
+    }
+  },
+  "advanced": {
+    "principle": "sidecar 压缩编码。lz4fast=速度优先（默认），zstd1=压缩率优先，raw=不压缩，fast-cache=组合。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

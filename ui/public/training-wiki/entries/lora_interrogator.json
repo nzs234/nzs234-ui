@@ -1,0 +1,21 @@
+{
+  "key": "lora_interrogator",
+  "title": "输出路径",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "检测 LoRA 网络的训练信息。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "检测 LoRA 网络的训练信息。底模必须是对应的 SD 1.5 模型。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

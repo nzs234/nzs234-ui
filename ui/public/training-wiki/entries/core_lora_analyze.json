@@ -1,0 +1,21 @@
+{
+  "key": "core_lora_analyze",
+  "title": "OUT",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "读取 LoRA 权重结构、rank、RMS、稀疏度、异常层和",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "读取 LoRA 权重结构、rank、RMS、稀疏度、异常层和 block 分布。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

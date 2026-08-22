@@ -1,0 +1,21 @@
+{
+  "key": "sample_smoothcache_probe",
+  "title": "SmoothCache 探针",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "SmoothCache-inspired 误差引导缓存探针。默认关闭；来源为 SmoothCache arXiv:2411.10510 与 Roblox/SmoothCache，本仓是 Lulynx seam/probe 工程近似。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "SmoothCache 论文/官方仓库使用 calibration 得到 layer-wise representation-error schedule；本仓用相邻 step 的 relative-L1 probe 与本地 schedule/store seam 近似该思路，不保证论文速度/质量结果。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": "lulynx_trainer/smoothcache.py → SmoothCacheCalibrator → SmoothCacheStore"
+  },
+  "relatedConfigs": []
+}

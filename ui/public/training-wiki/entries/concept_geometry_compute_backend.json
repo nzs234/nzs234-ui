@@ -1,0 +1,21 @@
+{
+  "key": "concept_geometry_compute_backend",
+  "title": "图计算后端",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "图计算后端：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "auto": "图计算后端自动。",
+      "native": "原生路径。",
+      "rust": "Rust 加速（有的话）。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

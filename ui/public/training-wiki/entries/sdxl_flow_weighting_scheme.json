@@ -1,0 +1,22 @@
+{
+  "key": "sdxl_flow_weighting_scheme",
+  "title": "Flow Loss 权重（sdxl_flow_weighting_scheme）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "Flow Loss 权重（sdxl_flow_weighting_scheme）：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "none": "Flow loss 不加权。",
+      "sigma_sqrt": "√σ 加权。",
+      "cosmap": "cosmap。",
+      "logit_normal": "logit-normal。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

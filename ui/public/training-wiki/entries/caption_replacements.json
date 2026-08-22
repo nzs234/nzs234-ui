@@ -1,0 +1,21 @@
+{
+  "key": "caption_replacements",
+  "title": "Caption 替换规则",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "字符串替换规则，格式：old:new,old2:new2。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "字符串替换规则，格式：old:new,old2:new2。支持批量替换 caption 中的词汇（如统一人称、修正标签）",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

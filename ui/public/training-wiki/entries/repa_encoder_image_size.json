@@ -1,0 +1,21 @@
+{
+  "key": "repa_encoder_image_size",
+  "title": "REPA 编码器输入边长",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "0=编码器默认（dino≈224 / jina≈512）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "0=编码器默认（dino≈224 / jina≈512）；>0 强制 resize，可降 CPU 成本。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

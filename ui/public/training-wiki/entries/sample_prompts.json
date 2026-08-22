@@ -1,0 +1,21 @@
+{
+  "key": "sample_prompts",
+  "title": "采样提示词列表（sample_prompts）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "后端 sample_prompts：每行一个",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "后端 sample_prompts：每行一个；可与 positive_prompts / preview_groups 并存。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

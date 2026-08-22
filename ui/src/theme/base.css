@@ -1,0 +1,58 @@
+/* 基础层: reset、body、滚动条、动效降档 */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scrollbar-gutter: stable; }
+body {
+  background: var(--lx-bg);
+  color: var(--lx-text);
+  font: 400 var(--lx-text-base)/1.55 var(--lx-font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background var(--lx-dur) var(--lx-ease), color var(--lx-dur) var(--lx-ease);
+}
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+ul, ol { list-style: none; }
+::selection { background: var(--lx-accent); color: var(--lx-accent-contrast); }
+
+:focus-visible { outline: 2px solid var(--lx-accent); outline-offset: 2px; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--lx-border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--lx-dim); }
+
+.num, .lx-num { font-family: var(--lx-font-mono); }
+
+/* ---- 动画与动效降档 ---- */
+@keyframes lx-spin-kf {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.lx-spin {
+  display: inline-block;
+  animation: lx-spin-kf 1s linear infinite !important;
+}
+
+html[data-motion='eco'] .lx-spin,
+html[data-motion='eco'] .lx-loop,
+html[data-motion='eco'] .lx-loop::before,
+html[data-motion='eco'] .lx-loop::after {
+  animation: none !important;
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .lx-spin {
+    animation: none !important;
+  }
+}
+

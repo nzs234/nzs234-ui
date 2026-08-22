@@ -1,0 +1,20 @@
+{
+  "key": "repa_loss_type",
+  "title": "REPA 损失类型",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "REPA 损失类型：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "cosine": "只对齐方向。",
+      "mse": "MSE，方向幅度一起管。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

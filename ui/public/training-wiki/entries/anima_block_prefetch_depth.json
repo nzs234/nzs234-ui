@@ -1,0 +1,21 @@
+{
+  "key": "anima_block_prefetch_depth",
+  "title": "Anima 预取深度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "向前预取几个 block。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "向前预取几个 block。original 模式按此固定深度；adaptive 会在此基础上在线调整。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

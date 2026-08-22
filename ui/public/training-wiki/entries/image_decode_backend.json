@@ -1,0 +1,27 @@
+{
+  "key": "image_decode_backend",
+  "title": "图片解码后端（image_decode_backend）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "pil 最兼容；pil_lru 会按文件 mtime/大小缓存已解码 RGB",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "pil": "Pillow。",
+      "auto": "自动。",
+      "pil_lru": "PIL 加缓存，重复读快，吃内存。",
+      "torchvision_cpu": "torchvision CPU 解码。"
+    }
+  },
+  "advanced": {
+    "principle": "pil 最兼容；pil_lru 会按文件 mtime/大小缓存已解码 RGB/Alpha；torchvision_cpu 使用 torchvision 在 CPU 解码后回到现有 PIL augment 链路，不提前占用训练显存。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "concept_edit_fixed_timestep_per_batch",
+  "title": "批内固定时间步",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "同一 batch 内共享同一个 timestep",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "同一 batch 内共享同一个 timestep，适合概念编辑实验时减小批内波动。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

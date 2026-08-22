@@ -1,0 +1,32 @@
+{
+  "key": "regional_lora_regions_json",
+  "title": "区域多 LoRA（分区域布局）",
+  "category": "推理参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "在画面上划分区域，每个区域绑一个 LoRA 与局部提示词。",
+    "effect": "每个区域的 LoRA 残差只作用在自己的框内，框外恰好为零；同时在采样的每一步把注意力往各自的框里拉。留空即关闭，此时渲染与不开启逐位相同。",
+    "whenToUse": "一张图里要同时出现两个及以上各自训练过的角色或概念，直接叠加多个 LoRA 会互相污染时。",
+    "avoidWhen": "只有一个 LoRA，或各概念本来就不需要固定位置时。区域会带来每步一次额外前向的开销。"
+  },
+  "advanced": {
+    "principle": "区域感知的多 LoRA 组合（arXiv:2403.11627）。布局由归一化到 [0,1] 的框给出，框在 patchified token 网格上栅格化成掩码，用于门控该区域 LoRA 的残差；每一步再按 Eq. 10 用注意力约束损失的梯度修正 latent，把概念约束在框内。",
+    "intervention": "填入 JSON 数组，每项形如 {\"box\": [x1, y1, x2, y2], \"lora\": \"路径\", \"prompt\": \"局部提示词\", \"token_index\": 1}。坐标必须是 [0,1] 归一化值，像素坐标会被直接拒绝。出图页的画框工具会替你生成这段 JSON。",
+    "expectedImpact": "各概念留在自己的区域内，不再互相串味。",
+    "tradeoffs": "约束需要对 latent 求梯度，每个采样步多一次前向，步时约 2 倍。",
+    "codePath": "backend/core/lulynx_trainer/regional_lora_binding.py, backend/core/lulynx_trainer/anima/regional_lora_constraint.py"
+  },
+  "relatedConfigs": [
+    "regional_lora_alpha",
+    "regional_lora_beta",
+    "regional_lora_initial_step_size",
+    "regional_lora_final_step_size",
+    "regional_lora_topk_ratio",
+    "regional_lora_gaussian_sigma",
+    "regional_lora_enable_latent_reinit",
+    "regional_lora_enable_concept_isolation",
+    "regional_lora_enable_concept_injection",
+    "regional_lora_capture_block"
+  ]
+}

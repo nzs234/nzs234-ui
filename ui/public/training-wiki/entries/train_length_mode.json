@@ -1,0 +1,20 @@
+{
+  "key": "train_length_mode",
+  "title": "训练长度模式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "训练长度模式 的可选值说明（自动补全骨架，可继续润色）。",
+    "effect": "切换不同枚举值会改变训练行为或资源占用，详见各子项。",
+    "whenToUse": "按任务与硬件选择；不确定时用产品默认。",
+    "avoidWhen": "未理解子项含义时不要盲选实验/激进档。",
+    "optionDescriptions": {
+      "最大轮数": "按 epoch 数停。",
+      "最大步数": "按 step 数停。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

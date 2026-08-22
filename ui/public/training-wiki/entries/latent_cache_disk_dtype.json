@@ -1,0 +1,30 @@
+{
+  "key": "latent_cache_disk_dtype",
+  "title": "Latent 缓存精度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "latent 磁盘缓存保存精度。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "auto": "缓存精度跟着运行时走。",
+      "fp16": "半精度缓存，盘和读写都省。",
+      "bf16": "BF16 缓存，范围比 fp16 宽一点。",
+      "fp32": "全精度缓存，又大又准，对着用。",
+      "float16": "同 fp16。",
+      "bfloat16": "同 bf16。",
+      "float32": "同 fp32。"
+    }
+  },
+  "advanced": {
+    "principle": "latent 磁盘缓存保存精度。auto 会尽量保留运行时 dtype；fp16 更省空间，fp32 兼容性更高。若选择 npz + bf16，后端会自动回退为 fp32",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

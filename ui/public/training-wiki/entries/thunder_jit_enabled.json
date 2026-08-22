@@ -1,0 +1,21 @@
+{
+  "key": "thunder_jit_enabled",
+  "title": "Thunder JIT 编译",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "⚡ PyTorch 官方 Thunder JIT 引擎，比",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "⚡ PyTorch 官方 Thunder JIT 引擎，比 torch.compile 更激进的算子融合。预期加速 10-15%。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

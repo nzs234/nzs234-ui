@@ -1,0 +1,29 @@
+{
+  "key": "h3_timestep_shift",
+  "title": "H3 视频训练 Timestep Shift",
+  "category": "训练 / 噪声控制",
+  "appliesTo": [
+    "minimax-h3-lora"
+  ],
+  "layers": [
+    "采样层"
+  ],
+  "standard": {
+    "summary": "H3 视频样本训练时 timestep 分布的 shift 系数：12（默认）对齐默认推理映射；调低（如 8）把训练密度移向低噪声端，可加强细节但可能削弱运动结构。",
+    "effect": "训练采样的 timestep 经 shift 变换后再喂给模型；多帧视频用本值，单帧图片样本改用 h3_image_timestep_shift（默认 1.0）。",
+    "whenToUse": "默认 12 与推理侧 sigma 映射一致，常规训练不动；细节类 LoRA（材质、质感）可试 8~10 并观察运动是否退化。",
+    "avoidWhen": "大幅偏离模型固有映射（h3_video_sigma_shift=12）会造成训推分布错位；动作/运动类训练不要调低。"
+  },
+  "advanced": {
+    "principle": "flow 系模型的 shift 参数把均匀 timestep 重映射为偏向某噪声端的分布（shift 越大越偏高噪声/结构端）。视频模型的结构（运动、时序）主要在高噪声段建立，checkpoint 的固有映射是 12；训练分布向低噪声偏移等于把学习容量挪给细节。",
+    "intervention": "minimax_h3/train_step.py：按样本帧数选择键——video.shape[2]==1 用 h3_image_timestep_shift（默认 1.0），否则用 h3_timestep_shift（默认 12.0），对采样的 t 做 shift 变换。",
+    "expectedImpact": "12：对齐推理、均衡；8：细节增强、运动结构风险；两者差异随训练步数放大。",
+    "tradeoffs": "与 h3_video_sigma_shift（模型固有映射，别动）语义不同：前者是训练分布选择，后者是 checkpoint 属性。",
+    "codePath": "minimax_h3/train_step.py：按帧数分派 h3_timestep_shift / h3_image_timestep_shift；configs_h3.py 定义（gt=0）"
+  },
+  "relatedConfigs": [
+    "h3_image_timestep_shift",
+    "h3_video_sigma_shift",
+    "h3_audio_sigma_shift"
+  ]
+}

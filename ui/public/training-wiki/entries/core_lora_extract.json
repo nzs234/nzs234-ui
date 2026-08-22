@@ -1,0 +1,21 @@
+{
+  "key": "core_lora_extract",
+  "title": "目标 Rank",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "从底模和微调模型的差分中提取 LoRA。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "从底模和微调模型的差分中提取 LoRA。大模型会比较慢，建议先小 rank 测试。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

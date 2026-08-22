@@ -1,0 +1,25 @@
+{
+  "key": "hard_negative_mining_mode",
+  "title": "挖掘模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "topk=保留 top-k% 困难样本（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "topk": "固定拿最难的 K 个，K 越大噪声也可能越多。",
+      "threshold": "过阈值才算难例，阈值高就更少更尖。"
+    }
+  },
+  "advanced": {
+    "principle": "topk=保留 top-k% 困难样本; threshold=保留 loss > threshold 的样本。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

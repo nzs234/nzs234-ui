@@ -1,0 +1,105 @@
+/* 主题 Acid (Cyber Tech / High Contrast Obsidian)
+   黑曜石深色控制台 · 荧光绿/青色高光 · 精准微发光 · 现代科技仪表板 */
+html[data-theme='acid'] { color-scheme: dark; }
+html[data-theme='acid'] body {
+  --lx-bg: #0d1117;
+  --lx-bg-soft: #161b22;
+  --lx-surface: #161b22;
+  --lx-surface-color: #161b22;
+  --lx-surface-2: #21262d;
+  --lx-border: #30363d;
+  --lx-border-strong: #484f58;
+  --lx-border-w: 1px;
+  --lx-text: #f0f6fc;
+  --lx-dim: #b1bac4;
+  --lx-muted: #8b949e;
+  --lx-accent: #238636;
+  --lx-accent-hover: #2ea043;
+  --lx-accent-contrast: #ffffff;
+  --lx-accent-text: #56d364;
+  --lx-accent-soft: rgba(46, 160, 67, 0.15);
+  --lx-accent-glow: rgba(46, 160, 67, 0.3);
+  --lx-primary-bg: #1f6f2e;
+  --lx-primary-text: #ffffff;
+  --lx-accent-2: #58a6ff;
+  --lx-pink: #d2a8ff;
+  --lx-ok: #3fb950;
+  --lx-ok-text: #56d364;
+  --lx-ok-soft: rgba(63, 185, 80, 0.15);
+  --lx-warn: #d29922;
+  --lx-warn-text: #f0b738;
+  --lx-warn-soft: rgba(210, 153, 34, 0.15);
+  --lx-danger: #f85149;
+  --lx-danger-text: #ff7b72;
+  --lx-danger-soft: rgba(248, 81, 73, 0.15);
+  --lx-danger-glow: rgba(248, 81, 73, 0.3);
+  --lx-field-bg: #0d1117;
+  --lx-bar-bg: #21262d;
+  --lx-grid-line: #21262d;
+  --lx-radius: 6px;
+  --lx-radius-lg: 10px;
+  --lx-btn-radius: 6px;
+  --lx-switch-radius: 999px;
+  --lx-thumb-radius: 999px;
+  --lx-bar-radius: 4px;
+  --lx-title-size: clamp(28px, 3.8vw, 42px);
+  --lx-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme='acid'] .lx-page-title {
+  color: var(--lx-text);
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+html[data-theme='acid'] .lx-page-title .line.outline {
+  color: var(--lx-dim);
+  font-weight: 400;
+}
+
+html[data-theme='acid'] .lx-panel {
+  background: var(--lx-surface);
+  border-color: var(--lx-border);
+  box-shadow: var(--lx-shadow);
+}
+html[data-theme='acid'] .lx-panel:hover {
+  border-color: var(--lx-border-strong);
+}
+
+html[data-theme='acid'] .lx-btn {
+  background: var(--lx-surface);
+  border-color: var(--lx-border);
+  color: var(--lx-text);
+  font-weight: 600;
+}
+html[data-theme='acid'] .lx-btn:hover {
+  background: var(--lx-surface-2);
+  border-color: var(--lx-border-strong);
+}
+html[data-theme='acid'] .lx-btn.primary {
+  background: var(--lx-accent);
+  color: #ffffff;
+  border-color: var(--lx-accent);
+  box-shadow: 0 0 12px var(--lx-accent-soft);
+}
+html[data-theme='acid'] .lx-btn.primary:hover {
+  background: var(--lx-accent-hover);
+  border-color: var(--lx-accent-hover);
+  box-shadow: 0 0 16px var(--lx-accent-glow);
+}
+html[data-theme='acid'] .lx-btn.danger {
+  border-color: var(--lx-danger);
+  color: var(--lx-danger);
+  background: var(--lx-surface);
+}
+html[data-theme='acid'] .lx-btn.danger:hover {
+  background: var(--lx-danger);
+  color: #fff;
+}
+
+html[data-theme='acid'] .lx-input:focus,
+html[data-theme='acid'] .lx-textarea:focus,
+html[data-theme='acid'] .lx-select:focus {
+  border-color: var(--lx-accent-2);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+

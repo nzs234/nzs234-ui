@@ -1,0 +1,30 @@
+{
+  "key": "universal_dit_enabled",
+  "title": "Universal DiT 通用训练开关",
+  "category": "DiT / 实验性",
+  "appliesTo": [
+    "universal-dit"
+  ],
+  "layers": [
+    "模型层"
+  ],
+  "standard": {
+    "summary": "启用通用 DiT 训练路线：对没有专属训练类型的 DiT 模型做探测式适配（自动识别目标模块与训练目标）。选择 universal_dit 模型类型时必须显式开启。",
+    "effect": "开启后按 universal_dit_probe_mode 探测模型结构、按 universal_dit_target_policy 选择注入模块、按 universal_dit_objective_template 决定训练目标；关闭时 model_type=universal_dit 会直接报错（防止误入未验证路线）。",
+    "whenToUse": "想训练的 DiT 模型不在内置家族列表（SDXL/Anima/Flux/…）里、又有 HuggingFace 格式权重时的实验性路线。",
+    "avoidWhen": "模型已有专属训练类型时永远优先专属路线（默认关闭正是为了防止专属家族误走通用路线）；生产级训练需求（通用路线的功能覆盖与验证深度都低于专属路线）。"
+  },
+  "advanced": {
+    "principle": "把「适配一个新 DiT」拆成可探测的三要素：结构（哪些是 attention/MLP 线性层）、目标（flow/epsilon 等训练目标模板）、输入契约（probe inputs）；用运行时探测代替逐模型手写适配器，换取覆盖面、牺牲专属优化。",
+    "intervention": "trainer_prepare_mixin.py：model_arch=universal_dit 时强制校验本开关；training_capabilities/universal_dit.py:build 读取 enabled/probe_mode/target_policy 组装 profile；universal_dit/runtime.py 按 policy 与 target_modules_json 解析注入点；services/training/prepare_context.py 在路由阶段读取。",
+    "expectedImpact": "解锁任意 DiT 的 LoRA 化训练尝试；显存/速度优化（block swap、编译等）按通用能力集提供，弱于专属家族。",
+    "tradeoffs": "探测失败或目标模板不匹配时训练目标可能错误；allow_remote_download/trust_remote_code 等配套开关有安全含义，默认都关。",
+    "codePath": "trainer_prepare_mixin.py：universal_dit_enabled 强制校验；training_capabilities/universal_dit.py：profile 组装；universal_dit/runtime.py：目标模块解析"
+  },
+  "relatedConfigs": [
+    "universal_dit_probe_mode",
+    "universal_dit_target_policy",
+    "universal_dit_objective_template",
+    "universal_dit_target_modules_json"
+  ]
+}

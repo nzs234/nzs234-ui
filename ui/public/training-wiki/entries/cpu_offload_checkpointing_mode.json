@@ -1,0 +1,26 @@
+{
+  "key": "cpu_offload_checkpointing_mode",
+  "title": "CPU Offload Checkpointing 模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "梯度检查点与 CPU offload 结合模式（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "none": "检查点和 CPU offload 不绑。",
+      "auto": "自动决要不要绑。",
+      "full": "绑死，GPU 最省，反向加拷贝最慢。"
+    }
+  },
+  "advanced": {
+    "principle": "梯度检查点与 CPU offload 结合模式：none=不结合；auto=自动选择；full=完整 offload。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

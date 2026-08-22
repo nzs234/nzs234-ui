@@ -1,0 +1,20 @@
+{
+  "key": "immiscible_metric",
+  "title": "Immiscible 度量",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "Immiscible 度量 可选值说明。",
+    "effect": "切换枚举会改变对应子系统行为。",
+    "whenToUse": "按任务需要选择。",
+    "avoidWhen": "不确定时保持默认。",
+    "optionDescriptions": {
+      "l2": "L2 距离。",
+      "cosine": "余弦。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

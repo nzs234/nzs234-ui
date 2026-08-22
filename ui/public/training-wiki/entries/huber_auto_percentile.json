@@ -1,0 +1,33 @@
+{
+  "key": "huber_auto_percentile",
+  "title": "Huber auto 调度分位数",
+  "category": "正则 / Loss",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "huber_schedule=auto 时，用当前 batch 逐样本残差 L2 范数的该分位数动态估计 Huber 阈值 delta。",
+    "effect": "每步从 batch 内实测残差分布取 p 分位（默认 0.9）作为阈值：残差排在前 10% 的样本进入 L1 区被压制，其余样本保持 L2 学习。阈值有下限 huber_c × huber_scale 兜底。",
+    "whenToUse": "不想手调 huber_c 的绝对值、希望阈值随训练进程和数据分布自适应时；离群样本比例大致稳定的数据集。",
+    "avoidWhen": "huber_schedule 不是 auto 时无效；batch size 很小（1~2）时分位数估计噪声大，阈值会步间剧烈跳动。"
+  },
+  "advanced": {
+    "principle": "固定阈值在训练前期（残差普遍大）和后期（残差普遍小）语义不一致；按分位数定义阈值等于固定「压制残差最大的 (1-p) 比例样本」，让鲁棒化强度与训练阶段解耦。",
+    "intervention": "training_loop_loss_mixin.py：schedule=auto 分支计算 per_sample = 残差.flatten(1).norm(dim=1)，torch.quantile(per_sample, huber_auto_percentile) 后 clamp 到下限再乘 scale，扩展成逐样本 delta。",
+    "expectedImpact": "训练全程保持稳定比例的离群压制，loss 曲线尖峰显著减少且不需要针对模型族重调绝对阈值。",
+    "tradeoffs": "阈值依赖 batch 统计，梯度对 batch 组成更敏感；p 调低（如 0.7）会压制过多正常样本，拖慢收敛。",
+    "codePath": "training_loop_loss_mixin.py——torch.quantile(per_sample, huber_auto_percentile).clamp(min=huber_c*huber_scale)*huber_scale"
+  },
+  "relatedConfigs": [
+    "huber_schedule",
+    "huber_c",
+    "huber_scale",
+    "train_batch_size"
+  ]
+}

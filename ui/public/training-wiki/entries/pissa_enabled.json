@@ -1,0 +1,21 @@
+{
+  "key": "pissa_enabled",
+  "title": "PiSSA 后端 master（pissa_enabled）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "后端 injector 主开关。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "后端 injector 主开关。通常由 pissa_init / adapter_init_strategy=pissa 自动置真；也可单独开。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

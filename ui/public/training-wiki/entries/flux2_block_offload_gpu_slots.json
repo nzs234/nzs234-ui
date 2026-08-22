@@ -1,0 +1,21 @@
+{
+  "key": "flux2_block_offload_gpu_slots",
+  "title": "Block Offload GPU 槽位",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "同时保留在 GPU 的 block 数。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "同时保留在 GPU 的 block 数。默认 4；16G 以下可降到 3。slots=6 在 16G@1024 易 OOM。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

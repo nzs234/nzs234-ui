@@ -1,0 +1,31 @@
+{
+  "key": "mixed_resolution_strategy",
+  "title": "混合分辨率策略",
+  "category": "训练参数",
+  "appliesTo": [
+    "anima-lora",
+    "sdxl-lora"
+  ],
+  "layers": [
+    "数据层"
+  ],
+  "standard": {
+    "summary": "enable_mixed_resolution_training 开启时的分辨率组织方式：staged（默认）按 epoch 阶段整体切换分辨率；within_epoch_free_fit 在同一 epoch 内让不同样本使用不同分辨率档位。",
+    "effect": "staged 沿用阶段分辨率占比（staged_resolution_ratio_*）按训练进度切档；within_epoch_free_fit 走 Anima free-fit 路线，每个样本从多个分辨率 profile 中分配（数量由 mixed_resolution_profiles_per_sample 决定），且要求缓存 resize_mode=freefit。",
+    "whenToUse": "想用「低分辨率先学结构、高分辨率后学细节」的课程式训练用 staged；数据源分辨率差异大、想避免统一缩放损失时用 within_epoch_free_fit（Anima cached 路线）。",
+    "avoidWhen": "enable_mixed_resolution_training 关闭时无效；within_epoch_free_fit 有前置校验（策略、freefit 缓存、至少两个活跃 profile），条件不满足会直接报错而非静默降级。"
+  },
+  "advanced": {
+    "principle": "staged 是时间维度的分辨率课程（不同阶段不同档）；free-fit 是样本维度的混合（同 batch 周期内并存多档），后者保留原始构图信息、避免长图被强裁，需要缓存构建阶段就按 freefit 模式生成多 profile latent。",
+    "intervention": "anima_free_fit_epoch.py:normalize_mixed_resolution_strategy 严格校验取值（非法直接抛错）；trainer_config_runtime_profile_mixin.py 判定 staged 生效条件；trainer_anima_free_fit_epoch_runtime.py 把策略写入缓存 manifest。",
+    "expectedImpact": "staged：前期吞吐高、细节在后期补足；free-fit：多分辨率数据利用率高，桶分布更均匀。",
+    "tradeoffs": "free-fit 依赖 Anima cached 训练链路且缓存需重建为 freefit 模式；两种策略的显存峰值都由最大档位决定。",
+    "codePath": "anima_free_fit_epoch.py:normalize_mixed_resolution_strategy / 前置校验；trainer_config_runtime_profile_mixin.py:_anima_staged_resolution_enabled；configs_dataset.py 定义"
+  },
+  "relatedConfigs": [
+    "enable_mixed_resolution_training",
+    "mixed_resolution_profiles_per_sample",
+    "staged_resolution_ratio_1024",
+    "anima_cache_resize_mode"
+  ]
+}

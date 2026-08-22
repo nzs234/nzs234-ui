@@ -1,0 +1,42 @@
+{
+  "key": "advanced_optimizer_strategy",
+  "title": "进阶优化器策略",
+  "category": "优化器 / 进阶",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora",
+    "finetune"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "对优化器行为做进阶调整，包括 LoRA+（对 A/B 矩阵用不同学习率）和 RSLoRA 等。",
+    "effect": "lora_plus 对 LoRA 的 up_proj 使用更高学习率，加速收敛；rs_lora 在 rank-stabilized 模式下调整缩放。",
+    "whenToUse": "auto 让系统自动判断最适合的策略；lora_plus 在 LoRA 训练中通常有 5-15% 提升。",
+    "avoidWhen": "使用非 LoRA 训练（finetune）时自动跳过；lulynx SVD 梯度过滤不会把基础优化器状态降为低秩形状。",
+    "optionDescriptions": {
+      "auto": "不动你已有设置。",
+      "off": "高级策略关掉。",
+      "profile_only": "只记 profile，不改参数组。",
+      "lora_plus": "LoRA+，A/B 学习率可以分开。",
+      "rs_lora": "RS-LoRA 那套缩放/初始化。"
+    }
+  },
+  "advanced": {
+    "principle": "LoRA+ 发现 LoRA 的 down_proj（A 矩阵）和 up_proj（B 矩阵）对梯度的敏感度不同，对 B 使用 2-16x 的学习率可以加速。RSLoRA 调整 alpha/dim 缩放随 rank 变化。lulynx SVD 梯度过滤先做双侧低秩投影，再重构回全形状梯度；它是工程近似，不是 GaLore 的低秩 optimizer-state 维护。",
+    "intervention": "修改 optimizer 构造时的参数分组，对不同 param group 设置不同学习率。",
+    "expectedImpact": "LoRA+ 在不增加显存的情况下加速收敛；RSLoRA 在不同 rank 下表现更一致。",
+    "tradeoffs": "lulynx SVD 梯度过滤保留全尺寸基础优化器状态，主要改变梯度方向/噪声；需要定期 SVD 重算基，不能宣称 GaLore 的 optimizer-state 显存节省。"
+  },
+  "relatedConfigs": [
+    "optimizer_type",
+    "learning_rate",
+    "network_dim",
+    "lulynx_svd_gradient_filter_enabled",
+    "lulynx_svd_gradient_filter_rank",
+    "lulynx_svd_gradient_filter_update_interval"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "key": "warmup_ratio",
+  "title": "预热比例",
+  "category": "优化器 / 学习率",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora",
+    "finetune"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "按总训练步数的比例自动计算学习率预热（warmup）步数，替代手填固定的 lr_warmup_steps。",
+    "effect": "调度器创建时按 warmup_steps = 总步数 × warmup_ratio 计算，并被夹在 [0, 总步数-1] 内。例如总共 2000 步、比例 0.05，则前 100 步学习率从 0 线性爬升到目标值。",
+    "whenToUse": "总步数经常变（改 epoch、改数据量）又想保持预热占比稳定时；不确定 warmup 步数该填多少时，0.03~0.1 是常见区间。",
+    "avoidWhen": "已经明确用 lr_warmup_steps 指定了固定步数时不要两个都设，调度器优先按比例解析，固定步数会被覆盖；极短训练（几十步）预热意义不大。"
+  },
+  "advanced": {
+    "principle": "warmup 阶段学习率从 0 线性上升，避免训练初期梯度统计（如 Adam 二阶矩）尚未稳定时大步长更新破坏预训练权重。按比例表达可让预热长度随总步数自动伸缩。",
+    "intervention": "调度器工厂在构造 LR scheduler 前计算：warmup_steps = max(min(int(total_steps × warmup_ratio), total_steps - 1), 0)，随后传给所选调度器（cosine、linear 等）。",
+    "expectedImpact": "训练前期 loss 曲线更平滑，减少初期发散或「先坏后好」现象；对最终质量影响温和。",
+    "tradeoffs": "预热占比过大（>0.2）会浪费有效训练步数；过小则失去保护作用。与 Prodigy 等自适应学习率优化器同用时预热收益减弱。",
+    "codePath": "trainer_scheduler_factory.py:_create_scheduler——warmup_steps = int(total_steps * config.warmup_ratio) 后夹取范围"
+  },
+  "relatedConfigs": [
+    "lr_warmup_steps",
+    "lr_scheduler",
+    "learning_rate"
+  ]
+}

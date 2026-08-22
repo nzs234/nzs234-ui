@@ -1,0 +1,21 @@
+{
+  "key": "dora_mode",
+  "title": "DoRA 模式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "DoRA 模式：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "full": "方向和幅度都训。",
+      "split": "方向幅度分开存/更，方便拆开看。",
+      "merged": "合并成更像普通权重的样子，导出好说话。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

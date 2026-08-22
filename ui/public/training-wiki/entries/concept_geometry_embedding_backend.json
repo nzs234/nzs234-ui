@@ -1,0 +1,19 @@
+{
+  "key": "concept_geometry_embedding_backend",
+  "title": "Embedding 后端",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "Concept Geometry 的文本 embedding 当前使用 PyTorch 后端。",
+    "effect": "该字段保留在配置中用于兼容，产品界面仅提供已实现的 PyTorch 路径。",
+    "whenToUse": "启用语义 embedding 增强时保持默认值。",
+    "avoidWhen": "不要在旧配置中手工指定尚未实现的 ONNX 后端。",
+    "optionDescriptions": {
+      "pytorch": "使用 PyTorch 计算 embedding。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

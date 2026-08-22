@@ -1,0 +1,30 @@
+{
+  "key": "tome_enabled",
+  "title": "ToMe 训练时令牌合并",
+  "category": "性能 / 加速",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "layers": [
+    "前向层"
+  ],
+  "standard": {
+    "summary": "训练前向中对视觉 token 做 ToMe（Token Merging）合并，减少 attention 参与的 token 数量以降低计算开销。实验性，默认关闭。",
+    "effect": "开启后按 tome_ratio 在每次前向合并相似 token；关闭时不构建任何 seam，前向与基线逐位一致。不支持的模型族会告警并保持关闭（reason=tome_unsupported_family）。",
+    "whenToUse": "高分辨率训练中 attention 计算成为速度瓶颈、且可以接受轻微质量损失换吞吐的场景。",
+    "avoidWhen": "对细节保真要求高的训练（合并 token 本质是有损压缩）；模型族不在支持列表时开了也不生效；与其它改变 token 序列的功能（如 token downsampling）叠加时行为难预期。"
+  },
+  "advanced": {
+    "principle": "ToMe（Bolya et al.）基于相邻 token 的相似度做双向匹配合并，attention 在缩短后的序列上计算，随后再展开。计算量随合并比例近似线性下降，而扩散模型的特征冗余使小比例合并的质量损失可控。",
+    "intervention": "training_loop.py:_get_tome_seam 按模型族校验后调用 build_tome_seam(enabled=True, ratio=tome_ratio)；tome_runtime.py 用 ContextVar 在每次模型前向的作用域内发布 seam，前向结束自动复位；被运行时阻断时逐名告警并按未合并执行。",
+    "expectedImpact": "attention 阶段耗时随 ratio 下降；质量随 ratio 上升逐渐受损，建议从 0.3~0.5 起测。",
+    "tradeoffs": "训练与推理的 token 拓扑不一致可能引入轻微分布偏移；parity 红线保证默认关闭时零影响。",
+    "codePath": "training_loop.py:_get_tome_seam；tome_runtime.py:build_tome_seam（默认关不构建 seam，前向位级一致）"
+  },
+  "relatedConfigs": [
+    "tome_ratio",
+    "attention_backend",
+    "acceleration_profile"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "key": "fid_real_image_dir",
+  "title": "FID 真实图像目录",
+  "category": "质量评估",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "评估层"
+  ],
+  "standard": {
+    "summary": "FID / LPIPS 指标使用的真实参照图片目录。留空时这两个指标会被跳过（日志告警），不会伪造分数。",
+    "effect": "FID 用该目录的真实分布与生成分布计算距离；LPIPS 按文件名把真实图与生成图一一配对计算感知距离。目录缺失或为空 → 对应指标 skip。",
+    "whenToUse": "评估指标包含 fid 或 lpips 时必填；通常指向训练集或同分布的高质量参照集。",
+    "avoidWhen": "只用 clip_score 等无参照指标时不需要；参照集与训练目标分布不一致时 FID 数值失去解释力。"
+  },
+  "advanced": {
+    "principle": "FID 是两组图像在 Inception 特征空间的 Fréchet 距离，需要足够数量的真实样本估计协方差（几十张以上才有统计意义）；LPIPS 是逐对感知距离，依赖文件名匹配建立真实-生成对应关系。",
+    "intervention": "trainer_quality_runtime.py 读入；quality/quality_evaluation_metrics.py：_match_real_images 做真实图匹配，FID/LPIPS 分支在目录为空时 warning + return None（上层记 skipped）。",
+    "expectedImpact": "补齐参照后 FID/LPIPS 可用；评估耗时增加（真实集特征提取）。",
+    "tradeoffs": "小参照集（<50 张）的 FID 波动大；LPIPS 的文件名匹配约定要求生成侧命名与真实侧对应。",
+    "codePath": "quality/quality_evaluation_metrics.py：fid_real_image_dir 判空跳过 + _match_real_images；trainer_quality_runtime.py 读取"
+  },
+  "relatedConfigs": [
+    "quality_evaluation_metrics",
+    "quality_evaluation_enabled",
+    "quality_evaluation_num_samples"
+  ]
+}

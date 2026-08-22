@@ -1,0 +1,28 @@
+{
+  "key": "zimage_depth_expansion_train_scope",
+  "title": "Z-Image 扩层训练范围",
+  "category": "Z-Image / 高级",
+  "appliesTo": [
+    "zimage-finetune"
+  ],
+  "layers": [
+    "模型结构层"
+  ],
+  "standard": {
+    "summary": "控制扩层后哪些参数参与训练：new_layers 只训练新增层（标准 DUS 配方）；new_layers_periphery 额外训练外围模块；all 训练全部参数。",
+    "effect": "new_layers：冻结原有层，只有新增层可训练；new_layers_periphery：在此基础上解冻 all_x_embedder、all_final_layer、t_embedder、cap_embedder；all：整个 DiT 参与训练（成本最高）。",
+    "whenToUse": "默认 new_layers 最稳；需要输入/输出适配一起动时用 new_layers_periphery；数据充足且资源允许时才考虑 all。",
+    "avoidWhen": "all 范围显存开销最大且容易破坏原模型能力，小数据集慎用。"
+  },
+  "advanced": {
+    "principle": "冻结源层保持原有能力不漂移，新增层从恒等起点学习增量容量；外围模块解冻用于适配新深度下的输入输出分布。",
+    "intervention": "zimage/zimage_depth_expansion_runtime.py：apply_train_scope 按元数据设置 requires_grad 并输出 trainable_ratio。",
+    "expectedImpact": "训练范围越大可塑性越强、成本与遗忘风险也越高。",
+    "tradeoffs": "new_layers 最省显存但容量增量有限；all 等价于扩层后全参微调。",
+    "codePath": "zimage/zimage_depth_expansion_runtime.py"
+  },
+  "relatedConfigs": [
+    "zimage_depth_expansion_enabled",
+    "zimage_depth_expansion_target_layers"
+  ]
+}

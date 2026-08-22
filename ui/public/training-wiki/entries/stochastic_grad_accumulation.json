@@ -1,0 +1,34 @@
+{
+  "key": "stochastic_grad_accumulation",
+  "title": "梯度累加随机舍入",
+  "category": "优化器 / 进阶",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora",
+    "finetune"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "在梯度累加的 microbatch 阶段，对 bf16/fp16 梯度做随机舍入后再累加，消除低精度累加的量化偏差。",
+    "effect": "仅当 gradient_accumulation_steps > 1 且当前 microbatch 不是同步步时生效：对梯度张量执行 stochastic_round_，让小于半个 ulp 的增量以概率方式保留而非被恒定截断。",
+    "whenToUse": "混合精度（bf16/fp16）下用较大的梯度累加步数（如 8~32）模拟大 batch 时；发现累加后有效梯度偏小、收敛比等效大 batch 慢时。",
+    "avoidWhen": "gradient_accumulation_steps = 1 时无效；fp32 梯度不需要；与 stochastic_rounding（优化器参数更新侧的随机舍入）是两个独立位点，不要混淆。"
+  },
+  "advanced": {
+    "principle": "bf16 只有 8 位尾数，多次小梯度累加时低于表示精度的部分会被系统性舍掉（向偶舍入是有偏的截断）。随机舍入把舍入方向变成与残差成比例的伯努利抽样，期望值无偏，累加 N 次后总和的期望等于精确和。",
+    "intervention": "训练循环的 microbatch 累加路径：非 sync_gradients 的步（即中间累加步）对每个参数的 grad 调用 stochastic_rounding.stochastic_round_，主循环与 Anima step_pipeline 两条路线都接线。",
+    "expectedImpact": "大累加步数下的有效梯度更接近 fp32 累加，收敛轨迹与等效大 batch 更一致；单步开销略增（一次逐元素随机化）。",
+    "tradeoffs": "引入额外随机性，同 seed 复现的位级一致性会被打破；累加步数小（2~4）时收益有限。",
+    "codePath": "training_loop_step_mixin.py 与 step_pipeline/anima_node_fns.py——if stochastic_grad_accumulation and gradient_accumulation_steps > 1 且非同步步时调用 stochastic_rounding.stochastic_round_"
+  },
+  "relatedConfigs": [
+    "stochastic_rounding",
+    "gradient_accumulation_steps",
+    "gradient_accumulation_mode",
+    "mixed_precision"
+  ]
+}

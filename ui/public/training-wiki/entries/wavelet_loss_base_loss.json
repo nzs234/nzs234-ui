@@ -1,0 +1,20 @@
+{
+  "key": "wavelet_loss_base_loss",
+  "title": "Wavelet 基础损失",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "Wavelet 基础损失 的可选值说明（自动补全骨架，可继续润色）。",
+    "effect": "切换不同枚举值会改变训练行为或资源占用，详见各子项。",
+    "whenToUse": "按任务与硬件选择；不确定时用产品默认。",
+    "avoidWhen": "未理解子项含义时不要盲选实验/激进档。",
+    "optionDescriptions": {
+      "l2": "小波底下用 L2。",
+      "l1": "小波底下用 L1。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

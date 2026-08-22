@@ -1,0 +1,21 @@
+{
+  "key": "lulynx_latent_feature_distillation_layers",
+  "title": "特征层列表",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "使用哪些 DiT 层特征，逗号分隔 (如 \"4,8,12\")。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "使用哪些 DiT 层特征，逗号分隔 (如 \"4,8,12\")。需与 Multi-Scale 层对齐。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "layered_alpha_enabled",
+  "title": "分层 Alpha（按模块类型）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "开启后可按模块类型（自注意力/交叉注意力/MLP/调制/LLM Adapter）分别设置 LoRA alpha，而不是全局统一。留空的组仍使用上方的全局 Network Alpha。关闭 = 所有组统一 = 传统 LoRA。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

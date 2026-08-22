@@ -1,0 +1,25 @@
+{
+  "key": "vortex_low_vram_protection_mode",
+  "title": "低显存保护模式（vortex_low_vram_protection_mode）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "observe 只记录低显存信号",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "observe": "低显存信号只记日志。",
+      "protect": "触发了就偏向保守预取和缓存预算，保活优先，吞吐会掉。"
+    }
+  },
+  "advanced": {
+    "principle": "observe 只记录低显存信号；protect 会在触发阈值时偏向保守 prefetch 和缓存预算。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

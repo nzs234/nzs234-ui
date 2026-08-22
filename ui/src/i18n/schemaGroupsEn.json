@@ -1,0 +1,11 @@
+{
+  "LoRA": "LoRA",
+  "Edit 模型": "Edit models",
+  "概念编辑": "Concept edit",
+  "LoRA 概念编辑": "LoRA concept edit",
+  "实验训练": "Experimental",
+  "其他模型训练": "Other model training",
+  "Finetune": "Finetune",
+  "ControlNet": "ControlNet",
+  "Textual Inversion": "Textual Inversion"
+}

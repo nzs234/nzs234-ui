@@ -1,0 +1,35 @@
+{
+  "key": "edit_training_dataset",
+  "title": "Edit Training Dataset",
+  "category": "Edit-LoRA / 数据集",
+  "appliesTo": [
+    "anima-lora",
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "layers": [
+    "数据集层",
+    "Edit runtime"
+  ],
+  "standard": {
+    "summary": "实验性编辑训练使用成对数据：source 是原图或参考 latent，target 是编辑后的监督目标，instruction 描述编辑动作。",
+    "effect": "本地 paired edit dataset 推荐包含 source/、target/、可选 masks/、可选 captions/ 和 metadata.jsonl。source 与 target 通过相同文件名 stem 配对，instruction 可来自 metadata.jsonl 或 captions/*.txt。",
+    "whenToUse": "想训练 Edit-LoRA、edit adapter 或蒸馏小型 edit 路径时。适合先做小规模 paired fixture，验证局部改色、材质替换、风格迁移或背景替换。",
+    "avoidWhen": "只有普通单图 caption 数据时先不要开启。没有 source/target 配对会导致编辑目标不明确。"
+  },
+  "advanced": {
+    "principle": "edit_dataset_manifest.py 只构建和验证 manifest，不解码图像、不调用生成器。manifest sample 会转换为 normalize_edit_batch() 可消费的 batch dict，后续由模型族 adapter 决定 source/target encode 和 forward 表面。",
+    "intervention": "数据集合同层提供 source_image_path、target_image_path、instruction、edit_mask、source_prompt、target_prompt 和 metadata。",
+    "expectedImpact": "让不同模型族共享同一种编辑数据描述，避免为 Anima、SDXL、SD15 分别发明数据格式。",
+    "tradeoffs": "manifest 只证明配对和字段可读，真实质量仍依赖 paired 数据、mask 质量和模型先验。",
+    "codePath": "core/lulynx_trainer/edit_dataset_manifest.py -> edit_dataset_contract.py"
+  },
+  "relatedConfigs": [
+    "edit_training_enabled",
+    "edit_training_mode",
+    "edit_source_path_policy",
+    "edit_target_path_policy",
+    "edit_mask_policy",
+    "train_data_dir"
+  ]
+}

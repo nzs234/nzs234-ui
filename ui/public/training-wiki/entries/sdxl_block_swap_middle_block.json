@@ -1,0 +1,21 @@
+{
+  "key": "sdxl_block_swap_middle_block",
+  "title": "交换 Middle Block",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "推荐第二步尝试。交换 U-Net middle block",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "推荐第二步尝试。交换 U-Net middle block，通常仍比较划算，但依然会拖慢训练",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

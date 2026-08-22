@@ -1,0 +1,21 @@
+{
+  "key": "nl_dropout_rate",
+  "title": "NL 描述丢弃概率",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "对结构化 JSON caption 中的 NL",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "对结构化 JSON caption 中的 NL（自然语言描述）部分整块丢弃的概率，与 tag dropout 独立。0 = 不丢弃",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

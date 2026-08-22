@@ -1,0 +1,30 @@
+{
+  "key": "anima_model_prediction_type",
+  "title": "Anima 预测类型",
+  "category": "Anima / 配置",
+  "appliesTo": [
+    "anima-lora",
+    "anima-finetune"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "Anima DiT 训练目标的形式：velocity（Flow 默认）、noise、epsilon、sample。决定模型输出被解释和监督的方式。",
+    "effect": "训练损失的 target 构造、以及各类辅助损失（频域损失、感知锚、LEAP 轨迹、clean-latent 恢复）中从预测反推 x0 的公式都随该值切换。默认 velocity 与 Anima 的 flow matching 预训练一致。",
+    "whenToUse": "常规 Anima 训练保持 velocity 不要动；只有在做研究性实验（对比不同参数化的收敛特性）或适配特殊 checkpoint 时才改。",
+    "avoidWhen": "与底模预训练参数化不一致时会从第一步就学错目标——loss 看似下降但生成崩坏；不确定时永远用默认 velocity。"
+  },
+  "advanced": {
+    "principle": "同一扩散/flow 过程可以用不同变量参数化：epsilon（预测噪声）、sample/x0（预测干净样本）、velocity（预测 v = dx/dt 的流速度）。参数化决定网络输出的语义与 loss target 的换算公式，必须与预训练时使用的参数化匹配。",
+    "intervention": "trainer_execution_loop_builder.py 读取（默认 velocity）传入训练循环；training_step_noise_timestep_handler.py 按类型构造 target；下游多个模块（training_step_loss_execution_frequency.py、latent_perceptual_anchor.py、clean_latent_xpred.py、leap_trajectory_runtime.py 等）用它执行 pred→x0 的逆变换。",
+    "expectedImpact": "正确匹配时无感；错配时训练目标系统性错误，无法通过调学习率挽救。",
+    "tradeoffs": "该键影响面广（所有依赖 x0 恢复的辅助损失），改动等于换训练范式；velocity 之外的取值缺少 Anima 官方权重支撑。",
+    "codePath": "trainer_execution_loop_builder.py：anima_model_prediction_type 注入；training_step_noise_timestep_handler.py：target 构造；configs_anima.py 定义（velocity/noise/epsilon/sample）"
+  },
+  "relatedConfigs": [
+    "anima_weighting_scheme",
+    "anima_faithful_forward",
+    "v_parameterization"
+  ]
+}

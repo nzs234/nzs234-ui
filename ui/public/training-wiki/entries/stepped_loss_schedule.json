@@ -1,0 +1,21 @@
+{
+  "key": "stepped_loss_schedule",
+  "title": "分步损失 JSON",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "JSON 数组，例如",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "JSON 数组，例如 [{\"step\":0,\"loss_type\":\"l2\",\"weight\":1.0},{\"step\":500,\"loss_type\":\"huber\",\"weight\":0.8}]。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

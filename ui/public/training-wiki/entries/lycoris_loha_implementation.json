@@ -1,0 +1,37 @@
+{
+  "key": "lycoris_loha_implementation",
+  "title": "LoHa 实现方案",
+  "category": "LoRA / LyCORIS",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora"
+  ],
+  "layers": [
+    "适配器层"
+  ],
+  "standard": {
+    "summary": "选择 LoHa 的数学实现。默认标准 LyCORIS LoHa；Lulynx 简化 LoHa 用于兼容旧训练和旧权重。",
+    "effect": "标准实现生成生态通用的四个 Hada 因子；简化实现保留 Lulynx 历史公式和旧导出行为。",
+    "whenToUse": "新训练使用标准 LyCORIS LoHa。只有继续旧 Lulynx 简化 LoHa 训练或加载旧权重时才选择简化实现。",
+    "avoidWhen": "不要用简化实现训练准备交给第三方 LoHa 加载器直接使用的新模型。",
+    "optionDescriptions": {
+      "lycoris_standard": "标准 LyCORIS LoHa，默认且推荐，与主流 LoHa 权重结构一致。",
+      "lulynx_simplified": "Lulynx 历史简化实现，只用于旧训练和旧权重兼容。"
+    }
+  },
+  "advanced": {
+    "principle": "标准实现使用 ΔW=(W1a@W1b)⊙(W2a@W2b)·(alpha/rank)。简化实现使用 ΔW=(W2a⊙W2b)^T@(W1a⊙W1b)·(alpha/rank)。",
+    "intervention": "仅在 network_module 为 LyCORIS 且 lycoris_algo=loha 时生效。",
+    "expectedImpact": "标准实现提高与 LyCORIS、ComfyUI、Musubi 等生态的 checkpoint 兼容性；简化实现保持历史结果可继续训练。",
+    "tradeoffs": "两种实现不能静默互读。Lulynx 会依据 metadata 和 tensor shape 识别并拒绝不匹配的运行时。",
+    "codePath": "lycoris_loha.py → LyCORISConfig → LyCORISInjector → checkpoint identity contract"
+  },
+  "relatedConfigs": [
+    "network_module",
+    "lycoris_algo",
+    "network_dim",
+    "network_alpha"
+  ]
+}

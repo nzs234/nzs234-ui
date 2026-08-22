@@ -1,0 +1,21 @@
+{
+  "key": "edit_reference_strength",
+  "title": "参考强度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "源图 latent 对当前 noisy latent",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "源图 latent 对当前 noisy latent 的残差注入强度。建议从 0.20-0.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

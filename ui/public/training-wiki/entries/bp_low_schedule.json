@@ -1,0 +1,25 @@
+{
+  "key": "bp_low_schedule",
+  "title": "BP-low 调度策略",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "step = 阶跃开关（sigma > threshold 直接下采样）（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "step": "阶梯变。",
+      "cosine": "余弦变。"
+    }
+  },
+  "advanced": {
+    "principle": "step = 阶跃开关（sigma > threshold 直接下采样）；cosine = 余弦平滑过渡（更平滑但稍复杂）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

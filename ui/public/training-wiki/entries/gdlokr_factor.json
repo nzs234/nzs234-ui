@@ -1,0 +1,21 @@
+{
+  "key": "gdlokr_factor",
+  "title": "GDLoKr Kronecker 因子",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "共享 Kronecker 因子 (0=自动平衡)。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "共享 Kronecker 因子 (0=自动平衡)。仅在适配器类型选 GDLoKr 时生效。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

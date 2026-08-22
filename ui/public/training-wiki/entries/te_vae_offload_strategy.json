@@ -1,0 +1,26 @@
+{
+  "key": "te_vae_offload_strategy",
+  "title": "TE/VAE Offload 策略",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "phase 为默认训练生命周期策略",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "phase": "按训练阶段卸 TE/VAE。",
+      "aggressive": "卸得更勤，冲低显存，等待会多。",
+      "resident": "TE/VAE 一直占着 GPU，最快也最占。"
+    }
+  },
+  "advanced": {
+    "principle": "phase 为默认训练生命周期策略；aggressive 面向 6GB 低显存目标；resident 保持兼容但显存占用更高",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

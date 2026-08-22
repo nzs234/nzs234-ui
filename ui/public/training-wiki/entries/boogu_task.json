@@ -1,0 +1,25 @@
+{
+  "key": "boogu_task",
+  "title": "任务（boogu_task）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Edit 固定 edit：TI2I system prompt",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "t2i": "文生图，后端默认值。Boogu 基础训练用这一档；Boogu 编辑训练那条路线后端会强制置为 edit，改不动。",
+      "edit": "编辑/TI2I，带参考条件。"
+    }
+  },
+  "advanced": {
+    "principle": "Edit 固定 edit：TI2I system prompt + ref 条件。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

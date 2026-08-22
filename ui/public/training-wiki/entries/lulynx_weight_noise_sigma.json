@@ -1,0 +1,21 @@
+{
+  "key": "lulynx_weight_noise_sigma",
+  "title": "权重噪声 σ",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "噪声强度。relative 时为相对 RMS 倍率",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "噪声强度。relative 时为相对 RMS 倍率；absolute 时为绝对标准差。常用 0.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

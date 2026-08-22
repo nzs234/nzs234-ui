@@ -1,0 +1,26 @@
+{
+  "key": "text_encoder_outputs_cache_disk_format",
+  "title": "文本缓存格式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "文本编码器输出磁盘缓存格式。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "safetensors": "safetensors。",
+      "npz": "npy。",
+      "pt": "pt。"
+    }
+  },
+  "advanced": {
+    "principle": "文本编码器输出磁盘缓存格式。默认 safetensors；若已有旧缓存会自动兼容读取 npz",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

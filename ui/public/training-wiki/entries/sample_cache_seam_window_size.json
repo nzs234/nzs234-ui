@@ -1,0 +1,21 @@
+{
+  "key": "sample_cache_seam_window_size",
+  "title": "Spectrum 窗口大小",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "线性外推用的历史窗口。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "线性外推用的历史窗口。窗口越大跳过越多、越快，但 latent 漂移越大。默认 3。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

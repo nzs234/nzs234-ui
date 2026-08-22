@@ -1,0 +1,27 @@
+{
+  "key": "krea2_training_mode",
+  "title": "训练模式（krea2_training_mode）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Krea2 训练模式",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "de_turbo": "蒸馏纠偏（Turbo 向）。推理步数设定多半还在二十多，不是「几步出片」那套。",
+      "frozen_delta": "底模冻住只训 LoRA，更贴原来的快推味道，能改的幅度也受限。",
+      "sigma_selective": "只在某段 σ 上训，别的段可能弱。",
+      "standard": "普通 RF/常规训，跟 de_turbo 假设不一样。"
+    }
+  },
+  "advanced": {
+    "principle": "Turbo 默认 de_turbo（蒸馏纠偏，推理常需 20-30 步）。Raw 推荐 standard（标准 RF）；若仍选 de_turbo，prepare 会自动落到 standard。frozen_delta：冻底模只训 LoRA（偏保 Turbo 快推）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

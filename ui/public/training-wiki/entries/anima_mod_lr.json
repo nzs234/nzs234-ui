@@ -1,0 +1,21 @@
+{
+  "key": "anima_mod_lr",
+  "title": "Modulation 学习率",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Anima DiT Modulation",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "Anima DiT Modulation（AdaLN）层的独立学习率。0 = 使用全局学习率。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

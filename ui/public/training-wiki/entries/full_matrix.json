@@ -1,0 +1,21 @@
+{
+  "key": "full_matrix",
+  "title": "LoKr Full Matrix（full_matrix）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "LoKr 强制走 full matrix 路线",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "LoKr 强制走 full matrix 路线，避免自动退回到分解矩阵。更吃参数和显存，只建议明确需要时启用。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

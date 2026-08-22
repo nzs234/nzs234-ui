@@ -1,0 +1,21 @@
+{
+  "key": "pattern_loss_high_type",
+  "title": "高频损失类型",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "高频损失类型：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "l2": "高频用 L2，纹理边缘拉得紧，噪点也罚得重。",
+      "l1": "高频 L1，孤立噪点没那么刺。",
+      "huber": "高频 Huber，正常二次、离谱线性。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

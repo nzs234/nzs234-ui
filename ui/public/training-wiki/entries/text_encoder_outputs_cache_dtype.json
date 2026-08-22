@@ -1,0 +1,27 @@
+{
+  "key": "text_encoder_outputs_cache_dtype",
+  "title": "文本缓存精度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "文本编码器输出磁盘缓存保存精度。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "auto": "文本缓存精度自动。",
+      "fp16": "半精度文本缓存。",
+      "bf16": "BF16 文本缓存。",
+      "fp32": "全精度文本缓存，占地方。"
+    }
+  },
+  "advanced": {
+    "principle": "文本编码器输出磁盘缓存保存精度。auto 会尽量保留运行时 dtype；fp16 / bf16 更省空间，fp32 兼容性更高",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "negative_semantic_prompt",
+  "title": "负面语义提示词",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "填写希望 LoRA 少学习或少强化的内容，例如 bad hands",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "填写希望 LoRA 少学习或少强化的内容，例如 bad hands、watermark、extra fingers。留空时不会生效。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

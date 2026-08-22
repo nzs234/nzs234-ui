@@ -1,0 +1,21 @@
+{
+  "key": "execution_profile_id",
+  "title": "执行环境 Profile（高级）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "留空则跟随启动器当前/上次 runtime。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "留空则跟随启动器当前/上次 runtime。仅当需要强制指定非启动环境时填写（如 flash2、sageattention）。填 standard 且启动环境非 standard 时，后端仍会继承启动环境。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

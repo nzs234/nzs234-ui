@@ -1,0 +1,34 @@
+{
+  "key": "fused_optimizer",
+  "title": "FusedAdamW 优化器",
+  "category": "优化器 / 进阶",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora",
+    "finetune"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "把标准 AdamW 的 step 替换为融合实现（FusedAdamW），一次 kernel 完成整批参数更新，减少 kernel launch 开销。",
+    "effect": "优化器构建完成后，若当前优化器可替换，则换成 FusedAdamW；数学行为与 AdamW 等价，速度略快，日志会输出「FusedAdamW optimizer activated」。",
+    "whenToUse": "参数张量很多（LoRA rank 高、训练模块多）且 GPU 端 kernel launch 成为瓶颈时；想要免费的小幅提速时可以直接开。",
+    "avoidWhen": "使用非 AdamW 家族优化器（Prodigy、Lion、CAME 等）时无效；已经用 optimizer_backend 或 TurboCore Triton 优化器接管 step 时不必再开，避免叠加不生效。"
+  },
+  "advanced": {
+    "principle": "常规 AdamW 逐参数张量调用多个小 kernel（乘、加、开方），FusedAdamW 用 multi-tensor / 融合 kernel 把所有参数的动量更新和权重写回合并成少数几次 launch，降低 CPU-GPU 调度开销。",
+    "intervention": "优化器 setup 阶段：fused_optimizer=True 时调用 fused_adamw.maybe_replace_optimizer(optimizer, config) 尝试替换；成功后把 optimizer backend profile 标记为 fused_optimizer_legacy / lulynx_fused。",
+    "expectedImpact": "step 阶段耗时下降（通常几个百分点），对 loss 曲线和最终质量无影响（数值等价路径）。",
+    "tradeoffs": "这是旧式布尔开关；更细的档位控制建议用 optimizer_backend。替换只对 AdamW 系生效，其他优化器静默保持原样。",
+    "codePath": "trainer_execution_optimizer_setup.py——getattr(config, 'fused_optimizer') 后调用 fused_adamw.maybe_replace_optimizer"
+  },
+  "relatedConfigs": [
+    "optimizer_backend",
+    "blockwise_fused_optimizers",
+    "turbocore_optimizer_mode",
+    "stochastic_rounding"
+  ]
+}

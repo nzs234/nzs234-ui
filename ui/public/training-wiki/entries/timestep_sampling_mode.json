@@ -1,0 +1,26 @@
+{
+  "key": "timestep_sampling_mode",
+  "title": "时间步采样模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "disabled=全范围均匀采样(默认，传统训练)（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "disabled": "全范围正常采，啥噪声段都覆盖。",
+      "simple": "掐在你设的 t 区间里，区间越窄越专。",
+      "advanced": "分段自己定权重，高噪/低噪可以故意偏科。"
+    }
+  },
+  "advanced": {
+    "principle": "disabled=全范围均匀采样(默认，传统训练)；simple=限制到指定范围；advanced=自定义分段权重采样。用途：风格 LoRA 可集中训练高噪声阶段(500-1000)，细节修复 LoRA 可集中训练低噪声阶段(0-300)。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

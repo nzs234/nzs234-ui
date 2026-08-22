@@ -1,0 +1,29 @@
+{
+  "key": "h3_int8_gemm_mode",
+  "title": "H3 INT8 GEMM 模式",
+  "category": "性能 / 内核",
+  "appliesTo": [
+    "minimax-h3-lora"
+  ],
+  "layers": [
+    "前向层"
+  ],
+  "standard": {
+    "summary": "H3 冻结主干矩阵乘的 INT8 执行模式。oracle（默认）是速度与数值的平衡点；w8a16 可再省约 1.55GB reserved 显存，但实测慢约 46%。",
+    "effect": "决定 INT8 权重与激活的组合方式与 kernel 选择；取值在加载时归一化（连字符转下划线），非法值报错。LoRA 参数不受影响（见 h3_preserve_lora_master_dtype）。",
+    "whenToUse": "默认 oracle；显存被 reserved 卡死、宁可慢一半也要挤出 1.5GB 时切 w8a16。",
+    "avoidWhen": "追求吞吐时不要选 w8a16；对数值敏感的对照实验建议固定一种模式全程使用。"
+  },
+  "advanced": {
+    "principle": "INT8 GEMM 把冻结主干的权重（W8）与可选的激活（A8/A16）量化后用整数核计算：W8A8 快但激活量化误差大，W8A16 数值好且省激活显存但当前 kernel 慢；oracle 模式按层特征选择安全的组合。",
+    "intervention": "minimax_h3/loader.py：normalize_int8_gemm_mode(config.h3_int8_gemm_mode) 后传入模型构建；configs_h3.py：取值集合校验。",
+    "expectedImpact": "oracle：接近 BF16 的质量与最优速度；w8a16：-1.55GB reserved、约 -46% 吞吐（本机实测）。",
+    "tradeoffs": "量化 GEMM 的数值特征与 BF16 不同，切换模式后 loss 曲线不可直接对比。",
+    "codePath": "minimax_h3/loader.py：normalize_int8_gemm_mode + int8_gemm_mode 传参；configs_h3.py 校验"
+  },
+  "relatedConfigs": [
+    "h3_preserve_lora_master_dtype",
+    "h3_blocks_to_swap",
+    "mixed_precision"
+  ]
+}

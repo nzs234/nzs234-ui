@@ -1,0 +1,27 @@
+{
+  "key": "compile_inductor_tuning",
+  "title": "Inductor 融合调优",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "torch.compile inductor 融合与自动调优策略",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "off": "inductor 默认不动。",
+      "epilogue": "点算尽量融进 matmul 尾巴。",
+      "max_autotune": "多 benchmark 几次选 kernel，第一次很久。",
+      "aggressive": "融合和调优再冲一档。"
+    }
+  },
+  "advanced": {
+    "principle": "调整 torch.compile inductor 的算子融合与自动调优策略。off=不改 inductor 默认；epilogue=保证 epilogue fusion（pointwise 融入 matmul 尾部，现代 torch 已默认但此项明确锁定）；max_autotune=额外 benchmark 选最优 GEMM kernel（首次编译变慢，稳态提速）；aggressive=再加 coordinate descent 搜索（编译最慢，稳态最优）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

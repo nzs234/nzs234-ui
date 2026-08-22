@@ -1,0 +1,21 @@
+{
+  "key": "cached_dataloader_auto_policy",
+  "title": "缓存 DataLoader 自动策略",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "缓存路线自动调 workers/prefetch",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "缓存路线自动调 workers/prefetch/pin_memory。默认开启。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,20 @@
+{
+  "key": "pissa_export_mode",
+  "title": "PiSSA 导出模式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "PiSSA 导出模式 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "LoRA无损兼容导出": "尽量无损收成能挂原底的 LoRA。",
+      "LoRA快速近似导出": "近似快收，精度可能差一点。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

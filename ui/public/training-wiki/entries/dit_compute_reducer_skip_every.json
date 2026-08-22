@@ -1,0 +1,21 @@
+{
+  "key": "dit_compute_reducer_skip_every",
+  "title": "固定跳过间隔",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "每 N 个候选 block 跳过 1 个。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "每 N 个候选 block 跳过 1 个。0 表示按比例自动推导；大于 0 时优先于上方比例。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

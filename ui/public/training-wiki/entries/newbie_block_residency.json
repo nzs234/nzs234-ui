@@ -1,0 +1,25 @@
+{
+  "key": "newbie_block_residency",
+  "title": "Newbie Block Offload（newbie_block_residency）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "控制原生 Newbie 冻结 DiT 权重的驻留策略。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "resident": "冻结权重常驻 GPU。",
+      "block_cpu_pinned": "CPU pinned 流式，显存省，最好配 checkpoint。"
+    }
+  },
+  "advanced": {
+    "principle": "控制原生 Newbie 冻结 DiT 权重的驻留策略。Block CPU pinned 牺牲速度换更少显存使用量，1024/4096-token 训练需要配合 DiT Block Checkpointing。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

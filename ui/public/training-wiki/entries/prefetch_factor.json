@@ -1,0 +1,21 @@
+{
+  "key": "prefetch_factor",
+  "title": "DataLoader 预取批次",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "DataLoader 预取的 batch 数量。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "DataLoader 预取的 batch 数量。默认 2 是经过测试的最佳值（平衡内存与吞吐）。增大可减少 GPU 等待数据的时间，但会占用更多内存。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

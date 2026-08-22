@@ -1,0 +1,21 @@
+{
+  "key": "lossless_cache_replacement_decoded_payload_cache",
+  "title": "解码载荷驻留内存",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "将解码后的 latent 载荷驻留在 CPU 内存，减少重复磁盘 IO",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "将解码后的 latent 载荷驻留在 CPU 内存，减少重复磁盘 IO（data-bound 场景有效）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

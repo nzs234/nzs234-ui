@@ -1,0 +1,32 @@
+{
+  "key": "activation_memory_budget",
+  "title": "激活显存预算（AOT partitioner）",
+  "category": "显存优化 / 激活",
+  "appliesTo": [
+    "sdxl-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "内存层"
+  ],
+  "standard": {
+    "summary": "torch.compile 路线下限制 AOT partitioner 保留的激活量：取值 (0,1] 表示相对完整保存的比例，超出预算的中间量在反传时重算。0 = 关闭。",
+    "effect": "开启后 torch._functorch.config.activation_memory_budget 被设为该值，编译图的前向只保存预算内「最值得保存」的激活，其余反传重算，峰值显存下降、反传变慢。梯度检查点开启时本项被跳过。",
+    "whenToUse": "使用 torch.compile 且关闭梯度检查点、想要比「全存激活」省显存但又不想付出完整 grad-ckpt 代价的中间档位（如 0.7~0.9）。",
+    "avoidWhen": "gradient_checkpointing 开启时（后端主动跳过：checkpoint 重算与重划分图可能分歧，且 grad-ckpt 已把保存激活压到最低，预算冗余）；非 compile 执行路线本项无效。"
+  },
+  "advanced": {
+    "principle": "AOT Autograd 的 min-cut partitioner 在「保存激活」与「反传重算」之间求最小割；budget<1.0 时给保存集合加上体积约束，优先重算重计算成本最低的中间量，是 PyTorch 官方认可的显存-速度连续调节杆。",
+    "intervention": "runtime_optimizations_attention_plan.py 读取配置进 plan；runtime_optimizations_attention_apply.py 在 compile 生效前调用 dynamo_budget.apply_activation_memory_budget(budget, gradient_checkpointing=...)，越界（>1.0）忽略、与 grad-ckpt 冲突时记录跳过原因。",
+    "expectedImpact": "预算越小显存越省、反传越慢；0.8 左右常能以个位数百分比的速度代价换取可观激活显存下降。",
+    "tradeoffs": "只作用于被 compile 的子图；与 unsloth/selective checkpoint 等其它激活管理机制不叠加使用更易归因。失败时降级为警告不阻塞编译。",
+    "codePath": "dynamo_budget.py:apply_activation_memory_budget（torch._functorch.config.activation_memory_budget）；runtime_optimizations_attention_apply.py 应用点；configs_performance.py 定义"
+  },
+  "relatedConfigs": [
+    "gradient_checkpointing",
+    "torch_compile",
+    "compile_inductor_tuning",
+    "dynamo_recompile_limit"
+  ]
+}

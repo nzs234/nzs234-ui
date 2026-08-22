@@ -1,0 +1,21 @@
+{
+  "key": "disable_mmap_load_safetensors",
+  "title": "禁用 mmap 加载",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "禁用 mmap 方式加载 safetensors",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "禁用 mmap 方式加载 safetensors，减少共享内存占用。适合网络存储或 HDD。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

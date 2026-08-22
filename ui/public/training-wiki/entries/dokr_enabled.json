@@ -1,0 +1,21 @@
+{
+  "key": "dokr_enabled",
+  "title": "DoKr (DoRA + LoKr)",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "LoKr Kronecker 方向 + DoRA magnitude",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "LoKr Kronecker 方向 + DoRA magnitude 分解。默认关闭， 。比 baseline 收敛快 ~2%。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,29 @@
+{
+  "key": "num_class_images",
+  "title": "DreamBooth 类别图像数量",
+  "category": "训练 / DreamBooth",
+  "appliesTo": [
+    "sd-dreambooth"
+  ],
+  "layers": [
+    "数据层"
+  ],
+  "standard": {
+    "summary": "Prior preservation 需要生成/使用的类别图像张数。默认 100。",
+    "effect": "自动生成路径触发时（prior_loss_weight>0、reg_data_dir 为空、class_prompt 非空），用底模生成这么多张类别图作为正则集。",
+    "whenToUse": "实例图较多或训练步数较长时适当增加（150~300），让正则集多样性跟上；快速实验可减到 50。",
+    "avoidWhen": "提供了 reg_data_dir 时本值不参与；数量太大生成耗时线性增长且收益边际递减。"
+  },
+  "advanced": {
+    "principle": "正则集的作用是采样类别先验分布；数量太少时先验估计噪声大、单张正则图被重复看到导致过拟合到这些生成样本，经验上正则图数量 ≈ 实例图 × 10 或至少覆盖训练步数的正则采样需求。",
+    "intervention": "dreambooth_prior_setup.py：num_class = int(config.num_class_images or 100)，传入 ClassImageGenerator 逐张生成到 class_images 目录（已存在的图会复用）。",
+    "expectedImpact": "更大的正则集让先验保持更平滑；生成阶段耗时与数量成正比。",
+    "tradeoffs": "生成图占磁盘（每张几百 KB 到几 MB）；底模生成质量差时数量再多也帮助有限。",
+    "codePath": "dreambooth_prior_setup.py：num_class 解析与生成循环；dreambooth.py:ClassImageGenerator.generate"
+  },
+  "relatedConfigs": [
+    "class_prompt",
+    "prior_loss_weight",
+    "reg_data_dir"
+  ]
+}

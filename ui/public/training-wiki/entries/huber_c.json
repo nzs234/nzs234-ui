@@ -1,0 +1,34 @@
+{
+  "key": "huber_c",
+  "title": "Huber 损失阈值 c / delta",
+  "category": "正则 / Loss",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora",
+    "concept-edit"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "huber / smooth_l1 / pseudo_huber 损失的阈值参数（delta）：残差小于阈值时按 L2 处理，大于阈值时按 L1 处理。",
+    "effect": "loss_type 选了 Huber 家族时生效。阈值越小，越早进入 L1 区、对离群样本越不敏感；越大越接近纯 MSE 行为。默认 0.1。",
+    "whenToUse": "数据集里有少量脏样本/极端样本、MSE 下 loss 偶发尖峰把训练带偏时，配合 loss_type=huber 使用。",
+    "avoidWhen": "loss_type 仍是默认 L2/MSE 时此项不参与计算；数据干净时把阈值调得过小会普遍钝化梯度、拖慢收敛。"
+  },
+  "advanced": {
+    "principle": "Huber 损失在 |残差| ≤ delta 区间为二次型（梯度与残差成正比），超过后变线性（梯度饱和为常数），从而限制单个大残差样本对总梯度的贡献。实际生效阈值为 huber_c × huber_scale，下限被夹在 1e-6。",
+    "intervention": "training_loop_loss_mixin.py 的阈值解析函数按 huber_schedule 生成标量或逐样本 delta：constant 直接用 huber_c；exponential/snr 随 timestep 调制；auto 用 batch 残差分位数估计。概念编辑路线由 concept_edit_loss.py 以同样公式解析。",
+    "expectedImpact": "对离群样本的鲁棒性提升，loss 曲线尖峰减少；细节保真度可能略降（大残差方向学习被压制）。",
+    "tradeoffs": "阈值是与残差量纲绑定的绝对值，换分辨率/换模型族后合适区间会变；建议配合 huber_schedule=auto 让后端按分位数自适应。",
+    "codePath": "training_loop_loss_mixin.py:_huber 阈值解析（base=max(huber_c,1e-6)，×huber_scale）；concept_edit_loss.py 同公式"
+  },
+  "relatedConfigs": [
+    "huber_schedule",
+    "huber_scale",
+    "huber_auto_percentile",
+    "loss_type"
+  ]
+}

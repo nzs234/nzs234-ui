@@ -1,0 +1,20 @@
+{
+  "key": "target_modules",
+  "title": "目标模块（target_modules）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "目标模块（target_modules） 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "unet_attention": "只挂 attention，参数少。",
+      "unet_attention_and_mlp": "attention 加 MLP，能改的面更大。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

@@ -1,0 +1,27 @@
+{
+  "key": "repa_target_provider",
+  "title": "REPA 目标提供方",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "none / latent_identity /",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "none": "不开 REPA 目标。",
+      "latent_identity": "用 latent 自己凑合对齐，不引外部模型。",
+      "jina_vision": "Jina 视觉特征。",
+      "dinov2": "DINOv2 特征。"
+    }
+  },
+  "advanced": {
+    "principle": "none / latent_identity / jina_vision / dinov2。默认 none；视觉路径需本机权重。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,30 @@
+{
+  "key": "concept_edit_method",
+  "title": "概念编辑方法",
+  "category": "训练参数",
+  "appliesTo": [
+    "concept-edit"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "概念编辑的算法路线：ileco（默认，基于 caption 的概念方向学习）或 addift（基于成对图像的潜空间差分学习）。",
+    "effect": "ileco 用 target_prompt 等文本对驱动，target_prompt 留空时偏向擦除原概念；addift 需要 original/target 成对图像（数据集按 original_ 前缀配对），学习两张图之间的变化方向。数据集加载器按方法校验样本结构，不支持的取值直接报错。",
+    "whenToUse": "想「让某个词的语义改变/消失」用 iLECO（改笑容、擦水印概念等）；有明确的前后对比图（同一构图改了某个元素）想学这种变换用 ADDifT。",
+    "avoidWhen": "ADDifT 没有像素级对应的成对图时效果差（建议同分辨率、同构图）；iLECO 的 prompt 对写不清楚概念边界时学到的方向会含糊。"
+  },
+  "advanced": {
+    "principle": "iLECO：在文本条件空间构造正负概念对，训练 LoRA 让模型对原概念的预测靠近目标概念的预测，本质是语义方向编辑。ADDifT：对成对图像的 latent 做差分监督，LoRA 学习 original→target 的潜空间位移，适合可视化定义的变化。",
+    "intervention": "trainer_side_train_runtime.py：method 解析后传入 ConceptEditDataset（concept_edit_dataset.py 按 ileco/addift 决定样本配对方式：addift 额外加载 original_<stem> 图像，ileco 用 caption 对）；每步回调把 method 写入训练指标。",
+    "expectedImpact": "iLECO 常见 300~1000 步；ADDifT 收敛快（30~150 步），步数超配容易过拟合差分方向。",
+    "tradeoffs": "两种方法的产物都是「编辑向量式 LoRA」，适合低权重叠加使用而不是当作常规角色/风格 LoRA。",
+    "codePath": "trainer_side_train_runtime.py：method 分支；concept_edit_dataset.py：按方法配对样本（不支持值抛 ValueError）；concept_edit_anima_mixin.py：ileco/addift batch 处理"
+  },
+  "relatedConfigs": [
+    "concept_edit_base_model",
+    "target_prompt",
+    "original_image_path",
+    "concept_edit_use_diff_mask"
+  ]
+}

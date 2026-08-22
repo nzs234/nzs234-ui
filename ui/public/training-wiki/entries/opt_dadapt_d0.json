@@ -1,0 +1,21 @@
+{
+  "key": "opt_dadapt_d0",
+  "title": "DAdapt d0",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "初始步长估计 d0，推荐 1e-6（小值让 D-Adapt",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "初始步长估计 d0，推荐 1e-6（小值让 D-Adapt 从保守开始自适应）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

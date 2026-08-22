@@ -1,0 +1,21 @@
+{
+  "key": "newbie_block_prefetch",
+  "title": "Newbie Block 预取（newbie_block_prefetch）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "非 resident 时异步预取后续 DiT block 的",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "非 resident 时异步预取后续 DiT block 的 CPU-pinned 权重。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

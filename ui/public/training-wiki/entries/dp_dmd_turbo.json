@@ -1,0 +1,34 @@
+{
+  "key": "dp_dmd_turbo",
+  "title": "DP-DMD / Turbo（标准与 lulynx 模式）",
+  "category": "训练 / 蒸馏",
+  "appliesTo": [
+    "anima-lora",
+    "newbie-lora"
+  ],
+  "layers": [
+    "DiT",
+    "LoRA Adapter"
+  ],
+  "standard": {
+    "summary": "提供标准 DP-DMD 与 lulynx_optimized 两条模式。standard 使用独立 teacher/fake 双 score provider；lulynx_optimized 是本仓 teacher-regression 组合。",
+    "effect": "Anima standard 会在加载 teacher/fake/student 前复核 faithful Qwen3+T5 cache；旧 cache 可由本地 VAE/Qwen3/T5 组件自动重建，组件缺失或重建后仍不兼容时 fail-fast。lulynx_optimized 保持既有 cache-first 行为。",
+    "whenToUse": "只有在 Anima faithful cache-first 数据与独立 teacher/fake 生命周期可用时选择 standard；需要兼容既有训练结果时选择 lulynx_optimized。",
+    "avoidWhen": "想直接复用当前 SDXL Turbo/LCM LoRA 入口；两者不是同一条路线。"
+  },
+  "advanced": {
+    "principle": "dp_dmd_variant=lulynx_optimized 使用 teacher prediction regression 及可选 anchor/critic/SoftRank；standard 不是该 MSE 组合的别名，使用独立 teacher/fake score 与 5:1 默认更新节奏。",
+    "intervention": "trainer_anima_cache_runtime.py → anima_standard_cache_migration.py → dp_dmd_standard_anima_runtime.py → training_step_loss_execution_specialized.py",
+    "expectedImpact": "理论上降低推理步数；训练成本取决于 teacher 生成和 质量门槛。",
+    "tradeoffs": "standard 当前为单进程路径且需要三套独立 DiT；旧 cache 迁移会重新编码数据。它不会退回 raw-Qwen 或 teacher MSE，两种模式的训练成本和质量不能互相外推。",
+    "codePath": "backend/core/lulynx_trainer/anima/anima_standard_cache_migration.py；dp_dmd_standard_anima_runtime.py；training_step_loss_execution_specialized.py"
+  },
+  "relatedConfigs": [
+    "dp_dmd_enabled",
+    "student_steps",
+    "teacher_steps",
+    "guidance_scale",
+    "anima_cached_training",
+    "anima_faithful_forward"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "key": "layer_monitor_mode",
+  "title": "逐层监测模式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "逐层监测模式 的可选值说明（自动补全骨架，可继续润色）。",
+    "effect": "切换不同枚举值会改变训练行为或资源占用，详见各子项。",
+    "whenToUse": "按任务与硬件选择；不确定时用产品默认。",
+    "avoidWhen": "未理解子项含义时不要盲选实验/激进档。",
+    "optionDescriptions": {
+      "sampled": "抽样看层指标。",
+      "exact": "精确算，贵。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

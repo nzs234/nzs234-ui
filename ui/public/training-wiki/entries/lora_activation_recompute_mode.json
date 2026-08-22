@@ -1,0 +1,26 @@
+{
+  "key": "lora_activation_recompute_mode",
+  "title": "LoRA 分支重算（lora_activation_recompute_mode）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "降低原生 DiT LoRA 反传激活峰值。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "auto": "Anima/Newbie 一类路线按需重算 LoRA 分支，压激活峰值。",
+      "on": "强制重算，激活省、反向慢。",
+      "off": "不重算，峰值高，好做对照。"
+    }
+  },
+  "advanced": {
+    "principle": "降低原生 DiT LoRA 反传激活峰值。auto 会在 Anima/Newbie 路线默认开启；off 主要用于 benchmark 对比。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

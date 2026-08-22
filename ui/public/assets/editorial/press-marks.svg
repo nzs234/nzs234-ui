@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400" fill="none">
+  <!-- editorial 印刷标记装饰条 1600x400 透明底 · 油墨 #2b2b2b / 点缀 #e8491d -->
+  <g stroke="#2b2b2b" stroke-width="1.5">
+    <!-- 左右裁切角线 -->
+    <path d="M40 120V40M40 40H120"/>
+    <path d="M1560 280v80M1560 360h-80"/>
+    <!-- 套准标 x3: 圆 + 十字 -->
+    <g>
+      <circle cx="220" cy="200" r="26"/>
+      <path d="M220 158v84M178 200h84"/>
+      <circle cx="220" cy="200" r="9"/>
+    </g>
+    <g>
+      <circle cx="800" cy="200" r="26"/>
+      <path d="M800 158v84M758 200h84"/>
+      <circle cx="800" cy="200" r="9"/>
+    </g>
+    <g stroke="#e8491d">
+      <circle cx="1380" cy="200" r="26"/>
+      <path d="M1380 158v84M1338 200h84"/>
+      <circle cx="1380" cy="200" r="9"/>
+    </g>
+    <!-- 刻度尺 340-700 -->
+    <path d="M340 260h360"/>
+    <path d="M340 260v-14M400 260v-9M460 260v-14M520 260v-9M580 260v-14M640 260v-9M700 260v-14"/>
+    <!-- 星标注记 -->
+    <path d="M1180 186l12 28M1192 186l-12 28M1174 200h24"/>
+  </g>
+  <!-- CMYK 色条 + 50% tint -->
+  <g>
+    <rect x="900" y="176" width="36" height="36" fill="#00AEEF"/>
+    <rect x="944" y="176" width="36" height="36" fill="#EC008C"/>
+    <rect x="988" y="176" width="36" height="36" fill="#FFF200"/>
+    <rect x="1032" y="176" width="36" height="36" fill="#2b2b2b"/>
+    <rect x="900" y="220" width="36" height="12" fill="#00AEEF" opacity="0.5"/>
+    <rect x="944" y="220" width="36" height="12" fill="#EC008C" opacity="0.5"/>
+    <rect x="988" y="220" width="36" height="12" fill="#FFF200" opacity="0.5"/>
+    <rect x="1032" y="220" width="36" height="12" fill="#2b2b2b" opacity="0.5"/>
+  </g>
+  <g fill="#2b2b2b" font-family="'JetBrains Mono','Courier New',monospace" font-size="17" letter-spacing="3">
+    <text x="340" y="200">LULYNX &#183; OFFSET PROOF</text>
+    <text x="340" y="290" font-size="12" opacity="0.65">SHEET 01 / REG OK</text>
+    <text x="1180" y="290" font-size="12" opacity="0.65">&#167; 07.2026</text>
+  </g>
+</svg>

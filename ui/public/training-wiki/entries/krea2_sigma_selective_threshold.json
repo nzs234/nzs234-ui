@@ -1,0 +1,21 @@
+{
+  "key": "krea2_sigma_selective_threshold",
+  "title": "Sigma Selective 阈值（krea2_sigma_selective_threshold）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "sigma_selective 模式下的最低 sigma 值，范围",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "sigma_selective 模式下的最低 sigma 值，范围 0-1，默认 0.5。值越大越聚焦高噪声（全局构图），值越小越覆盖细节。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

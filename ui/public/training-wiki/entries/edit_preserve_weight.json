@@ -1,0 +1,21 @@
+{
+  "key": "edit_preserve_weight",
+  "title": "保留区权重",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "有 preserve_mask 时额外约束保留区域。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "有 preserve_mask 时额外约束保留区域。0 表示不启用额外保留损失。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,28 @@
+{
+  "key": "h3_cfg_scale",
+  "title": "H3 CFG 保真强度",
+  "category": "训练 / 高级",
+  "appliesTo": [
+    "minimax-h3-lora"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "H3 CFG 保真训练使用的 guidance 强度，范围 1~16，推荐并默认 4。",
+    "effect": "作为 raw conditional 目标反解公式里的 s：target = 输出与 uncond 按 s 的线性组合。等于 1 时保真路径不激活（无 guidance 可言）。",
+    "whenToUse": "保持默认 4（已验证值）；如果你的推理端固定用其它 guidance，理论上可对齐，但缺乏验证数据时不建议偏离。",
+    "avoidWhen": "h3_cfg_preservation_enabled 关闭时无效；超出 [1,16] 会被配置校验拒绝。"
+  },
+  "advanced": {
+    "principle": "蒸馏权重内嵌的有效 guidance 是训练时固定的；反解 raw conditional 需要假设一个 s 值，s 与蒸馏时的真实值越接近，重构的目标越准确。4 是该 checkpoint 家族的实测校准值。",
+    "intervention": "minimax_h3/train_step.py：configured_cfg_scale 参与 preserve_cfg 激活判定与目标重构；configs_h3.py：Field(ge=1, le=16) 校验。",
+    "expectedImpact": "正确的 s 下长训不损伤内嵌 guidance；偏差过大的 s 会引入系统性目标误差。",
+    "tradeoffs": "s 不可从 checkpoint 直接读出，只能依赖校准经验值；改动后建议用固定 seed 预览对比验证。",
+    "codePath": "minimax_h3/train_step.py：configured_cfg_scale 使用；configs_h3.py：h3_cfg_scale 范围校验"
+  },
+  "relatedConfigs": [
+    "h3_cfg_preservation_enabled",
+    "h3_timestep_shift"
+  ]
+}

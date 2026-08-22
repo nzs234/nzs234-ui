@@ -1,0 +1,27 @@
+{
+  "key": "fg_lora_rank_profile",
+  "title": "Rank 深度曲线",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "仅 orthogonal_redistribute 使用（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "center_peak": "中间层 rank 高。",
+      "ascending": "越深越高。",
+      "descending": "越浅越高。",
+      "flat": "深度方向差不多平。"
+    }
+  },
+  "advanced": {
+    "principle": "仅 orthogonal_redistribute 使用：center_peak=中间层更高；ascending=深层更高；descending=浅层更高；flat=平坦。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

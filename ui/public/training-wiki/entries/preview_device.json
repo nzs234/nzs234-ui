@@ -1,0 +1,26 @@
+{
+  "key": "preview_device",
+  "title": "预览设备",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "gpu=训练安全点真实出 PNG（推荐）（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "gpu": "预览走 GPU，快，占显存。",
+      "cpu": "预览走 CPU，慢，不抢显存。",
+      "off": "训练里不预览。"
+    }
+  },
+  "advanced": {
+    "principle": "gpu=训练安全点真实出 PNG（推荐）；cpu=只写 .cpu_preview.json 任务清单，当前不会生成图片；off=关闭",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

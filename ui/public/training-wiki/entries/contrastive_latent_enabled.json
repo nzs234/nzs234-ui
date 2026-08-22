@@ -1,0 +1,21 @@
+{
+  "key": "contrastive_latent_enabled",
+  "title": "启用对比学习 Latent 一致性",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "对比学习风格的一致性损失：同一 clean latent",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "对比学习风格的一致性损失：同一 clean latent 在不同噪声下的 x0 预测应该接近。简化模式 (noise_pairs=1) 无额外前向传播。默认关闭。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

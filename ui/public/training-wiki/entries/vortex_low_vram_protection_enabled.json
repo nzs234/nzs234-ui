@@ -1,0 +1,21 @@
+{
+  "key": "vortex_low_vram_protection_enabled",
+  "title": "Vortex 低显存保护（vortex_low_vram_protection_enabled）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "默认关闭。开启后允许 Vortex 在低显存压力下收紧",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "默认关闭。开启后允许 Vortex 在低显存压力下收紧 prefetch/缓存策略；不会启用 active rematerialization。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,20 @@
+{
+  "key": "sdxl_low_vram_resolution_mode",
+  "title": "分辨率规划模式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "分辨率规划模式 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "long_edge": "按长边规划桶。",
+      "short_edge": "按短边规划桶。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

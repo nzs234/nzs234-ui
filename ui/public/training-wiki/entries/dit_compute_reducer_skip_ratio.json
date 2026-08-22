@@ -1,0 +1,21 @@
+{
+  "key": "dit_compute_reducer_skip_ratio",
+  "title": "BlockSkip 比例",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "按比例推导跳过频率。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "按比例推导跳过频率。0.25 约等于每 4 个 block 跳 1 个；仅在下方“固定间隔”=0 时生效。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

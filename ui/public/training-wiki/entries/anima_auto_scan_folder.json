@@ -1,0 +1,21 @@
+{
+  "key": "anima_auto_scan_folder",
+  "title": "智能识别模型文件夹",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选择 Anima 模型根目录，自动识别并填充 DiT / VAE /",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "选择 Anima 模型根目录，自动识别并填充 DiT / VAE / Qwen3 / T5 Tokenizer / LLM Adapter 路径字段。支持文件名模式 + safetensors 架构检测（仅读文件头，不加载权重）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

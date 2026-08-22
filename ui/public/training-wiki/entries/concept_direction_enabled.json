@@ -1,0 +1,33 @@
+{
+  "key": "concept_direction_enabled",
+  "title": "概念方向训练",
+  "category": "训练 / 高级",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "通过定义概念方向对（如 '微笑的人' vs '普通人'）来训练 LoRA 学习特定的概念变化方向，而不是完整的图像生成。仅支持 SD1.5/SDXL LoRA 路线；在 V2 WebUI 的先锋视图「概念方向训练」分区开启。",
+    "effect": "concept_direction_pairs 定义正/负 prompt 对，模型学习从负方向到正方向的「编辑向量」。适合学习表情、姿态等变化。每步额外做 4 次 UNet 前向（LoRA 开/关 × 正/负 prompt），训练速度明显下降。",
+    "whenToUse": "想让 LoRA 学习「微笑」「侧脸」「戴帽子」等可叠加的属性变化时。",
+    "avoidWhen": "学习完整的角色/风格概念时（用标准训练更好）。开启文本编码器输出缓存时本功能会自动停用（需要在线编码 prompt 对）；非 SD/SDXL 架构会被忽略并告警。"
+  },
+  "advanced": {
+    "principle": "对每对 (positive, negative) prompt，计算两者的预测差值 Δ = pred(positive) - pred(negative)。direction loss = MSE(Δ, target_direction) * direction_weight。concept_direction_timestep_range 限制在哪些 timestep 上计算方向 loss。concept_direction_neutral_reg 对 negative prompt 施加保持正则化。",
+    "intervention": "训练步在主 loss 之后、梯度累积缩放之前叠加方向损失：复用当前 step 的噪声 latent 与时间步（取 batch 首样本），对 pair 双侧各做一次 LoRA 生效前向（有梯度）和一次 LoRA 置零前向（无梯度，经 _preview_lora_scale 关断）。",
+    "expectedImpact": "学到的 LoRA 可以像「编辑指令」一样叠加使用。对表情/姿态方向控制效果好。",
+    "tradeoffs": "concept_direction_guidance_scale 控制方向放大强度。需要仔细构造 prompt 对。每次计算有 4 次额外前向的开销，可用 concept_direction_every_n_steps 节流；prompt 对的文本嵌入会按 pair 缓存，只编码一次。",
+    "codePath": "concept_direction_step.py:maybe_compute_concept_direction_loss；training_loop_step_mixin.py 在 AdaLoRA 正交正则旁叠加；trainer_execution_loop_builder.py:_build_concept_direction 从配置构造"
+  },
+  "relatedConfigs": [
+    "concept_direction_pairs",
+    "concept_direction_weight",
+    "concept_direction_guidance_scale",
+    "concept_direction_every_n_steps",
+    "concept_direction_timestep_range",
+    "concept_direction_neutral_reg"
+  ]
+}

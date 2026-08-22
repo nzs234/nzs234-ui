@@ -1,0 +1,32 @@
+{
+  "key": "quality_evaluation_metric_weights",
+  "title": "质量评估多目标指标权重",
+  "category": "质量评估",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "评估层"
+  ],
+  "standard": {
+    "summary": "各评估指标聚合为综合分时的权重，JSON 对象格式如 {\"clip_score\":1,\"fid\":0.5}。缺失的指标不会被伪造为 0 分参与聚合。",
+    "effect": "综合评分按权重加权；某指标因缺少依赖（如 FID 缺真图目录）被跳过时，该项从聚合中剔除而非按 0 计入，避免误导性总分。",
+    "whenToUse": "多指标（fid、clip_score、lpips）同时开启且各指标对你的目标重要性不同时；想把综合分用于自动化对比/选型时。",
+    "avoidWhen": "只开一个指标时无需配置；权重语义未想清楚前直接看分项指标更靠谱。"
+  },
+  "advanced": {
+    "principle": "不同指标量纲与方向不同（FID 越低越好、CLIP Score 越高越好），聚合前需按指标语义归一；权重表达业务侧的重要性排序。「缺失不伪造 0」是防止「没测到」被当成「测得差」的报告完整性约束。",
+    "intervention": "configs_validators.py：支持配置块（metric_weights）与扁平 JSON 字符串两种来源，解析为 dict[str,float]；quality/validation_suite.py 把权重传入套件构建。",
+    "expectedImpact": "只影响综合分呈现，不影响训练与分项指标本身。",
+    "tradeoffs": "权重是主观先验，跨套件比较时必须保持权重一致（建议连同 suite_id 一起管理）。",
+    "codePath": "configs_validators.py：metric_weights JSON 解析；quality/validation_suite.py：metric_weights 传参"
+  },
+  "relatedConfigs": [
+    "quality_evaluation_metrics",
+    "quality_evaluation_suite_id",
+    "fid_real_image_dir"
+  ]
+}

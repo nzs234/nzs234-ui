@@ -1,0 +1,29 @@
+{
+  "key": "h3_depth_expansion_enabled",
+  "title": "MiniMax H3 模型扩层（Depth Up-Scaling）",
+  "category": "MiniMax H3 / 高级",
+  "appliesTo": [
+    "minimax-h3-finetune"
+  ],
+  "layers": [
+    "模型结构层"
+  ],
+  "standard": {
+    "summary": "训练加载时把 MiniMax H3 的 H3 Transformer block 交错复制扩到更多层数，新增层的输出投影归零，使新增层以恒等残差初始化，得到一个更深的可训练底座。仅支持全参微调（minimax-h3-finetune）。",
+    "effect": "模型按 h3_depth_expansion_target_layers 重建为更深结构，初始行为与原模型一致（新层输出归零）；训练范围由 h3_depth_expansion_train_scope 控制；保存的产物是完整扩层底座。串行 H3 主干整体扩层。",
+    "whenToUse": "想以较低成本扩大模型容量（Depth Up-Scaling 路线）、在原模型能力基础上继续拉伸上限时；准备做扩层后长期微调的项目。",
+    "avoidWhen": "LoRA 训练不支持；显存与磁盘按扩层后的层数计费，请先评估资源；从扩层 checkpoint 恢复训练时必须保持相同的扩层配置（层数不匹配后端会明确报错）。"
+  },
+  "advanced": {
+    "principle": "Depth Up-Scaling（如 SOLAR 的做法）：交错复制已有 transformer 层构造更深网络，把新层的输出投影零初始化使残差路径退化为恒等，保证扩层瞬间模型输出不变，训练从「无损起点」开始学习新增容量。",
+    "intervention": "minimax_h3_depth_expansion_runtime.py：加载时执行交错复制与零投影，并把扩层元数据写入 adapter manifest；trainer_resume_runtime.py：LoRA 挂载扩层底座时按 manifest 校验层数（不匹配失败关闭）。",
+    "expectedImpact": "参数量与显存按层数比例上升；扩层容量需要足够数据与步数才能兑现为质量收益。",
+    "tradeoffs": "产物是完整底座（体积大，非 LoRA）；扩层模型的推理成本永久上升；训练范围选 all 时成本最高、选 new_layers 最接近标准 DUS 配方。",
+    "codePath": "minimax_h3_depth_expansion_runtime.py：扩层执行；trainer_prepare_train_mode_mixin.py：全参分支与训练范围"
+  },
+  "relatedConfigs": [
+    "h3_depth_expansion_target_layers",
+    "h3_depth_expansion_train_scope",
+    "model_train_type"
+  ]
+}

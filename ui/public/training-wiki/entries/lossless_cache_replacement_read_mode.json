@@ -1,0 +1,20 @@
+{
+  "key": "lossless_cache_replacement_read_mode",
+  "title": "读取模式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "读取模式 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "prefetch_thread": "后台线程先读先解压，和计算叠一叠。",
+      "sync": "读一块算一块，简单，容易空等。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

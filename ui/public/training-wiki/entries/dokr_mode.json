@@ -1,0 +1,26 @@
+{
+  "key": "dokr_mode",
+  "title": "DoKr 模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "full": "方向和强度都学，变化大。",
+      "style": "主要动强度/外观，骨架动得少。",
+      "structure": "主要动方向/结构，染色弱。"
+    }
+  },
+  "advanced": {
+    "principle": "full=方向+magnitude, style=magnitude only, structure=方向 only。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

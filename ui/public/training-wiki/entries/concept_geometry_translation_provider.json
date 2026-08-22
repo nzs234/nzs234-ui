@@ -1,0 +1,20 @@
+{
+  "key": "concept_geometry_translation_provider",
+  "title": "翻译提供方",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "翻译提供方 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "local_path": "本地翻译资源。",
+      "api": "远程翻译 API。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

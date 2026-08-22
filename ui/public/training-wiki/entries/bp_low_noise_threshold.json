@@ -1,0 +1,21 @@
+{
+  "key": "bp_low_noise_threshold",
+  "title": "BP-low 噪声阈值",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "触发低分辨率反传的 sigma 阈值。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "触发低分辨率反传的 sigma 阈值。仅 sigma > 该值的 timestep 会下采样。推荐 0.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

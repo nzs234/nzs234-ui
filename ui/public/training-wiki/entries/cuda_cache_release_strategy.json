@@ -1,0 +1,28 @@
+{
+  "key": "cuda_cache_release_strategy",
+  "title": "CUDA 缓存释放策略",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "oom_only 仅在 OOM 恢复时释放",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "off": "不主动清缓存，峰值看着虚高，同步少。",
+      "oom_only": "只有 OOM 救火时才清。",
+      "phase_boundary": "TE/VAE 换阶段时清。",
+      "after_optimizer": "优化器 step 后清。",
+      "aggressive": "阶段和步进后都清，峰值低，抖和同步也多。"
+    }
+  },
+  "advanced": {
+    "principle": "oom_only 仅在 OOM 恢复时释放；phase_boundary 在 TE/VAE / 组件下 CPU 边界释放；after_optimizer 保留旧低显存稳妥档；aggressive 会把阶段边界和训练步释放都打开。旧 every_step 配置会自动按 aggressive 兼容。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

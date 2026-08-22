@@ -1,0 +1,23 @@
+{
+  "key": "preference_models",
+  "title": "偏好评分模型",
+  "category": "质量评估",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "逗号分隔：pickscore,imagereward,hpsv2。空=仅 pickscore。",
+    "effect": "选择参与偏好打分的 scorer 列表。",
+    "whenToUse": "已开启 preference_scoring_enabled 时。",
+    "avoidWhen": "偏好评分关闭时（字段本身会隐藏）。"
+  },
+  "advanced": {
+    "principle": "WebUI 字符串经 configs_validators 规范为 list[str]。",
+    "intervention": "",
+    "expectedImpact": "多模型 = 多下载与算力。",
+    "tradeoffs": "",
+    "codePath": "backend/core/configs_validators.py + preference_quality_integration.py"
+  },
+  "relatedConfigs": [
+    "preference_scoring_enabled"
+  ]
+}

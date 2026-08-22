@@ -1,0 +1,21 @@
+{
+  "key": "route_status_note",
+  "title": "链路状态（route_status_note）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "${familyName} 当前只是轻量选择入口，训练核心尚未深度接入",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "${familyName} 当前只是轻量选择入口，训练核心尚未深度接入；可以保存配置，暂不能直接启动训练。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

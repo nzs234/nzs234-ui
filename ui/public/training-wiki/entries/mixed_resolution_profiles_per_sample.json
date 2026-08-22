@@ -1,0 +1,29 @@
+{
+  "key": "mixed_resolution_profiles_per_sample",
+  "title": "每样本分辨率档位数",
+  "category": "训练参数",
+  "appliesTo": [
+    "anima-lora"
+  ],
+  "layers": [
+    "数据层"
+  ],
+  "standard": {
+    "summary": "within_epoch_free_fit 模式下，每个样本可参与训练的分辨率 profile 数量。默认 2，取值被夹在 [2, 活跃 profile 总数]。",
+    "effect": "值越大同一样本会以更多不同分辨率被训练到，多尺度覆盖更充分；后端把请求值 clamp 到实际可用 profile 数，不会超配。",
+    "whenToUse": "多尺度泛化是目标（如同一 LoRA 要在 512~1536 都表现好）时调到 3~4；默认 2 已能兼顾成本与覆盖。",
+    "avoidWhen": "mixed_resolution_strategy 不是 within_epoch_free_fit 时无效；活跃 profile 少于 2 个时 free-fit 本身无法启用（后端报错）。"
+  },
+  "advanced": {
+    "principle": "free-fit 缓存为每个样本预编码多个分辨率 profile 的 latent；本键决定训练时每样本轮换使用的档位子集大小，等价于按样本粒度做多尺度数据增强，epoch 有效样本量随之放大。",
+    "intervention": "anima_free_fit_epoch.py:resolve_profiles_per_sample——requested = int(config.mixed_resolution_profiles_per_sample or 2)，返回 min(max(requested, 2), profile_count)。",
+    "expectedImpact": "档位数越多每 epoch 遍历成本越高（同一样本多次出现）；多尺度一致性提升。",
+    "tradeoffs": "缓存体积随 profile 数增长；档位过多时单一分辨率的有效步数被稀释。",
+    "codePath": "anima_free_fit_epoch.py:resolve_profiles_per_sample（clamp 到 [2, 活跃 profile 数]）"
+  },
+  "relatedConfigs": [
+    "mixed_resolution_strategy",
+    "enable_mixed_resolution_training",
+    "anima_cache_resize_mode"
+  ]
+}

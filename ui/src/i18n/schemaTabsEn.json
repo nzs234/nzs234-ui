@@ -1,0 +1,11 @@
+{
+  "model": "Model",
+  "dataset": "Dataset",
+  "training": "Training",
+  "network": "Network",
+  "optimizer": "Optimizer",
+  "preview": "Preview / Validation",
+  "speed": "Acceleration",
+  "frontier": "Frontier",
+  "advanced": "Advanced"
+}

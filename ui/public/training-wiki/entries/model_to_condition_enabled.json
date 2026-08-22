@@ -1,0 +1,21 @@
+{
+  "key": "model_to_condition_enabled",
+  "title": "ModelToCondition",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "启用共享条件生成协议。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "启用共享条件生成协议。当前为兼容层，后续会逐步接管 SDXL cache-first 热路径",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "fim_scan_enabled",
+  "title": "FIM 扫描",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Fisher 信息矩阵扫描。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "Fisher 信息矩阵扫描。默认关闭。扫描后会写出 rank map 并停止在 epoch 循环前。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,20 @@
+{
+  "key": "distill_method",
+  "title": "蒸馏方法（distill_method）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "蒸馏方法（distill_method） 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "lcm_lora": "LCM-LoRA 蒸馏。",
+      "turbo_lora": "Turbo 类少步 LoRA 蒸馏。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

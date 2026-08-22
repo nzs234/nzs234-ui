@@ -1,0 +1,30 @@
+{
+  "key": "h3_preserve_lora_master_dtype",
+  "title": "H3 FP32 LoRA Master 权重",
+  "category": "优化器 / 进阶",
+  "appliesTo": [
+    "minimax-h3-lora"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "保持 H3 LoRA 参数为 FP32 master 权重，避免 BF16 表示下小学习率更新被量化吞掉；主干仍为 BF16/INT8。默认开启。",
+    "effect": "LoRA 可训练参数以 FP32 存储与更新，前向时按需转低精度参与计算；关闭则 LoRA 与主干同低精度，极小的参数更新可能因尾数不足而丢失。",
+    "whenToUse": "保持默认开启，尤其是低学习率（1e-5 量级）训练——H3 默认学习率正是 1e-5，BF16 的 8 位尾数在该量级更新下丢失明显。",
+    "avoidWhen": "几乎没有关闭的理由；LoRA 参数量小，FP32 副本的显存开销可忽略。"
+  },
+  "advanced": {
+    "principle": "BF16 在数值 1.0 附近的分辨率约 0.008，学习率 1e-5 的单步更新远小于半个 ulp，直接以 BF16 累积会被舍入归零（更新饥饿）。FP32 master + 低精度计算副本是混合精度训练的标准解法，此处按 H3 的 INT8/BF16 主干场景显式提供开关。",
+    "intervention": "trainer_prepare_mixin.py：config.preserve_lora_master_dtype = h3_preserve_lora_master_dtype，传给通用的 LoRA 参数 dtype 管理；configs_h3.py 默认 True。",
+    "expectedImpact": "小学习率下 LoRA 实际学得动；显存增量 = LoRA 参数量 × 2 字节，通常几十 MB 内。",
+    "tradeoffs": "前向多一次 dtype 转换（开销可忽略）；与随机舍入（stochastic_rounding）是解决同一问题的两条路，FP32 master 更彻底。",
+    "codePath": "trainer_prepare_mixin.py：h3_preserve_lora_master_dtype → preserve_lora_master_dtype；configs_h3.py 定义"
+  },
+  "relatedConfigs": [
+    "stochastic_rounding",
+    "mixed_precision",
+    "h3_int8_gemm_mode",
+    "learning_rate"
+  ]
+}

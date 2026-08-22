@@ -1,0 +1,21 @@
+{
+  "key": "repa_capture_modules_auto",
+  "title": "REPA 自动选 capture 层",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "目标模块为空时按模型族自动选单层 mid。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "目标模块为空时按模型族自动选单层 mid。关且模块空 → fail-closed 不装 hook。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

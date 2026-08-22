@@ -1,0 +1,21 @@
+{
+  "key": "training_quantization_type",
+  "title": "训练量化类型（别名）",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "训练量化类型（别名） 可选值（含换档影响）。 真正的 FP4 开关是独立字段 bnb_4bit_quant_type，不在本字段的可选值里。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "qlora_nf4": "训练侧 QLoRA NF4。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": [
+    "bnb_4bit_quant_type"
+  ]
+}

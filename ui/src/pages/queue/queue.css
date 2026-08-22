@@ -1,0 +1,114 @@
+/* 队列/历史页样式 */
+
+.lx-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lx-task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: var(--lx-border-w, 1px) solid var(--lx-border);
+  border-radius: var(--lx-radius, 6px);
+  background: var(--lx-surface);
+  transition: border-color var(--lx-dur-fast), background var(--lx-dur-fast);
+}
+.lx-task-row:hover {
+  border-color: var(--lx-border-strong);
+  background: var(--lx-surface-2);
+}
+
+.lx-task-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.lx-task-main b {
+  font: 650 var(--lx-text-base) var(--lx-font-sans);
+  color: var(--lx-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lx-task-main > span {
+  font-size: var(--lx-text-xs);
+  font-family: var(--lx-font-mono);
+  color: var(--lx-dim);
+}
+.lx-task-err {
+  color: var(--lx-danger);
+  font-size: var(--lx-text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60ch;
+}
+
+.lx-task-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 140px;
+  flex: none;
+}
+.lx-task-progress .lx-bar { flex: 1; }
+.lx-task-progress .lx-num { font-size: var(--lx-text-xs); font-family: var(--lx-font-mono); color: var(--lx-dim); }
+
+.lx-task-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.lx-queue-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 100%;
+}
+
+.lx-filter-btn {
+  font: 600 var(--lx-text-xs) var(--lx-font-sans);
+  padding: 4px 10px;
+  color: var(--lx-dim);
+  border: 1px solid transparent;
+  border-radius: var(--lx-radius, 6px);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--lx-dur-fast);
+  white-space: nowrap;
+}
+.lx-filter-btn i { font-style: normal; color: var(--lx-accent-text, var(--lx-accent)); margin-left: 3px; }
+.lx-filter-btn:hover { color: var(--lx-text); background: var(--lx-surface-2); }
+.lx-filter-btn.on {
+  color: var(--lx-accent-text, var(--lx-accent));
+  border-color: var(--lx-border);
+  background: var(--lx-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 768px) {
+  .lx-task-row { flex-wrap: wrap; gap: 10px; }
+  .lx-task-main { flex-basis: calc(100% - 30px); }
+  .lx-task-progress { width: 100%; order: 5; }
+  .lx-task-actions { margin-left: auto; order: 6; }
+}
+
+@media (max-width: 480px) {
+  .lx-queue-filters {
+    gap: 4px;
+  }
+  .lx-filter-btn {
+    padding: 3px 6px;
+  }
+}
+

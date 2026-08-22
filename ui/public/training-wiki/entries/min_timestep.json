@@ -1,0 +1,21 @@
+{
+  "key": "min_timestep",
+  "title": "最小时间步",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "训练时采样的最小时间步（包含）。0=几乎无噪声（最终细节），1000=纯噪声（整体结构）。例如风格 LoRA 可设置 500 只影响早期构图。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

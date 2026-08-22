@@ -1,0 +1,25 @@
+{
+  "key": "wan22_noise_stage",
+  "title": "A14B 噪声塔（wan22_noise_stage）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "仅 t2v-a14b：high/low 单塔",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "high": "A14B 只挂高噪塔，偏结构和大动作，省一塔显存。",
+      "low": "只挂低噪塔，偏修细节。"
+    }
+  },
+  "advanced": {
+    "principle": "仅 t2v-a14b：每次训练选择 high 或 low 单塔；当前产品不提供 both 双塔训练。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

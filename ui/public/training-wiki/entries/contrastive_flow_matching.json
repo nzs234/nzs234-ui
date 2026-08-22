@@ -1,0 +1,32 @@
+{
+  "key": "contrastive_flow_matching",
+  "title": "对比 Flow Matching（∆FM）",
+  "category": "训练 / Flow",
+  "appliesTo": [
+    "sdxl-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "在 flow matching 损失上增加对比项：逐样本减去 λ·MSE(预测, 打乱后的负样本目标)，把每个样本的预测流「推离」batch 内其它样本的流方向。需要 Rectified Flow（flow_model）开启。",
+    "effect": "主损失变为 loss - cfm_lambda × MSE(pred, shuffled_target)：拉近自己的目标、推远别人的目标。默认关闭，关闭时与基线逐位一致。",
+    "whenToUse": "多概念/多风格混训时样本间「流方向」容易平均化、生成结果趋同发糊的场景；论文推荐权重 0.05 起步。",
+    "avoidWhen": "batch size = 1 时负样本即自身、对比项退化；数据集内容高度同质（同一角色同一姿势）时负样本方向本来就接近，收益小且可能引入排斥噪声。"
+  },
+  "advanced": {
+    "principle": "∆FM（Contrastive Flow Matching）：标准 FM 只最小化到自身目标速度场的距离，样本间共享的模型容量会把不同条件的流场拉向均值。加入负项 -λ·MSE(pred, 负目标) 等价于最大化与其它样本目标的间距，增强条件可分性。",
+    "intervention": "training_step_loss_execution_core.py：主 loss 计算后、任何加权之前调用 sdxl_flow.apply_contrastive_flow_matching(loss, pred, target, lam)，负样本目标由 batch 内打乱（shuffle）得到；随后的权重对主项与对比项统一缩放。",
+    "expectedImpact": "条件间区分度提升、多概念串味减少；主损失数值会整体下移（因为减了正数项），不要直接与基线 loss 对比。",
+    "tradeoffs": "λ 过大时排斥项主导，收敛变慢甚至发散；只在 flow 系（Rectified Flow/Anima/Flux 等）路线有意义，epsilon 预测路线不生效。",
+    "codePath": "training_step_loss_execution_core.py——apply_contrastive_flow_matching；sdxl_flow.py:apply_contrastive_flow_matching 实现；configs_dataset.py 定义"
+  },
+  "relatedConfigs": [
+    "cfm_lambda",
+    "flow_model",
+    "flow_use_ot",
+    "immiscible_diffusion_enabled"
+  ]
+}

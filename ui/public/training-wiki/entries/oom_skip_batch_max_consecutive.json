@@ -1,0 +1,33 @@
+{
+  "key": "oom_skip_batch_max_consecutive",
+  "title": "OOM 跳批最大连续次数",
+  "category": "训练参数",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora",
+    "finetune"
+  ],
+  "layers": [
+    "内存层"
+  ],
+  "standard": {
+    "summary": "OOM 跳批（oom_skip_batch_enabled）的安全阀：连续多少个 batch 因显存不足被跳过后，停止训练而不是无限空转。默认 3。",
+    "effect": "单次 OOM 时清缓存、跳过该 batch 继续；连续 OOM 计数达到本值时判定为系统性显存不足，训练终止并报错，避免整个 epoch 被静默跳空。",
+    "whenToUse": "分辨率分桶差异大、偶发大 bucket 撑爆显存的场景保持默认即可；想更快失败便于排查时调小到 1~2。",
+    "avoidWhen": "oom_skip_batch_enabled 关闭时无效；把该值调大并不能解决显存不足，只是推迟报错，根因应通过降低 batch/分辨率或开启显存优化解决。"
+  },
+  "advanced": {
+    "principle": "偶发 OOM（个别超大样本）与系统性 OOM（配置整体超预算）需要不同处置：前者跳过即可，后者继续跳只会产出没有训练量的假进度。连续计数器区分两者——任何一次成功 step 都会重置计数。",
+    "intervention": "training_loop_epoch_mixin.py 的 batch 循环：捕获 CUDA OOM 后 oom_skip_enabled 决定是否跳过，oom_max_consecutive（本键）决定连续失败上限，超限抛出终止。",
+    "expectedImpact": "训练对偶发显存尖峰更有韧性，同时保证真正配置错误时快速失败。",
+    "tradeoffs": "被跳过的 batch 本轮不参与学习，跳批率高时有效数据量下降；日志中应关注跳批告警而非只看训练是否在跑。",
+    "codePath": "training_loop_epoch_mixin.py——oom_skip_enabled / oom_max_consecutive = getattr(self, 'oom_skip_batch_max_consecutive', 3)"
+  },
+  "relatedConfigs": [
+    "oom_skip_batch_enabled",
+    "train_batch_size",
+    "resolution"
+  ]
+}

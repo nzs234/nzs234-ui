@@ -1,0 +1,27 @@
+{
+  "key": "caption_variant_schedule",
+  "title": "变体调度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "alternate 轮换",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "alternate": "几种 caption 轮流来。",
+      "ratio": "按比例混。",
+      "curriculum": "课程式换。",
+      "custom": "自定义日程。"
+    }
+  },
+  "advanced": {
+    "principle": "alternate 轮换；ratio 按比例；curriculum 课程；custom 自定义序列。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

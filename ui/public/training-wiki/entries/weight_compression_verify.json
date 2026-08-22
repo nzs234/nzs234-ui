@@ -1,0 +1,21 @@
+{
+  "key": "weight_compression_verify",
+  "title": "压缩能力探测（weight_compression_verify）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "启动前探测当前运行时是否真的支持所选压缩后端。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "启动前探测当前运行时是否真的支持所选压缩后端。建议保持开启，这样可以明确确认 qfloat8 / torchao Float8 是否真实生效，避免出现“开了预设但实际没压缩”的假象。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

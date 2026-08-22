@@ -1,0 +1,25 @@
+{
+  "key": "lulynx_weight_noise_mode",
+  "title": "权重噪声模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "relative（",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "relative": "按权重 RMS 相对加噪。",
+      "absolute": "固定 σ 加噪。"
+    }
+  },
+  "advanced": {
+    "principle": "relative（默认）：σ 按参数 RMS 缩放，零初始化 up 层早期几乎不加噪；absolute：全局固定 σ。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

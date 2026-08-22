@@ -1,0 +1,21 @@
+{
+  "key": "use_cache",
+  "title": "使用磁盘缓存（use_cache）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "启用后优先读 latent/TE 缓存（*_flux2.",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "启用后优先读 latent/TE 缓存（*_flux2.npz）。需先构建 cache；cached 步跳过 live TE/VAE。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,25 @@
+{
+  "key": "boogu_model_version",
+  "title": "模型版本（boogu_model_version）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "当前产品默认 Base 0.",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "base-0.1": "Boogu Base 0.1 文生图。",
+      "edit-0.1": "Boogu Edit 0.1，编辑管线，跟 Base 不一样。"
+    }
+  },
+  "advanced": {
+    "principle": "当前产品默认 Base 0.1。Edit 见 boogu-edit-lora（Phase C）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

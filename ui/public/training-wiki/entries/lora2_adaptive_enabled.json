@@ -1,0 +1,21 @@
+{
+  "key": "lora2_adaptive_enabled",
+  "title": "LoRA2 Adaptive (自动 Rank 选择)",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "指数衰减权重自动学习最优 rank。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "指数衰减权重自动学习最优 rank。每层学习 ν 参数控制有效 rank。Rank-512 质量但 Rank-64 显存。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

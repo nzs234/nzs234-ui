@@ -1,0 +1,27 @@
+{
+  "key": "adapter_init_export_mode",
+  "title": "初始化导出模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "auto 会在最终保存时导出成可加载到原始底模的 LoRA",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "auto": "训练时可以特殊初始化，存盘时尽量收成能挂原底的标准 LoRA。",
+      "raw": "训练内部状态原样留着，好 resume，有的推理端吃不下。",
+      "lora_compatible": "硬收成常规 LoRA 键名。",
+      "approximate": "近似收成标准 LoRA，快一点，精度可能差一点。"
+    }
+  },
+  "advanced": {
+    "principle": "auto 会在最终保存时导出成可加载到原始底模的 LoRA；raw 保留精确训练状态用于恢复。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

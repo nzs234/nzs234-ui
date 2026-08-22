@@ -1,0 +1,19 @@
+{
+  "key": "anima_rematerializable_block_mode",
+  "title": "可重物化模式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "可重物化模式 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "profile_only": "只做相关 profiling。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

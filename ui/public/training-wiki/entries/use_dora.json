@@ -1,0 +1,33 @@
+{
+  "key": "use_dora",
+  "title": "DoRA / lulynx DoRA 变体",
+  "category": "LoRA / 变体",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora"
+  ],
+  "layers": [
+    "适配器层"
+  ],
+  "standard": {
+    "summary": "DoRA 将权重更新分解为方向（direction）和幅度（magnitude）两个独立组件。方向由标准 LoRA 低秩矩阵学习，幅度由额外可训练向量学习。",
+    "effect": "classic 是标准 DoRA 路径；lulynx_stopgrad_dora 保持前向值相同，但对 row norm 使用 stop-gradient 近似。质量与速度收益必须通过本地同条件 A/B 验证，不能直接套用论文数字。",
+    "whenToUse": "需要论文语义时选 classic；确认 stop-gradient 近似适合当前训练稳定性时选 lulynx_stopgrad_dora。",
+    "avoidWhen": "显存极度紧张时（幅度向量增加少量显存）。与某些 LyCORIS 算法不兼容。"
+  },
+  "advanced": {
+    "principle": "classic 使用完整 DoRA 方向/幅度梯度；lulynx_stopgrad_dora 仅在归一化 row-norm 梯度上做 detached 近似，前向权重值保持一致。",
+    "intervention": "在 LoRALinear 基础上增加 magnitude 参数和列归一化。dora_mode='full' 对所有目标层启用，'partial' 只对 attention 层启用。",
+    "expectedImpact": "不要从论文质量数字外推到 lulynx 变体；应使用相同 seed、数据和步数做 A/B。",
+    "tradeoffs": "dora_wd（weight-decomposed）是 Anima UI 的别名。bypass_mode 已弃用。",
+    "codePath": "backend/core/lulynx/dora_layer.py 与 set_dora_layer.py"
+  },
+  "relatedConfigs": [
+    "network_dim",
+    "network_alpha",
+    "dora_mode",
+    "dora_wd"
+  ]
+}

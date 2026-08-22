@@ -1,0 +1,21 @@
+{
+  "key": "lulynx_safeguard_enabled",
+  "title": "启用 SafeGuard",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "桥接到当前训练器的轻量安全防护，可拦截 NaN/Inf",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "桥接到当前训练器的轻量安全防护，可拦截 NaN/Inf loss 与异常 spike",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

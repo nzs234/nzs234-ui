@@ -1,0 +1,33 @@
+{
+  "key": "lulynx_progressive_rank_schedule",
+  "title": "lulynx 渐进秩调度",
+  "category": "LoRA 变体 / 张量",
+  "appliesTo": [
+    "anima-lora",
+    "sdxl-lora"
+  ],
+  "aliases": [
+    "tlora_min_rank",
+    "tlora_orthogonal_init"
+  ],
+  "standard": {
+    "summary": "控制 lulynx 渐进秩 LoRA 随全局训练进度变化的有效 rank；不是 Tensor-Ring，也不是论文 T-LoRA 的 timestep schedule。",
+    "effect": "tlora_rank_schedule 控制 lulynx 渐进秩 LoRA 随全局训练进度的有效 rank；tlora_orthogonal_init 使用正交初始化。不要理解为论文 T-LoRA 的 timestep schedule。",
+    "whenToUse": "实验性功能。追求比标准 LoRA 更高的参数效率（相同参数量 → 更高隐式秩）时尝试。",
+    "avoidWhen": "默认关闭。张量环分解的前向计算比标准 LoRA 更复杂，且推理时需要专门支持。",
+    "optionDescriptions": {
+      "cosine": "有效 rank 按余弦变，常是先宽后收。",
+      "linear": "有效 rank 直线变。"
+    }
+  },
+  "advanced": {
+    "principle": "张量环（Tensor Ring）分解：W ≈ Tr(G_1, G_2, ..., G_k)，通过闭环收缩多个三阶张量核来表示权重矩阵。隐式秩 = 各核维度的乘积，远超标准 LoRA 的显式 rank。",
+    "tradeoffs": "张量环计算比矩阵乘法更复杂（多次收缩），训练速度可能慢 2~3×；但参数效率理论上更高，适合参数量受限的场景。"
+  },
+  "relatedConfigs": [
+    "network_dim",
+    "network_alpha",
+    "krona_enabled",
+    "cdka_enabled"
+  ]
+}

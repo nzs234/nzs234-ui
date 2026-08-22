@@ -1,0 +1,21 @@
+{
+  "key": "experimental_attention_profile_torch_max_tokens",
+  "title": "Torch 回退最大 Token",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "防止纯 PyTorch O(n²) fallback 在长序列误跑。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "防止纯 PyTorch O(n²) fallback 在长序列误跑。仅 torch_fallback 生效。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

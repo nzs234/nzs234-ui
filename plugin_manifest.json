@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "nzs234.ui_theme.nzs234_ui",
+  "name": "nzs234 UI",
+  "version": "0.1.0",
+  "description": "nzs234 training WebUI for Lulynx Trainer — Editorial / Acid / Glass themes, served at /ui/",
+  "author": "nzs234",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "enabled_by_default": true,
+  "capabilities": [
+    "ui_theme"
+  ],
+  "ui_theme_metadata": {
+    "entry_file": "ui/dist/index.html",
+    "dist_dir": "ui/dist",
+    "themes": [
+      "editorial",
+      "acid",
+      "glass"
+    ],
+    "default_theme": "editorial"
+  }
+}

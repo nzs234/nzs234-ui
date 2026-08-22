@@ -1,0 +1,21 @@
+{
+  "key": "reslora_mode",
+  "title": "ResLoRA 模式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "ResLoRA 模式：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "block_shortcut": "block 之间抄近路，梯度好穿，导出要注意拓扑。",
+      "input_shortcut": "从输入侧短路，浅层信息留得多。",
+      "middle_shortcut": "中段短路。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

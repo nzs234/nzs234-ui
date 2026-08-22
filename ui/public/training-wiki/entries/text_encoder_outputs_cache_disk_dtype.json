@@ -1,0 +1,21 @@
+{
+  "key": "text_encoder_outputs_cache_disk_dtype",
+  "title": "文本编码器输出磁盘精度",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "文本编码器输出磁盘精度：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "float16": "文本缓存 fp16。",
+      "bfloat16": "文本缓存 bf16。",
+      "float32": "文本缓存 fp32。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

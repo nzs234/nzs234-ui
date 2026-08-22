@@ -1,0 +1,20 @@
+{
+  "key": "ltx23_block_residency",
+  "title": "LTX-2.3 Block 驻留",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "LTX-2.3 Block 驻留 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "resident": "常驻。",
+      "block_offload": "block 卸。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

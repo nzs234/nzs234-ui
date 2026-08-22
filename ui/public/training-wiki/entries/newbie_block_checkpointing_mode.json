@@ -1,0 +1,24 @@
+{
+  "key": "newbie_block_checkpointing_mode",
+  "title": "Newbie Checkpointing 模式（newbie_block_checkpointing_mode）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "当前后端仅消费 block（整块重算）。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "block": "整 block 重算（现在后端就吃这个）。"
+    }
+  },
+  "advanced": {
+    "principle": "当前后端仅消费 block（整块重算）。保留字段便于与 Anima 对齐及后续扩展。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

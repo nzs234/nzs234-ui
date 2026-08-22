@@ -1,0 +1,21 @@
+{
+  "key": "block_merge_size",
+  "title": "合并 Block 大小",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "merged_block 模式下每组包含的 block 数，不跨",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "merged_block 模式下每组包含的 block 数，不跨 down/mid/up 阶段边界。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

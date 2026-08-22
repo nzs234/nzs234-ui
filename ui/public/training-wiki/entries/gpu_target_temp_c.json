@@ -1,0 +1,21 @@
+{
+  "key": "gpu_target_temp_c",
+  "title": "GPU 目标温度(℃)",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "温度闭环：超过目标温度自动降低有效占空比",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "温度闭环：超过目标温度自动降低有效占空比，降温后自动恢复速度。留空关闭；与上方手动占空比同设时取更低者",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

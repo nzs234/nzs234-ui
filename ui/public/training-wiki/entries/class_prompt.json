@@ -1,0 +1,30 @@
+{
+  "key": "class_prompt",
+  "title": "DreamBooth 类别提示词",
+  "category": "训练 / DreamBooth",
+  "appliesTo": [
+    "sd-dreambooth"
+  ],
+  "layers": [
+    "数据层"
+  ],
+  "standard": {
+    "summary": "Prior preservation（先验保持）使用的类别描述，如 \"a person\"，描述实例所属的一般类别而非具体主体。",
+    "effect": "当 prior_loss_weight > 0 且未提供 reg_data_dir 时，后端会用底模按该提示词自动生成 num_class_images 张类别图，存到训练目录旁的 class_images 文件夹作为正则集；三个条件缺一则此路径不触发。",
+    "whenToUse": "DreamBooth 训练特定主体（人物、宠物、物品）且担心「类别漂移」（训练后所有 person 都长成目标脸）时，配合 prior_loss_weight 使用。",
+    "avoidWhen": "已手动准备了正则图目录（reg_data_dir 非空时自动生成被跳过）；纯风格训练不需要先验保持。"
+  },
+  "advanced": {
+    "principle": "DreamBooth 的先验保持项用「底模自己生成的类别样本」当正则数据，训练时同时最小化实例损失与类别损失，防止实例特征污染整个类别的先验分布。",
+    "intervention": "dreambooth_prior_setup.py：满足触发条件（prior_loss_weight>0、reg_data_dir 为空、class_prompt 非空）时构造 ClassImageGenerator，用当前 pipeline 以 30 步、CFG 7.5 生成类别图并落盘，随后作为正则集参与训练。",
+    "expectedImpact": "目标主体学得进去的同时，类别的一般概念不被破坏；训练前会多出一段生成类别图的耗时。",
+    "tradeoffs": "自动生成的类别图质量受底模水平限制；生成 100 张图的一次性开销可观（可复用已生成目录）。",
+    "codePath": "dreambooth_prior_setup.py：触发条件判断与 ClassImageGenerator 调用；dreambooth.py:ClassImageGenerator；configs_dataset.py 定义"
+  },
+  "relatedConfigs": [
+    "instance_prompt",
+    "num_class_images",
+    "prior_loss_weight",
+    "reg_data_dir"
+  ]
+}

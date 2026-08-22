@@ -1,0 +1,21 @@
+{
+  "key": "quality_evaluation_xy_grid",
+  "title": "生成质量评估 XY 网格",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "训后一次：X=已保存的 epoch/step 产品权重，Y=预览测试组（或验证提示词）；输出 quality_xy_grid.png。中间保存越多 X 轴越密；仅最终权重时也是 1 列网格。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

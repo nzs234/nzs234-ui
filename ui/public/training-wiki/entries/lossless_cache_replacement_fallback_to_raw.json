@@ -1,0 +1,21 @@
+{
+  "key": "lossless_cache_replacement_fallback_to_raw",
+  "title": "损坏自动回退",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "sidecar 缺失/损坏时回退原版 npz",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "sidecar 缺失/损坏时回退原版 npz 而非崩训练。关闭=strict 硬失败。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "goal_forecast_tool",
+  "title": "训练达标预测（Copilot 只读预测器）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "读取已训练 run 的 loss / 验证 loss / L2 时序",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "读取已训练 run 的 loss / 验证 loss / L2 时序，做饱和幂律趋势外推，判定收敛/发散并预测达到目标阈值所需步数，回答\"按当前趋势能否在总步数内达标\"。纯只读建议，不改动训练参数、不进入训练主链。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

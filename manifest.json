@@ -1,0 +1,7 @@
+{
+  "id": "community:nzs234-ui",
+  "name": "nzs234 UI",
+  "version": "0.1.0",
+  "entry_file": "ui/dist/index.html",
+  "description": "nzs234 training WebUI — Editorial / Acid / Glass themes, served at /ui/"
+}

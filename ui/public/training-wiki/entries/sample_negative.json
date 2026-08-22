@@ -1,0 +1,33 @@
+{
+  "key": "sample_negative",
+  "title": "采样反向提示词（独立字段）",
+  "category": "训练 / 采样",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "预览层"
+  ],
+  "standard": {
+    "summary": "预览与质量评估采样使用的独立 negative prompt 字段；为空时回落到 negative_prompts。UI 上填 negative_prompts 会被自动映射到本键。",
+    "effect": "预览组（preview_groups）未单独指定 negative 时、质量评估采样、验证套件采样都读取本值作为反向提示词。",
+    "whenToUse": "想让预览/评估的 negative 与训练常用 UI 字段解耦、或以 TOML 直连后端配置时。",
+    "avoidWhen": "已通过 negative_prompts 填写时无需重复（别名映射只在本键为空时生效，两处都填以本键为准）。"
+  },
+  "advanced": {
+    "principle": "后端把预览 negative 收敛为单一权威字段：所有采样消费方（预览 pipeline、质量评估、验证套件）统一读 sample_negative，UI 层的 negative_prompts 仅是别名入口，避免多处 negative 定义不一致。",
+    "intervention": "config_adapter_training_shared.py 与 field_alias_map.py：negative_prompts → sample_negative（仅在目标键缺失时映射）；消费方：trainer_config_preview_target_mixin.py（预览组回落）、trainer_quality_runtime.py、quality_evaluation_sampling.py、validation_suite.py。",
+    "expectedImpact": "预览与评估图的 negative 行为一致、可追溯。",
+    "tradeoffs": "无训练影响；只作用于采样类输出。",
+    "codePath": "field_alias_map.py:'negative_prompts'→'sample_negative'；trainer_config_preview_target_mixin.py / quality_evaluation_sampling.py 消费"
+  },
+  "relatedConfigs": [
+    "negative_prompts",
+    "sample_prompts",
+    "preview_groups",
+    "sample_sampler"
+  ]
+}

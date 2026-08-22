@@ -1,0 +1,36 @@
+{
+  "key": "caption_tag_mutate_scope",
+  "title": "Tag 变动范围（Drop/Shuffle 作用域）",
+  "category": "Caption / 正则",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora",
+    "finetune",
+    "flux-lora"
+  ],
+  "aliases": [
+    "caption_tag_scope_separator"
+  ],
+  "standard": {
+    "summary": "控制 tag dropout 与 caption shuffle 作用在整段还是仅分隔符后半段。默认 all 保持旧行为。",
+    "effect": "all：整段 tag 都可随机丢/打乱。after_separator：仅 caption_tag_scope_separator（默认 |||）之后的 tag 可 drop/shuffle，前半段（触发词+构图结构）始终保留。",
+    "whenToUse": "标注写成「触发词, 构图, 动作, ||| 特征词, 服装词」且希望 drop/shuffle 只动后半段时，设 after_separator。",
+    "avoidWhen": "没有固定前缀需要保护、或标注里没有稳定分隔符时保持 all。"
+  },
+  "advanced": {
+    "principle": "字符串级 split(sep,1) 切 head/tail；uniform drop + shuffle 只打 tail；keep_tokens 在 after_separator 下只作用于 tail 前缀。keep_tokens_separator 仍是输出插入符，不负责解析保护区。无分隔符时 after_separator 退化为 all。",
+    "intervention": "CaptionDataset._process_caption → _process_caption_scoped；Anima 缓存路径仅对齐 shuffle 作用域（无 runtime tag dropout）。",
+    "expectedImpact": "触发词与构图前缀稳定，特征/服装类 tag 仍可做正则增强。",
+    "tradeoffs": "定向 tag dropout 仍扫全列表；整句 caption_dropout 仍可清空整句。Anima multi_copy 只产生顺序变体，不在缓存路径补完整 tag dropout 栈。",
+    "codePath": "caption_augment.split_caption_by_scope_separator + dataset_loader._process_caption_scoped"
+  },
+  "relatedConfigs": [
+    "caption_tag_scope_separator",
+    "shuffle_caption",
+    "caption_tag_dropout_rate",
+    "keep_tokens",
+    "keep_tokens_separator"
+  ]
+}

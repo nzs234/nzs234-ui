@@ -1,0 +1,20 @@
+{
+  "key": "concept_geometry_embedding_device",
+  "title": "Embedding 设备",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "Embedding 设备 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "cpu": "embedding 在 CPU。",
+      "cuda": "embedding 在 GPU。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

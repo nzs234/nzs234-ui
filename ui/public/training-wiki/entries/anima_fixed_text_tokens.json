@@ -1,0 +1,21 @@
+{
+  "key": "anima_fixed_text_tokens",
+  "title": "固定文本 Token 长度",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "选项说明见 ?",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "0 = 动态批内 padding（默认）；>0 = 固定长度（如 512）。固定长度可加速编译优化路径，但会增加 padding 开销。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

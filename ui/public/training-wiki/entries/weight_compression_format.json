@@ -1,0 +1,29 @@
+{
+  "key": "weight_compression_format",
+  "title": "压缩格式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "底层压缩后端。fp8_e4m3 默认",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "fp8_e4m3": "FP8 E4M3。",
+      "torchao_int8": "torchao INT8。",
+      "torchao_uint4": "torchao UINT4，压得更狠。",
+      "torchao_float8": "torchao Float8。",
+      "quanto_int8": "Quanto INT8。",
+      "quanto_float8": "Quanto Float8。"
+    }
+  },
+  "advanced": {
+    "principle": "底层压缩后端。fp8_e4m3 默认；torchao/quanto 系列需对应依赖可用，启动前建议开探测。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

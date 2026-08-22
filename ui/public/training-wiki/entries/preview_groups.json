@@ -1,0 +1,21 @@
+{
+  "key": "preview_groups",
+  "title": "预览测试组",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "可添加多组预览，并为每组单独设置 seed、LoRA",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "可添加多组预览，并为每组单独设置 seed、LoRA 权重和延迟启用轮次；例如第三组从第 3 个 epoch 后再开始测试泛化性。留空时仍使用上方旧提示词。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

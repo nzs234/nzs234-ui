@@ -1,0 +1,21 @@
+{
+  "key": "opt_soap_shampoo_beta",
+  "title": "SOAP shampoo_beta",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Shampoo 因子的指数平均系数。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "Shampoo 因子的指数平均系数。-1 = 使用 beta2。推荐 -1 或 0.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

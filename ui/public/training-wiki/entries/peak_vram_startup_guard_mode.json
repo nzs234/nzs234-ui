@@ -1,0 +1,21 @@
+{
+  "key": "peak_vram_startup_guard_mode",
+  "title": "保护强度",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "保护强度 的可选值说明（自动补全骨架，可继续润色）。",
+    "effect": "切换不同枚举值会改变训练行为或资源占用，详见各子项。",
+    "whenToUse": "按任务与硬件选择；不确定时用产品默认。",
+    "avoidWhen": "未理解子项含义时不要盲选实验/激进档。",
+    "optionDescriptions": {
+      "auto": "启动峰值守护自动。",
+      "balanced": "预留和可用性折中。",
+      "aggressive": "预留更狠，优先别 OOM。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

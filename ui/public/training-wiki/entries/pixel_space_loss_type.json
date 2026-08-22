@@ -1,0 +1,22 @@
+{
+  "key": "pixel_space_loss_type",
+  "title": "像素损失类型",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "像素损失类型：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "mse": "像素上算 MSE，简单。",
+      "l1": "像素 L1，对亮瞎/暗死没那么炸。",
+      "lpips": "按「看起来像不像」罚，算得贵，权重大了容易糊或风格飘。",
+      "hybrid": "像素和感知混着来，权重要自己拧。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

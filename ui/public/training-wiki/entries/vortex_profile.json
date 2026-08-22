@@ -1,0 +1,26 @@
+{
+  "key": "vortex_profile",
+  "title": "Vortex 档位（vortex_profile）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "standard 默认",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "standard": "标准资源档。",
+      "low_vram": "低显存档。",
+      "extreme": "极限档。"
+    }
+  },
+  "advanced": {
+    "principle": "standard 默认；low_vram 更保守；extreme 更激进。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

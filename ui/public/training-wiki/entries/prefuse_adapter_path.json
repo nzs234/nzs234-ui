@@ -1,0 +1,33 @@
+{
+  "key": "prefuse_adapter_path",
+  "title": "预融合 LoRA 路径",
+  "category": "训练 / 适配器",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "权重层"
+  ],
+  "standard": {
+    "summary": "训练开始前把一个已有 LoRA 按 prefuse_adapter_scale 直接合并进底座权重，然后在这个「新底座」上训练新 LoRA。留空 = 不预融合。",
+    "effect": "模型准备的收尾阶段把该 LoRA 的 delta 权重乘 scale 后加进对应层，日志输出融合层数；被融合的 LoRA 本身不再作为可训练/可卸载的 adapter 存在，效果永久固化在本次训练的底座里。",
+    "whenToUse": "想在「底模+画风 LoRA」的组合效果上继续训练角色时；把通用增强 LoRA（细节、手部修复）作为训练起点时。与 network_weights（继续训练同一个 LoRA）语义不同：预融合是改底座，不是续训。",
+    "avoidWhen": "希望训练完还能自由开关那个 LoRA 时（融合不可逆，推理时必须同时挂原 LoRA 才能复现训练分布）；与 assistant_lora 同用会冲突（后端有互斥校验）。"
+  },
+  "advanced": {
+    "principle": "LoRA 的 ΔW = B·A·(alpha/rank) 可以直接加到基础权重上（W' = W + scale·ΔW）。预融合后训练的新 LoRA 学到的是相对 W' 的残差，因此推理时需要「底模 + 预融合 LoRA(同 scale) + 新 LoRA」三者组合才能还原训练时的分布。",
+    "intervention": "trainer_prepare_finalize_mixin.py：模型加载与 adapter 注入之间，路径非空时调用 adapter.adapter_prefusion.prefuse_adapter_into_model(model, path, scale)；路径受 training_path_contract.py 的路径合法性校验。",
+    "expectedImpact": "训练起点分布与目标组合一致，新 LoRA 不必重复学习已有 LoRA 的内容，收敛更快、串味更少。",
+    "tradeoffs": "融合发生在内存中的本次训练副本，不会写坏磁盘上的底模；但训练产物与预融合 LoRA 形成隐性依赖，分发时需要说明配套关系。",
+    "codePath": "trainer_prepare_finalize_mixin.py——prefuse_adapter_into_model(model, prefuse_adapter_path, scale=prefuse_adapter_scale)；configs_monitoring.py 定义"
+  },
+  "relatedConfigs": [
+    "prefuse_adapter_scale",
+    "network_weights",
+    "base_weight_path",
+    "assistant_lora_path"
+  ]
+}

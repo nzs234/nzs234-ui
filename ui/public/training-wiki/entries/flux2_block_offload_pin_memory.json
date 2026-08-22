@@ -1,0 +1,21 @@
+{
+  "key": "flux2_block_offload_pin_memory",
+  "title": "Block Offload Pin Memory",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "CPU 侧 pinned 缓冲，加速 H2D",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "CPU 侧 pinned 缓冲，加速 H2D（真机吞吐关键）。Windows 上可能抬高 shared GPU / 系统 RAM；内存紧张可关。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

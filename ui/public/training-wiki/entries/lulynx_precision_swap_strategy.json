@@ -1,0 +1,26 @@
+{
+  "key": "lulynx_precision_swap_strategy",
+  "title": "Precision Swap 策略",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "balanced 优先 output/mid 高收益 block",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "off": "不做精度交换规划。",
+      "balanced": "优先 output/mid 那些赚得多的 block 换精度。",
+      "aggressive": "更多 block 纳入，赚和风险都大。"
+    }
+  },
+  "advanced": {
+    "principle": "balanced 优先 output/mid 高收益 block；aggressive 会选择更多候选 block",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

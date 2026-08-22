@@ -1,0 +1,30 @@
+{
+  "key": "universal_dit_target_policy",
+  "title": "Universal DiT 目标模块策略",
+  "category": "DiT / 实验性",
+  "appliesTo": [
+    "universal-dit"
+  ],
+  "layers": [
+    "网络结构层"
+  ],
+  "standard": {
+    "summary": "通用 DiT 路线选择 LoRA 注入模块的策略，默认 attention_mlp（attention 与 MLP 的线性层都注入）。",
+    "effect": "运行时按策略扫描模型的线性层生成注入清单；universal_dit_target_modules_json 非空时可显式指定模块路径覆盖自动策略；universal_dit_allow_fused_qkv 控制是否接受融合 QKV 层。",
+    "whenToUse": "默认 attention_mlp 是常规 LoRA 的标准覆盖；只想训 attention（更保守、更省）或已知模型结构特殊时改策略或用 JSON 显式指定。",
+    "avoidWhen": "universal_dit_enabled 关闭时无效；对未知结构盲目用 JSON 显式列表容易漏掉关键模块。"
+  },
+  "advanced": {
+    "principle": "LoRA 注入面决定可学习子空间的位置：attention 投影层控制「往哪看/怎么混合」，MLP 控制「逐 token 变换」；attention_mlp 组合是社区验证的默认最优覆盖。通用路线用命名/形状启发式识别这些层，融合 QKV（单个大线性层）需要特殊处理故默认排除。",
+    "intervention": "universal_dit/runtime.py：policy = universal_dit_target_policy，allow_fused = universal_dit_allow_fused_qkv，explicit_paths 解析 universal_dit_target_modules_json；training_capabilities/universal_dit.py：取值校验（_TARGET_POLICIES 白名单，非法回落 attention_mlp）。",
+    "expectedImpact": "注入面越大表达力与显存/产物体积越大；显式 JSON 模式可精确控制但维护成本高。",
+    "tradeoffs": "自动策略对非常规命名的模型可能识别不全；建议先跑 probe 模式看识别报告再正式训练。",
+    "codePath": "universal_dit/runtime.py：target_policy / allow_fused_qkv / target_modules_json 解析；training_capabilities/universal_dit.py：白名单校验"
+  },
+  "relatedConfigs": [
+    "universal_dit_enabled",
+    "universal_dit_target_modules_json",
+    "universal_dit_allow_fused_qkv",
+    "universal_dit_probe_mode"
+  ]
+}

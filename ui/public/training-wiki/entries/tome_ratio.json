@@ -1,0 +1,29 @@
+{
+  "key": "tome_ratio",
+  "title": "ToMe 合并比例",
+  "category": "性能 / 加速",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "layers": [
+    "前向层"
+  ],
+  "standard": {
+    "summary": "ToMe 每步合并的 token 比例（0~1），tome_enabled 开启时生效。默认 0.5。",
+    "effect": "比例越高参与 attention 的 token 越少、前向越快，但特征分辨率损失越大；0 等效于不合并。",
+    "whenToUse": "开启 ToMe 后从 0.3~0.5 起步，观察速度收益与预览图质量的平衡点。",
+    "avoidWhen": "tome_enabled 关闭时无意义；比例 >0.6 时细节退化通常肉眼可见，不建议用于最终产出训练。"
+  },
+  "advanced": {
+    "principle": "ToMe 的合并数量 r = ratio × token 数；合并按 token 相似度贪心配对，加权平均后序列长度缩短，attention 复杂度从 O(N²) 降到 O((N-r)²)。",
+    "intervention": "training_loop.py:_get_tome_seam 把 ratio 传入 build_tome_seam；tome_runtime.py 在模型前向作用域内应用。",
+    "expectedImpact": "attention 耗时按 (1-ratio)² 量级下降；高分辨率（token 多）时绝对收益更大。",
+    "tradeoffs": "速度与质量单调互换；训练时合并、推理时不合并造成的训推差异随 ratio 增大。",
+    "codePath": "training_loop.py——build_tome_seam(enabled=True, ratio=float(tome_ratio))；tome_runtime.py"
+  },
+  "relatedConfigs": [
+    "tome_enabled",
+    "resolution"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "key": "fused_projection_memory_mode",
+  "title": "Fused Projection 显存模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "keep_original 最兼容",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "keep_original": "原始 Q/K/V 留着，兼容好，显存高。",
+      "drop_original": "只留 fused，最省显存，有的导出/hook 会缺键。",
+      "materialize_on_save": "训的时候省，存盘时再补回原始 key。"
+    }
+  },
+  "advanced": {
+    "principle": "keep_original 最兼容；drop_original 会移除原始 Q/K/V 层以节省显存；materialize_on_save 训练中移除，state_dict 保存时从 fused 权重补回原始 key。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

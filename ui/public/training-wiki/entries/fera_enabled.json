@@ -1,0 +1,29 @@
+{
+  "key": "fera_enabled",
+  "title": "FeRA (特征调制适配)",
+  "category": "LoRA / 实验性",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora"
+  ],
+  "layers": [
+    "适配器层"
+  ],
+  "standard": {
+    "summary": "FeRA 通过逐输出通道门控控制 LoRA 增量强度，门控默认初始化为 1.0。",
+    "effect": "fera_gate_init 默认 1.0。显式填写 0 也会归一化为 1.0，避免零门控与零初始化 LoRA up 同时出现时所有 FeRA 梯度锁死。",
+    "whenToUse": "想更平滑地引入 LoRA 特征时。减少训练初期的不稳定性。",
+    "avoidWhen": "增加少量参数和计算开销。实验性特性。"
+  },
+  "advanced": {
+    "principle": "在 LoRA 增量上添加逐输出通道可学习门控 g：output = base_output + g · lora_delta。g 初始化为 fera_gate_init（默认 1.0），训练中可按通道调整增量强度。",
+    "intervention": "LoRA forward 增量乘以逐输出通道可学习门控向量后叠加到基模型输出。",
+    "expectedImpact": "训练初期更稳定，减少因 LoRA 初始化不当导致的 loss spike。",
+    "tradeoffs": "每层增加一个长度等于输出通道数的可训练门控向量。",
+    "codePath": "core/lulynx/ → FeRA gated LoRA output"
+  },
+  "relatedConfigs": [
+    "fera_gate_init"
+  ]
+}

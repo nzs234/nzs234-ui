@@ -1,0 +1,7 @@
+# Auto-detect text files and keep checkouts LF-stable on Windows. The trainer
+# repository this UI plugs into uses the same rule; without it a Windows clone
+# with core.autocrlf=true rewrites every source file's line endings on commit.
+* text=auto eol=lf
+.gitattributes text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf

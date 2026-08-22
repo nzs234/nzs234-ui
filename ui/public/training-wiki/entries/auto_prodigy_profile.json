@@ -1,0 +1,27 @@
+{
+  "key": "auto_prodigy_profile",
+  "title": "AutoProdigy 档位",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "safe/balanced/aggressive 预设",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "safe": "自适应偏保守。",
+      "balanced": "中间档。",
+      "aggressive": "自适应更冲，收敛可能快也更抖。",
+      "custom": "不套预设，全听你手填的子参数。"
+    }
+  },
+  "advanced": {
+    "principle": "safe/balanced/aggressive 预设；custom 使用下方手填参数。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

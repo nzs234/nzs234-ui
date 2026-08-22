@@ -1,0 +1,27 @@
+{
+  "key": "weight_compression_target",
+  "title": "压缩目标",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "none/backbone/text_encoder",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "none": "谁都不压。",
+      "backbone": "只压主干。",
+      "text_encoder": "只压文本塔。",
+      "both": "主干和文本塔都压。"
+    }
+  },
+  "advanced": {
+    "principle": "none/backbone/text_encoder/both。预设会覆盖此值；手动启用时有效。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

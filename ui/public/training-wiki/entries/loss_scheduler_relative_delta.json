@@ -1,0 +1,21 @@
+{
+  "key": "loss_scheduler_relative_delta",
+  "title": "相对下降阈值",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "按最佳 EMA loss 的比例判断有效下降。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "按最佳 EMA loss 的比例判断有效下降。默认 0.001 会过滤后期很小的训练 loss 抖动。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

@@ -1,0 +1,21 @@
+{
+  "key": "sdpa",
+  "title": "启用 SDPA",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "高级覆盖：强制 SDPA。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "高级覆盖：强制 SDPA。默认关闭（不写死 sdpa），由运行时 profile 决定。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

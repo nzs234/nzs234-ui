@@ -1,0 +1,29 @@
+{
+  "key": "h3_cfg_preservation_enabled",
+  "title": "H3 CFG 保真训练",
+  "category": "训练 / 高级",
+  "appliesTo": [
+    "minimax-h3-lora"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "用无梯度的 unconditional 分支恢复 raw conditional 训练目标，避免对 CFG 蒸馏过的 H3 checkpoint 做常规微调时逐步「解蒸馏」。默认开启，使用常数 CFG（h3_cfg_scale，推荐 4）。",
+    "effect": "每步额外跑一次无梯度 uncond 前向，把训练 target 从「模型直接输出」换算回「未蒸馏的 conditional 目标」；实际生效还要求 h3_cfg_scale > 1。旧 h3_training_adapter_path 没有 H3 runtime 消费端，现已 fail-closed；显式预融合请使用 prefuse_adapter_path。",
+    "whenToUse": "所有基于蒸馏版 H3 权重（如 FL2VA pruned）的 LoRA 训练保持开启——这是维持底模无 CFG 推理能力的关键。",
+    "avoidWhen": "cfg_scale 设为 1 时等效关闭；对非蒸馏原始权重训练时可关闭省一次前向。"
+  },
+  "advanced": {
+    "principle": "H3 发布权重内嵌了 CFG 蒸馏（模型输出 ≈ cond + s·(cond−uncond)）；naive 微调把「蒸馏后的输出」当作 conditional 目标学习，等价于每步削弱一点内嵌 guidance。CFG 保真训练用 uncond 分支按 s 反解出 raw conditional 目标，让微调作用在正确的语义上。",
+    "intervention": "minimax_h3/train_step.py：preserve_cfg = h3_cfg_preservation_enabled 且 configured_cfg_scale > 1 时启用 uncond 无梯度前向与目标重构；configs_h3.py：拒绝无消费端的 h3_training_adapter_path，并校验 h3_cfg_scale 范围 [1,16]。",
+    "expectedImpact": "长训后底模的 few-step/无 CFG 生成能力保持完好；每步多一次无梯度前向，吞吐下降约与前向占比成比例。",
+    "tradeoffs": "需要缓存/编码 unconditional 文本张量（h3_cache_text_encoder_outputs 默认包含）；cfg_scale 与推理端习惯不匹配时保真效果打折。",
+    "codePath": "minimax_h3/train_step.py：preserve_cfg 分支；configs_h3.py：h3_training_adapter_path fail-closed 校验"
+  },
+  "relatedConfigs": [
+    "h3_cfg_scale",
+    "h3_cache_text_encoder_outputs",
+    "h3_timestep_shift"
+  ]
+}

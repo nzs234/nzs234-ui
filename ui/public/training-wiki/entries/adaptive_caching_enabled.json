@@ -1,0 +1,21 @@
+{
+  "key": "adaptive_caching_enabled",
+  "title": "Adaptive Caching",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "训练时按变化率智能跳过部分 block（Aircon）。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "训练时按变化率智能跳过部分 block（Aircon）。默认关闭；与固定 DiT BlockSkip 互斥（BlockSkip 优先）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

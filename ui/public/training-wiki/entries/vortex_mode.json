@@ -1,0 +1,27 @@
+{
+  "key": "vortex_mode",
+  "title": "Vortex 模式（vortex_mode）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "observe/planner 不改变训练 tensor 路径",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "observe": "只观察。",
+      "planner": "开 planner。",
+      "cache_observe": "缓存相关观察。",
+      "cache_v0": "缓存 v0。"
+    }
+  },
+  "advanced": {
+    "principle": "observe/planner 不改变训练 tensor 路径；cache_observe 会接入候选统计；cache_v0 才会按预算尝试 GPU 解码缓存，建议只在监控显示 PCIe 等待明显时手动 。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

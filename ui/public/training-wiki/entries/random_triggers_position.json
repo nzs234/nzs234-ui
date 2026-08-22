@@ -1,0 +1,20 @@
+{
+  "key": "random_triggers_position",
+  "title": "触发词注入位置",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "触发词注入位置 可选值说明。",
+    "effect": "切换枚举会改变对应子系统行为。",
+    "whenToUse": "按任务需要选择。",
+    "avoidWhen": "不确定时保持默认。",
+    "optionDescriptions": {
+      "prepend": "触发词接在 caption 前面。",
+      "append": "接在后面。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

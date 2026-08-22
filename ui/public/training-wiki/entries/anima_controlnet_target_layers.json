@@ -1,0 +1,22 @@
+{
+  "key": "anima_controlnet_target_layers",
+  "title": "注入层",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "注入层 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "self_attn_q": "只打 self-attn 的 Q，控制弱一点。",
+      "self_attn_qkv": "QKV 都打，控制强。",
+      "self_attn_qkv_cross_q": "self QKV 再加 cross 的 Q。",
+      "self_attn_q_pre,mlp_fc1_pre": "Q 前和 MLP 前两个点都打，覆盖面大。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

@@ -1,0 +1,26 @@
+{
+  "key": "data_transfer_profile_mode",
+  "title": "传输计时模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "event 使用 CUDA events 延迟同步",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "event": "CUDA event 记时间，对训练打扰小。",
+      "sync": "硬同步计时，准，但拖慢训练。",
+      "off": "不记传输时间。"
+    }
+  },
+  "advanced": {
+    "principle": "event 使用 CUDA events 延迟同步；sync 保留旧全局同步计时；off 忽略 profiling。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

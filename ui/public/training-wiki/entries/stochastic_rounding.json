@@ -1,0 +1,33 @@
+{
+  "key": "stochastic_rounding",
+  "title": "随机舍入（FP32 source reserve）",
+  "category": "精度 / 优化",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora",
+    "anima-lora",
+    "newbie-lora",
+    "finetune"
+  ],
+  "layers": [
+    "优化器层"
+  ],
+  "standard": {
+    "summary": "保留字段。通用 optimizer wrapper 当前拿不到舍入前的 FP32 参数更新，因此启用会 fail-fast，不宣称已实现标准无偏随机舍入。",
+    "effect": "只有优化器持有 pre-cast FP32 update source 时才能做无偏随机舍入；对已经是 BF16/FP16 的参数再次舍入无法恢复已丢失的小数部分。",
+    "whenToUse": "仅使用明确拥有 FP32 update source 的优化器内建实现，例如 Rose 的内部更新路径。",
+    "avoidWhen": "不要启用通用 stochastic_rounding wrapper；当前会返回 STOCHASTIC_ROUNDING_WRAPPER_UNWIRED。"
+  },
+  "advanced": {
+    "principle": "标准随机舍入需要精确值 x 与目标 dtype 的上下相邻可表示值。若输入本身已经是 BF16/FP16，x 的残差已经丢失，任何后处理都不能证明无偏。",
+    "intervention": "通用 wrapper 保持 reserve/fail-fast；source-aware helper 仅接受显式 source_fp32。",
+    "expectedImpact": "当前通用路径无质量收益声明；需要先完成 optimizer-owned FP32 update contract。",
+    "tradeoffs": "启用旧通用开关会在 optimizer setup 阶段明确拒绝。",
+    "codePath": "stochastic_rounding.py: stochastic_round_(..., source_fp32=...)；Rose 使用独立 FP32 update source"
+  },
+  "relatedConfigs": [
+    "mixed_precision",
+    "full_bf16",
+    "stochastic_grad_accumulation"
+  ]
+}

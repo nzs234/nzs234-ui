@@ -1,0 +1,30 @@
+{
+  "key": "smart_noise_enabled",
+  "title": "Smart Noise Scheduler",
+  "category": "训练 / Anima 专用",
+  "appliesTo": [
+    "anima-lora"
+  ],
+  "layers": [
+    "时间步采样",
+    "训练循环"
+  ],
+  "standard": {
+    "summary": "Anima 的 default-off logSNR 混合采样器：在均匀 logSNR 基线与可配置 Gaussian focus 之间逐样本混合。",
+    "effect": "focus_strength=0 与关闭时保持基线采样；提高 strength 会把更多训练样本集中到 logsnr_focus 附近。",
+    "whenToUse": "只在相同模型、数据、seed 与步数的短 A/B 已证明目标噪声区间有收益时启用。",
+    "avoidWhen": "已经启用其它会覆盖时间步分布的采样器，或尚未确认当前数据集需要聚焦特定 logSNR 区域时。"
+  },
+  "advanced": {
+    "principle": "从 U[-6,6] 与 N(logsnr_focus, focus_spread) 的混合分布采样 logSNR，再用 sigma=sigmoid(-logSNR/2) 转为训练 sigma。本仓实现是可运行的工程启发式，不能据摘要声明与 arXiv:2407.03297 公式等价。",
+    "intervention": "现有 request/config 字段经 TrainingLoop 进入 Anima flow 的最高优先级采样分支；smart_noise_enabled=false 时不改变默认路径。",
+    "expectedImpact": "可能增加目标噪声区间的样本密度；质量与收敛影响必须本地 A/B 验证。",
+    "tradeoffs": "聚焦过强会减少其它噪声阶段覆盖；与其它 timestep sampler 同时配置时应确认实际优先级。",
+    "codePath": "backend/core/lulynx_trainer/anima/anima_flow.py；smart_noise_scheduler.py；trainer/trainer_execution_loop_builder.py"
+  },
+  "relatedConfigs": [
+    "smart_noise_logsnr_focus",
+    "smart_noise_focus_strength",
+    "smart_noise_focus_spread"
+  ]
+}

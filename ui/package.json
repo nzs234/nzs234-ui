@@ -1,0 +1,46 @@
+{
+  "name": "nzs234-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run --globals",
+    "test:watch": "vitest --globals",
+    "test:coverage": "vitest run --globals --coverage",
+    "test:typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "schema:coverage": "node tools/schemaCoverageReport.mjs",
+    "parity:capture": "node tools/schemaParitySnapshot.mjs --capture",
+    "parity": "node tools/schemaParitySnapshot.mjs --check"
+  },
+  "dependencies": {
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/space-grotesk": "^5.2.10",
+    "@gsap/react": "^2.1.2",
+    "echarts": "^5.5.0",
+    "gsap": "^3.15.0",
+    "lucide-react": "^0.500.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.5",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "@vitest/coverage-v8": "3.2.7",
+    "autoprefixer": "^10.4.21",
+    "jsdom": "^30.0.1",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.0",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "key": "ephemeral_preview_pipeline",
+  "title": "临时预览 Pipeline",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "每次预览后销毁 pipeline 并释放缓存，避免 VAE",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "每次预览后销毁 pipeline 并释放缓存，避免 VAE/TE 长期污染训练显存",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

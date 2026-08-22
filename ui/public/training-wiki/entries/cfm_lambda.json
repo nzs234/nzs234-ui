@@ -1,0 +1,31 @@
+{
+  "key": "cfm_lambda",
+  "title": "对比 Flow Matching 权重 λ",
+  "category": "训练 / Flow",
+  "appliesTo": [
+    "sdxl-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "∆FM 对比项的权重系数 λ，控制「推离其它样本流方向」的力度。论文推荐 0.05，也是默认值。",
+    "effect": "loss = 主损失 - λ·MSE(pred, 负样本目标)。λ 越大条件间排斥越强；仅在 contrastive_flow_matching 开启时参与计算。",
+    "whenToUse": "开启 ∆FM 后按 0.05 起步；多概念区分度仍不够时可小步上调到 0.1 左右观察。",
+    "avoidWhen": "contrastive_flow_matching 关闭时无意义；λ ≥ 0.2 后对比项容易主导训练，主目标拟合变差。"
+  },
+  "advanced": {
+    "principle": "λ 平衡「拟合自身目标」与「远离他人目标」两个目标。由于对比项是负值，λ 直接决定 loss 数值的系统性下移量，损失曲线的绝对值失去与基线的可比性，应看收敛趋势而非绝对值。",
+    "intervention": "trainer_execution_loop_builder.py 从 config 读取后传入训练循环；training_step_loss_execution_core.py 以 lam=float(cfm_lambda) 调用 apply_contrastive_flow_matching。",
+    "expectedImpact": "适度 λ 下多条件生成的辨识度提升；过大时出现「过度分离」伪影（颜色/风格极化）。",
+    "tradeoffs": "λ 与 batch size 相关：batch 越大负样本越多样，同一 λ 的有效排斥力越稳定；小 batch 建议保守取值。",
+    "codePath": "configs_dataset.py:cfm_lambda 默认 0.05；training_step_loss_execution_core.py 传入 apply_contrastive_flow_matching"
+  },
+  "relatedConfigs": [
+    "contrastive_flow_matching",
+    "flow_model",
+    "train_batch_size"
+  ]
+}

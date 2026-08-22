@@ -1,0 +1,28 @@
+{
+  "key": "ltx23_depth_expansion_target_layers",
+  "title": "LTX-2.3 扩层目标层数",
+  "category": "LTX-2.3 / 高级",
+  "appliesTo": [
+    "ltx23-finetune"
+  ],
+  "layers": [
+    "模型结构层"
+  ],
+  "standard": {
+    "summary": "扩层后的 双流（视频+音频）transformer_blocks（原生 48） 总数，必须大于原生层数。默认 64。",
+    "effect": "新增层数 = 目标层数 − 原生层数，按交错插入分布到主干中；参数量、显存与保存体积随之增加。视频与音频双流在同一 block 内，扩层保持两流同步加深。22B 模型全参/扩层显存与磁盘开销极大。",
+    "whenToUse": "小步扩层（原生的 1.2~1.4 倍）更容易训练收敛；大幅扩层需要更多数据与训练步数。",
+    "avoidWhen": "小于等于原生层数会直接报错；显存紧张时不要激进扩层。"
+  },
+  "advanced": {
+    "principle": "交错插入使新增层均匀分布在原有层之间，每个新层深拷贝相邻源层的权重后归零输出投影。",
+    "intervention": "ltx23/ltx23_depth_expansion_runtime.py：expand 时校验目标层数并重建 block 容器与 config。",
+    "expectedImpact": "线性增加主干计算量与参数量。",
+    "tradeoffs": "层数越多训练与推理成本越高；恒等初始化保证起点无损，但收益需训练兑现。",
+    "codePath": "ltx23/ltx23_depth_expansion_runtime.py"
+  },
+  "relatedConfigs": [
+    "ltx23_depth_expansion_enabled",
+    "ltx23_depth_expansion_train_scope"
+  ]
+}

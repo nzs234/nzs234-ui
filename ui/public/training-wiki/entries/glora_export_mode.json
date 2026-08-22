@@ -1,0 +1,30 @@
+{
+  "key": "glora_export_mode",
+  "title": "GLoRA 导出模式",
+  "category": "LoRA / 变体",
+  "appliesTo": [
+    "sdxl-lora",
+    "sd-lora"
+  ],
+  "layers": [
+    "导出层"
+  ],
+  "standard": {
+    "summary": "GLoRA 适配器训练完成后的保存格式：lora_compatible（默认）导出为 ComfyUI/A1111 可直接加载的标准 LoRA 布局；native 保留 GLoRA 原生参数布局。",
+    "effect": "lora_compatible 把 GLoRA 的多分支参数折算/投影为等效 lora_up/lora_down 键；native 原样保存全部 GLoRA 支路，只有本训练器能加载。",
+    "whenToUse": "产物要给 WebUI/ComfyUI 用户使用时保持默认 lora_compatible；需要继续训练或做 GLoRA 特有分析时选 native。",
+    "avoidWhen": "lycoris_algo 不是 glora 时本项不参与；用 native 导出后不要指望第三方推理端能加载。"
+  },
+  "advanced": {
+    "principle": "GLoRA 在权重和偏置上有多组可学习支路（提示式结构搜索），其表达能力超出「单对低秩矩阵」；导出为 LoRA 兼容格式必然是有损/近似折算，native 则保真但牺牲生态兼容。",
+    "intervention": "trainer_artifact_export.py：导出阶段读取 export_mode，native 走 glora_export_rules.export_glora_state_dict 的原生分支；配置归一化层（config_adapter*.py）把非法取值回落为 native。",
+    "expectedImpact": "lora_compatible 产物在主流推理端即插即用；native 产物保留完整 GLoRA 结构与继续训练能力。",
+    "tradeoffs": "兼容导出的折算可能与训练时效果有细微差异；注意配置归一化的非法值回落是 native（与 UI 默认 lora_compatible 不同），别名拼错时行为会变成原生导出。",
+    "codePath": "trainer_artifact_export.py——glora_export_mode 分支调用 glora_export_rules.export_glora_state_dict；config_adapter_normalizers.py 取值归一化"
+  },
+  "relatedConfigs": [
+    "lycoris_algo",
+    "glokr_export_mode",
+    "glora_train_bias"
+  ]
+}

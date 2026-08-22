@@ -1,0 +1,25 @@
+{
+  "key": "anima_block_prefetch_mode",
+  "title": "Anima 预取模式",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "original=固定深度预取（默认，与历史字节路径一致）（详见 ?）",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。",
+    "optionDescriptions": {
+      "original": "预取深度固定，行为好预期。",
+      "adaptive": "看着 blockskip 之类调深度，空泡少时快，调不准则抖。"
+    }
+  },
+  "advanced": {
+    "principle": "original=固定深度预取（默认，与历史字节路径一致）；adaptive=感知 blockskip / 在线调深度。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

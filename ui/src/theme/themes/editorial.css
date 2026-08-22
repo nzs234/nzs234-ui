@@ -1,0 +1,105 @@
+/* 主题 Editorial (Warm Gray / Lab Instrument Console)
+   暖灰研究工作台 · 珊瑚红高亮 · 精致微描边 · 高清晰度信息层级 */
+html[data-theme='editorial'] { color-scheme: light; }
+html[data-theme='editorial'] body {
+  --lx-bg: #f5f4f0;
+  --lx-bg-soft: #ece9e2;
+  --lx-surface: #ffffff;
+  --lx-surface-color: #ffffff;
+  --lx-surface-2: #f0eee8;
+  --lx-border: #dedad0;
+  --lx-border-strong: #bcbaaf;
+  --lx-border-w: 1px;
+  --lx-text: #111315;
+  --lx-dim: #44474f;
+  --lx-muted: #5e626d;
+  --lx-accent: #c0320f;
+  --lx-accent-hover: #a1280a;
+  --lx-accent-contrast: #ffffff;
+  --lx-accent-text: #a1280a;
+  --lx-accent-soft: rgba(192, 50, 15, 0.09);
+  --lx-accent-glow: rgba(192, 50, 15, 0.2);
+  --lx-primary-bg: #b82a08;
+  --lx-primary-text: #ffffff;
+  --lx-ok: #0a6f46;
+  --lx-ok-text: #085a38;
+  --lx-ok-soft: rgba(10, 111, 70, 0.1);
+  --lx-warn: #965700;
+  --lx-warn-text: #734300;
+  --lx-warn-soft: rgba(150, 87, 0, 0.1);
+  --lx-danger: #b81b26;
+  --lx-danger-text: #9e141e;
+  --lx-danger-soft: rgba(184, 27, 38, 0.1);
+  --lx-danger-glow: rgba(184, 27, 38, 0.2);
+  --lx-field-bg: #ffffff;
+  --lx-bar-bg: #e2dfd7;
+  --lx-grid-line: #ece9e2;
+  --lx-radius: 6px;
+  --lx-radius-lg: 10px;
+  --lx-btn-radius: 6px;
+  --lx-switch-radius: 999px;
+  --lx-thumb-radius: 999px;
+  --lx-bar-radius: 4px;
+  --lx-title-size: clamp(28px, 3.8vw, 42px);
+  --lx-shadow: 0 1px 3px rgba(30, 30, 35, 0.05), 0 4px 12px rgba(30, 30, 35, 0.04);
+}
+
+html[data-theme='editorial'] .lx-page-title {
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: var(--lx-text);
+}
+html[data-theme='editorial'] .lx-page-title .line.outline {
+  color: var(--lx-dim);
+  font-weight: 400;
+}
+
+html[data-theme='editorial'] .lx-btn {
+  border-width: 1px;
+  border-color: var(--lx-border);
+  background: var(--lx-surface);
+  color: var(--lx-text);
+  font-weight: 600;
+}
+html[data-theme='editorial'] .lx-btn:hover {
+  background: var(--lx-surface-2);
+  border-color: var(--lx-border-strong);
+}
+html[data-theme='editorial'] .lx-btn.primary {
+  background: var(--lx-accent);
+  border-color: var(--lx-accent);
+  color: var(--lx-accent-contrast);
+}
+html[data-theme='editorial'] .lx-btn.primary:hover {
+  background: var(--lx-accent-hover);
+  border-color: var(--lx-accent-hover);
+  color: #fff;
+  box-shadow: 0 2px 8px var(--lx-accent-glow);
+}
+html[data-theme='editorial'] .lx-btn.danger {
+  border-color: var(--lx-danger);
+  color: var(--lx-danger);
+  background: var(--lx-surface);
+}
+html[data-theme='editorial'] .lx-btn.danger:hover {
+  background: var(--lx-danger);
+  color: #fff;
+}
+
+html[data-theme='editorial'] .lx-input:focus,
+html[data-theme='editorial'] .lx-textarea:focus,
+html[data-theme='editorial'] .lx-select:focus {
+  border-color: var(--lx-accent);
+  box-shadow: 0 0 0 3px var(--lx-accent-soft);
+}
+
+html[data-theme='editorial'] .lx-panel {
+  background: var(--lx-surface);
+  border-color: var(--lx-border);
+  box-shadow: var(--lx-shadow);
+}
+html[data-theme='editorial'] .lx-panel.hoverable:hover {
+  border-color: var(--lx-border-strong);
+  box-shadow: 0 4px 16px rgba(30, 30, 35, 0.08);
+}
+

@@ -1,0 +1,21 @@
+{
+  "key": "sdxl_block_swap_output_blocks",
+  "title": "交换 Output Blocks",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "推荐第一步尝试。交换 U-Net output blocks",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "推荐第一步尝试。交换 U-Net output blocks，通常速度影响最小；如果本来能跑，就不建议开",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

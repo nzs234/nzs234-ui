@@ -1,0 +1,21 @@
+{
+  "key": "quality_evaluation_metrics",
+  "title": "评估指标",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "逗号分隔：fid,clip_score,lpips。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "逗号分隔：fid,clip_score,lpips。无真图目录时 FID 可能跳过。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

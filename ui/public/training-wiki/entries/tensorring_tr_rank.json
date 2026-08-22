@@ -1,0 +1,21 @@
+{
+  "key": "tensorring_tr_rank",
+  "title": "TensorRing residual rank",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "Tensor-Ring 残差 rank R (0=使用",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "Tensor-Ring 残差 rank R (0=使用 network_dim)。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

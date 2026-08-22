@@ -1,0 +1,21 @@
+{
+  "key": "reg_data_dir",
+  "title": "正则化数据集路径（reg_data_dir）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "正则化数据集路径。默认留空，不使用正则化图像。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "正则化数据集路径。默认留空，不使用正则化图像。适用于全量训练，轻量 LoRA 可忽略",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

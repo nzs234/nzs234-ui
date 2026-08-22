@@ -1,0 +1,21 @@
+{
+  "key": "loss_scheduler_lock_weight_threshold",
+  "title": "锁定权重阈值",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "仅用于 Loss 加权退火余弦。",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "仅用于 Loss 加权退火余弦。训练进度带来的 loss 权重达到该值后，loss 下降才允许锁住当前余弦值。默认 0.",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

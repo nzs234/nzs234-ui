@@ -1,0 +1,21 @@
+{
+  "key": "bnb_4bit_quant_storage",
+  "title": "bnb 量化存储类型",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "bnb 量化存储类型：下列可选值说明含换档影响。",
+    "effect": "不同枚举会改变算法目标、资源占用或导出兼容性。",
+    "whenToUse": "先默认，再按显存/质量/兼容目标换档。",
+    "avoidWhen": "未做短测对照前不要同时叠多个激进实验档。",
+    "optionDescriptions": {
+      "uint8": "量化权重放 uint8 容器。",
+      "float16": "放 fp16 容器。",
+      "bfloat16": "放 bf16 容器。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}

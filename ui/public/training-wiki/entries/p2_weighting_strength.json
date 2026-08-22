@@ -1,0 +1,31 @@
+{
+  "key": "p2_weighting_strength",
+  "title": "P2 加权强度",
+  "category": "正则 / Loss",
+  "appliesTo": [
+    "sdxl-lora",
+    "anima-lora",
+    "flux-lora"
+  ],
+  "layers": [
+    "Loss 层"
+  ],
+  "standard": {
+    "summary": "P2 感知加权的强度系数：0 = 关闭（权重恒等 1，位级 parity），典型 0.25~1.0。",
+    "effect": "决定 structure/detail 模式下权重曲线偏离 1 的幅度。0 时即使 p2_weighting_mode 已选 structure/detail 也不产生任何影响。",
+    "whenToUse": "确定了加权方向（structure 或 detail）后，从 0.25~0.5 起步微调；scale_guidance 预设会给出经过验证的组合值（detail 0.5 / style 0.4 / composition 0.3）。",
+    "avoidWhen": "p2_weighting_mode=off 时无意义；超过 1.0 后另一端 timestep 的学习被过度压制，容易顾此失彼。"
+  },
+  "advanced": {
+    "principle": "强度作为权重函数的插值系数：weight(sigma) 在恒等 1 与完整 P2 曲线之间按 strength 插值，使加权效果可以连续调节并保证 0 点严格回到基线。",
+    "intervention": "training_step_loss_execution_core.py 把 strength 传入 p2_weighting.p2_perception_weight；配置默认值与语义注释在 configs_dataset.py（strength=0 → 权重恒等 1）。",
+    "expectedImpact": "小强度（0.25）温和倾斜、风险低；接近 1.0 时目标阶段梯度显著放大，loss 曲线形态明显改变。",
+    "tradeoffs": "与其它乘性 loss 加权（min-SNR、wavelet 调度）叠加时效果相乘，实际倾斜幅度会超出单项直觉，建议一次只调一项。",
+    "codePath": "configs_dataset.py:p2_weighting_strength 定义；training_step_loss_execution_core.py 传参给 p2_perception_weight"
+  },
+  "relatedConfigs": [
+    "p2_weighting_mode",
+    "min_snr_gamma",
+    "wavelet_loss_detail_boost"
+  ]
+}

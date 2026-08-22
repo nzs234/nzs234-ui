@@ -1,0 +1,21 @@
+{
+  "key": "opt_dadapt_growth_rate",
+  "title": "DAdapt growth_rate",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "学习率自动增长上界（D-Adapt",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "学习率自动增长上界（D-Adapt 步长估计允许每步最多增长多少倍）。推荐 inf（不限制）。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

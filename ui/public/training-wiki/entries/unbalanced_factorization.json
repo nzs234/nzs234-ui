@@ -1,0 +1,21 @@
+{
+  "key": "unbalanced_factorization",
+  "title": "LoKr 非均衡分解（unbalanced_factorization）",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "LoKr 在分解维度时交换较大的那一侧，改变",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "LoKr 在分解维度时交换较大的那一侧，改变 Kronecker 分解布局。属于实验型结构参数。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

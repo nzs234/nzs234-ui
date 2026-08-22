@@ -1,0 +1,21 @@
+{
+  "key": "cache_latents_to_disk",
+  "title": "Latent 缓存到磁盘",
+  "category": "训练参数",
+  "appliesTo": [],
+  "layers": [],
+  "standard": {
+    "summary": "将 latent 缓存持久化到磁盘，跨训练 run",
+    "effect": "",
+    "whenToUse": "不确定时先保持默认，小步数短测后再调。",
+    "avoidWhen": "与预检冲突或与其它互斥选项同时开启时。"
+  },
+  "advanced": {
+    "principle": "将 latent 缓存持久化到磁盘，跨训练 run 复用。适合大数据集或多次反复训练同一批数据。",
+    "intervention": "",
+    "expectedImpact": "",
+    "tradeoffs": "",
+    "codePath": ""
+  },
+  "relatedConfigs": []
+}

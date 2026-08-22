@@ -1,0 +1,20 @@
+{
+  "key": "pissa_method",
+  "title": "PiSSA 分解方式",
+  "category": "训练参数",
+  "appliesTo": [
+    "all"
+  ],
+  "standard": {
+    "summary": "PiSSA 分解方式 可选值（含换档影响）。",
+    "effect": "枚举切换会改变算法或资源行为。",
+    "whenToUse": "默认优先，短测后再换。",
+    "avoidWhen": "未理解影响前不要叠多个激进档。",
+    "optionDescriptions": {
+      "rsvd": "随机化 SVD，快，有近似。",
+      "svd": "完整 SVD，准，慢。"
+    }
+  },
+  "advanced": {},
+  "relatedConfigs": []
+}
