@@ -871,24 +871,58 @@ export const S_SAMPLE_PROBES = [
 // 的 AppFooter TurboCore 芯片（backend/launcher/web），本 UI 没有那个控件，
 // 所以这里必须自带主开关，否则 turbocore_* 高级参数全都无法生效。
 // 不暴露 turbocore_update_shadow_* / turbocore_native_update_* 诊断族。
+const nativeRuntimeArch = (config) => {
+  const route = String(config?.model_train_type || config?.training_type || config?.schema_id || '')
+    .trim().toLowerCase().replaceAll('_', '-');
+  const explicit = String(config?.concept_edit_base_model || config?.model_type || '').trim().toLowerCase();
+  if (route === 'concept-edit' && ['anima', 'newbie', 'sdxl'].includes(explicit)) return explicit;
+  if (route.includes('anima')) return 'anima';
+  if (route.includes('newbie')) return 'newbie';
+  if (route.includes('sdxl')) return 'sdxl';
+  if (['anima', 'newbie', 'sdxl'].includes(explicit)) return explicit;
+  return '';
+};
+const supportsSteadyAccel = (config) => ['anima', 'newbie'].includes(nativeRuntimeArch(config));
+const supportsNativeRuntimeProfile = (config) => ['anima', 'newbie', 'sdxl'].includes(nativeRuntimeArch(config));
+const nativeRuntimeProfileOptions = (config) => {
+  const base = [
+    { value: 'standard', label: 'standard（标准）' },
+    { value: 'aggressive', label: 'aggressive（激进加速）' },
+  ];
+  const arch = nativeRuntimeArch(config);
+  if (arch === 'newbie') return [...base, { value: 'anima_fast', label: 'anima_fast（Newbie/Anima 快速）' }];
+  if (arch !== 'anima') return base;
+  return [
+    ...base,
+    { value: 'anima_fast', label: 'anima_fast（Anima 快速）' },
+    { value: 'anima_low_vram', label: 'anima_low_vram（Anima 低显存）' },
+    { value: 'anima_experimental', label: 'anima_experimental（Anima 实验性）' },
+  ];
+};
 export const S_TURBOCORE = [
   { key: 'turbocore_enabled', type: 'boolean', label: 'TurboCore 优化器加速（主开关）', title: 'turbocore_enabled', desc: '开启后优化器 step 走 CUDA/Triton 加速内核；关闭=标准 PyTorch 路径。开启时「优化器后端」隐藏，Lulynx Triton 优化器自动置 off。', defaultValue: false },
-  { key: 'lulynx_optimization_enabled', type: 'boolean', label: 'Lulynx 优化', title: 'lulynx_optimization_enabled', desc: '稳态加速组合：BlockSwap auto→pipeline、Anima 块 offload 异步 D2H 与 stream-ordered 预取、TREAD/DiffCR 走 Triton compact 索引。', defaultValue: false },
+  { key: 'lulynx_optimization_enabled', type: 'boolean', label: 'Lulynx 优化', title: 'lulynx_optimization_enabled', desc: '系统级调度与计算优化：BlockSwap auto→pipeline、Anima 块 offload 异步 D2H 与 stream-ordered 预取、TREAD/DiffCR 走 Triton compact 索引。', defaultValue: false },
+  { key: 'lulynx_steady_accel', type: 'select', label: 'Lulynx 稳态加速包', title: 'lulynx_steady_accel', desc: '控制 Anima/Newbie 的 Triton inject + TC-FMT + fused RoPE 稳态算子加速包。与 BlockSwap/offload/TREAD 等系统级优化（lulynx_optimization_enabled）是正交开关。auto=自动启用；on=强制启用；off=关闭。', defaultValue: 'auto', options: [
+    { value: 'auto', label: 'auto（自动推荐）' },
+    { value: 'on', label: 'on（强制开启）' },
+    { value: 'off', label: 'off（关闭）' },
+  ], visibleWhen: supportsSteadyAccel },
+  { key: 'turbocore_data_pipeline_enabled', type: 'boolean', label: 'TurboCore Rust 数据管线', title: 'turbocore_data_pipeline_enabled', desc: '路由 caption DataLoader 走 Rust decode 解码管线，降低 CPU/IO 瓶颈。不依赖 TurboCore 优化器主开关。', defaultValue: false },
+  { key: 'native_runtime_profile', type: 'select', label: '原生运行时 Profile', title: 'native_runtime_profile', desc: '原生运行时加速档位。SDXL 支持 aggressive；Anima/Newbie 另有 DiT 快速档，低显存与实验档仅适用于 Anima。', defaultValue: 'standard', options: nativeRuntimeProfileOptions, visibleWhen: all(when('performance_expert_mode', true), supportsNativeRuntimeProfile) },
   { key: 'turbocore_mode', type: 'select', label: 'TurboCore 模式（开发者选项）', desc: '需先开启上面的 TurboCore 主开关。', defaultValue: 'off', options: [
     { value: 'off', label: 'off（关闭）' },
     { value: 'profile', label: 'profile（性能分析）' },
     { value: 'native_experimental', label: 'native_experimental（加速）' },
-  ] },
-  { key: 'turbocore_tuned_kernel_disable', type: 'boolean', label: '禁用自动调优内核', desc: '关闭 TurboCore 自动调优内核（全局开关）', defaultValue: false },
-  { key: 'turbocore_profile', type: 'select', label: 'TurboCore 性能档位', desc: 'basic=基础;balanced=平衡', defaultValue: 'basic', options: [
+  ], visibleWhen: when('performance_expert_mode', true) },
+  { key: 'turbocore_tuned_kernel_disable', type: 'boolean', label: '禁用自动调优内核', desc: '关闭 TurboCore 自动调优内核（全局开关）', defaultValue: false, visibleWhen: when('performance_expert_mode', true) },
+  { key: 'turbocore_profile', type: 'select', label: 'TurboCore 性能档位', desc: 'basic=基础（默认）；fast=快速（自动联动 Vortex Aircon 与 fused optimizer）', defaultValue: 'basic', options: [
     { value: 'basic', label: 'Basic (基础)' },
-    { value: 'balanced', label: 'Balanced (平衡)' },
-    { value: 'aggressive', label: 'Aggressive (激进)' },
-  ] },
-  { key: 'turbocore_allow_fallback', type: 'boolean', label: '允许回退到 PyTorch', desc: '优化内核不可用时自动回退，建议保持开启。', defaultValue: true },
-  { key: 'turbocore_strict', type: 'boolean', label: '严格模式', desc: '优化内核失败时报错而非回退，用于调试。', defaultValue: false },
-  { key: 'turbocore_workspace_mb', type: 'number', label: 'Workspace 大小 (MB)', desc: '0 = 自动分配', defaultValue: 0, min: 0, step: 64 },
-  { key: 'turbocore_prefetch_depth', type: 'number', label: '预取深度', desc: '预取队列深度，默认 2，增加可隐藏延迟但增加显存。', defaultValue: 2, min: 1, max: 8, step: 1 },
-  { key: 'turbocore_features', type: 'textarea', label: '启用功能列表', desc: '额外启用的优化功能（逗号分隔），留空=使用 profile 默认。', defaultValue: '' },
-  { key: 'turbocore_disable', type: 'textarea', label: '禁用功能列表', desc: '要禁用的优化功能（逗号分隔），用于排查兼容性问题。', defaultValue: '' },
+    { value: 'fast', label: 'Fast (快速，联动 Vortex Aircon)' },
+  ], visibleWhen: when('performance_expert_mode', true) },
+  { key: 'turbocore_allow_fallback', type: 'boolean', label: '允许回退到 PyTorch', desc: '优化内核不可用时自动回退，建议保持开启。', defaultValue: true, visibleWhen: when('performance_expert_mode', true) },
+  { key: 'turbocore_strict', type: 'boolean', label: '严格模式', desc: '优化内核失败时报错而非回退，用于调试。', defaultValue: false, visibleWhen: when('performance_expert_mode', true) },
+  { key: 'turbocore_workspace_mb', type: 'number', label: 'Workspace 大小 (MB)', desc: '0 = 自动分配', defaultValue: 0, min: 0, step: 64, visibleWhen: when('performance_expert_mode', true) },
+  { key: 'turbocore_prefetch_depth', type: 'number', label: '预取深度', desc: '预取队列深度，默认 2，增加可隐藏延迟但增加显存。', defaultValue: 2, min: 1, max: 8, step: 1, visibleWhen: when('performance_expert_mode', true) },
+  { key: 'turbocore_features', type: 'textarea', label: '启用功能列表', desc: '额外启用的优化功能（逗号分隔），留空=使用 profile 默认。', defaultValue: '', visibleWhen: when('performance_expert_mode', true) },
+  { key: 'turbocore_disable', type: 'textarea', label: '禁用功能列表', desc: '要禁用的优化功能（逗号分隔），用于排查兼容性问题。', defaultValue: '', visibleWhen: when('performance_expert_mode', true) },
 ];

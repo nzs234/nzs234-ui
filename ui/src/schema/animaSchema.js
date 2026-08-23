@@ -519,7 +519,7 @@ export const ANIMA_LORA_SECTIONS = [
     'lulynx_safeguard_loss_window_size', 'lulynx_safeguard_auto_reduce_lr', 'lulynx_safeguard_lr_reduction_factor',
     'lulynx_auto_controller_enabled', 'lulynx_auto_check_every', 'lulynx_auto_early_stop_patience',
   ]).has(f.key))),
-  sec('turbocore-settings', 'speed', 'TurboCore 内核优化', '由顶栏 TurboCore 开关启用（）。本页为高级参数：工作空间、预取深度、模式/profile 等；调优结果可缓存复用。', [...S_TURBOCORE], { expert: true }),
+  sec('turbocore-settings', 'speed', 'TurboCore 内核优化', 'TurboCore 优化器加速与内核调优参数；调优结果可缓存复用。', [...S_TURBOCORE], { expert: true }),
   sec('memory-offload-settings', 'speed', '内存与 Offload',
     '顺序 CPU offload、module_offload 完整面、checkpointing pool 与 VAE slice/tile；含极端内存模式（磁盘换内存，给小内存机器）。',
     [...S_MEMORY_OFFLOAD], { expert: true }),

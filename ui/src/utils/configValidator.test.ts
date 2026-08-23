@@ -121,16 +121,46 @@ describe('validateConfig', () => {
     expect(result.errors.some(e => e.message.includes('模型路径'))).toBe(true)
   })
 
-  test('建议 5: Anima 短训练 → 警告', () => {
+  test('建议 5: Anima 短训练 + lulynx_steady_accel=off → 警告', () => {
     const config = {
       model_type: 'anima',
       training_type: 'lora',
       max_train_steps: 400,
+      lulynx_steady_accel: 'off',
       train_data_dir: '/path/to/data',
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
     expect(result.warnings.some(w => w.message.includes('Anima LoRA 短训练'))).toBe(true)
+    expect(result.warnings.some(w => w.message.includes('lulynx_steady_accel'))).toBe(true)
+  })
+
+  test('建议 5: Anima 短训练 + steady=auto 仍提示梯度累积', () => {
+    const config = {
+      model_type: 'anima',
+      training_type: 'lora',
+      max_train_steps: 400,
+      lulynx_steady_accel: 'auto',
+      train_data_dir: '/path/to/data',
+      pretrained_model_name_or_path: '/path/to/model',
+    }
+    const result = validateConfig(config)
+    const warning = result.warnings.find(w => w.message.includes('Anima LoRA 短训练'))
+    expect(warning?.message).toContain('gradient_accumulation_steps=2')
+    expect(warning?.message).not.toContain('启用 lulynx_steady_accel')
+  })
+
+  test('建议 5: steady=auto 且梯度累积已为 2 → 不警告', () => {
+    const result = validateConfig({
+      model_type: 'anima',
+      training_type: 'lora',
+      max_train_steps: 400,
+      lulynx_steady_accel: 'auto',
+      gradient_accumulation_steps: 2,
+      train_data_dir: '/path/to/data',
+      pretrained_model_name_or_path: '/path/to/model',
+    })
+    expect(result.warnings.some(w => w.message.includes('Anima LoRA 短训练'))).toBe(false)
   })
 
   test('正常配置 → 无错误', () => {

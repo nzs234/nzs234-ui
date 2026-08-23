@@ -428,6 +428,53 @@ function normalizeAdapterEnabledFlags(payload) {
   normalizeAdapterEntityMutex(payload);
 }
 
+function normalizeExecutionCore(payload) {
+  if (!Object.prototype.hasOwnProperty.call(payload, 'turbocore_enabled')) {
+    delete payload.execution_core;
+    return;
+  }
+  if (payload.turbocore_enabled === true) {
+    payload.execution_core = 'turbo';
+  } else {
+    payload.execution_core = 'standard';
+  }
+}
+
+function nativeRuntimeArch(payload, typeId) {
+  const route = String(typeId || payload.model_train_type || '').trim().toLowerCase().replaceAll('_', '-');
+  const explicit = String(payload.concept_edit_base_model || payload.model_type || '').trim().toLowerCase();
+  if (route === 'concept-edit' && ['anima', 'newbie', 'sdxl'].includes(explicit)) return explicit;
+  if (route.includes('anima')) return 'anima';
+  if (route.includes('newbie')) return 'newbie';
+  if (route.includes('sdxl')) return 'sdxl';
+  if (['anima', 'newbie', 'sdxl'].includes(explicit)) return explicit;
+  return '';
+}
+
+function normalizeNativeRuntimeProfile(payload, typeId) {
+  if (!Object.prototype.hasOwnProperty.call(payload, 'native_runtime_profile')) return;
+  const arch = nativeRuntimeArch(payload, typeId);
+  const allowed = arch === 'anima'
+    ? new Set(['standard', 'aggressive', 'anima_fast', 'anima_low_vram', 'anima_experimental'])
+    : arch === 'newbie'
+      ? new Set(['standard', 'aggressive', 'anima_fast'])
+      : arch === 'sdxl'
+        ? new Set(['standard', 'aggressive'])
+        : new Set();
+  const profile = String(payload.native_runtime_profile || 'standard').trim().toLowerCase();
+  if (allowed.size === 0) {
+    delete payload.native_runtime_profile;
+  } else {
+    payload.native_runtime_profile = allowed.has(profile) ? profile : 'standard';
+  }
+}
+
+function normalizeTurboCoreProfile(payload) {
+  if (!Object.prototype.hasOwnProperty.call(payload, 'turbocore_profile')) return;
+  const profile = String(payload.turbocore_profile || 'basic').trim().toLowerCase();
+  payload.turbocore_profile = profile === 'fast' ? 'fast' : 'basic';
+}
+
 function normalizeTheoryVariantAliases(payload) {
   const p2Aliases = { standard: 'p2', structure: 'lulynx_structure', detail: 'lulynx_detail' };
   if (payload.p2_weighting_mode && p2Aliases[payload.p2_weighting_mode]) {
@@ -488,6 +535,7 @@ function removeUiOnlyFields(payload) {
     payload.custom_toml = payload.ui_custom_params;
   }
   if (payload) delete payload.ui_custom_params;
+  if (payload) delete payload.lulynx_experimental_core_enabled;
 
   if (!payload.enable_block_weights) {
     delete payload.down_lr_weight;
@@ -590,6 +638,9 @@ export function buildRunConfigFromSections(config, typeId, { getSectionsForType,
   for (const key of ['semantic_region_weighting_enabled', 'semantic_segmentation_provider', 'semantic_segmentation_model_path']) {
     if (key in config) payload[key] = config[key];
   }
+  normalizeExecutionCore(payload);
+  normalizeNativeRuntimeProfile(payload, resolvedTypeId);
+  normalizeTurboCoreProfile(payload);
   normalizeTheoryVariantAliases(payload);
   normalizeScheduler(payload);
   normalizeOptimizerArgs(payload);

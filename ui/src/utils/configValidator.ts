@@ -150,13 +150,23 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
 
   // ========== 建议 5: Anima + 短训练推荐设置 ==========
   if (modelType === 'anima' && trainingType === 'lora' && maxTrainSteps > 0 && maxTrainSteps < 800) {
-    warnings.push({
-      message:
-        'Anima LoRA 短训练（< 800 步）建议启用以下优化：' +
-        '(1) 启用 lulynx_steady_accel_default=true（稳态加速）' +
-        '(2) 设置 gradient_accumulation_steps=2（提高稳定性）',
-      fields: ['max_train_steps']
-    })
+    const steady = String(config.lulynx_steady_accel || 'auto').trim().toLowerCase()
+    const recommendations: string[] = []
+    const fields = ['max_train_steps']
+    if (steady === 'off') {
+      recommendations.push('启用 lulynx_steady_accel = "auto" 或 "on"（稳态加速）')
+      fields.push('lulynx_steady_accel')
+    }
+    if (Number(config.gradient_accumulation_steps || 1) < 2) {
+      recommendations.push('设置 gradient_accumulation_steps=2（提高稳定性）')
+      fields.push('gradient_accumulation_steps')
+    }
+    if (recommendations.length > 0) {
+      warnings.push({
+        message: `Anima LoRA 短训练（< 800 步）建议：${recommendations.join('；')}`,
+        fields,
+      })
+    }
   }
 
   return { errors, warnings, autoFixes: Object.keys(autoFixes).length > 0 ? autoFixes : undefined }

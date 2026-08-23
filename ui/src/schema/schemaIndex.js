@@ -186,12 +186,16 @@ const TURBOCORE_SECTION = sec(
   'TurboCore 内核优化',
   'TurboCore 主开关 + Lulynx 优化,以及 CUDA/Triton 内核自动调优的高级参数。',
   [...S_TURBOCORE],
-  { expert: true },
 );
 
 function withTurboCore(sections, typeId) {
   if (TURBOCORE_UNSUPPORTED_TYPES.has(typeId)) return sections;
-  if (sections.some((section) => section.id === 'turbocore-settings')) return sections;
+  if (sections.some((section) => section.id === 'turbocore-settings')) {
+    // 产品级开关属于标准配置路径；字段自己的 visibleWhen 负责隐藏危险参数。
+    return sections.map((section) => (section.id === 'turbocore-settings'
+      ? { ...section, expert: false }
+      : section));
+  }
   return [...sections, TURBOCORE_SECTION];
 }
 

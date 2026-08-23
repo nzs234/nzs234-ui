@@ -575,9 +575,10 @@ export const S_LR = [
   // (separator for TypeScript parser)
   { key: 'optimizer_type', type: 'select', label: '优化器', title: 'optimizer_type', desc: '优化器设置。pytorch_optimizer.', defaultValue: 'AdamW8bit', options: ALL_OPTIMIZERS },
   { key: 'optimizer_backend', type: 'select', label: '优化器后端', title: 'optimizer_backend', desc: 'AdamW 后端档位；compiled_step 可包装 step', defaultValue: 'auto', options: OPTIMIZER_BACKEND_OPTIONS, visibleWhen: expertAndNotTurboCore },
-  { key: 'turbocore_optimizer_mode', type: 'select', label: 'Lulynx Triton 优化器', title: 'turbocore_optimizer_mode', desc: 'Lulynx Triton 优化器', defaultValue: 'off', options: [
+  { key: 'turbocore_optimizer_mode', type: 'select', label: 'Lulynx Triton 优化器', title: 'turbocore_optimizer_mode', desc: 'Lulynx Triton 优化器（off=标准 PyTorch step；auto=自动判定；force=强制 Triton，不可用时直接报错）。需关闭 TurboCore CUDA 主开关。', defaultValue: 'off', options: [
     { value: 'off', label: 'PyTorch 原生 step' },
-    { value: 'auto', label: 'Lulynx Triton 自动' }
+    { value: 'auto', label: 'Lulynx Triton 自动' },
+    { value: 'force', label: 'Lulynx Triton 强制（不可用时直接报错）' }
   ] },
   { key: 'advanced_optimizer_strategy', type: 'select', label: '高级优化策略', title: 'advanced_optimizer_strategy', desc: '默认 auto 不改变训练', defaultValue: 'auto', options: ADVANCED_OPTIMIZER_STRATEGY_OPTIONS, visibleWhen: when('performance_expert_mode', true) },
   // 后端独立 master（与 advanced_optimizer_strategy 可并存；策略下拉优先表达意图）

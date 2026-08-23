@@ -704,6 +704,7 @@ export const CHECKPOINT_POLICY_OPTIONS = [
 
 export const BLOCK_SWAP_STRATEGY_OPTIONS = [
   { value: 'auto', label: '自动（尊重后端解析）' },
+  { value: 'pipeline', label: 'Pipeline（流水线重叠）' },
   { value: 'sync', label: '同步（保守/调试）' },
   { value: 'async', label: '异步预取' },
 ];

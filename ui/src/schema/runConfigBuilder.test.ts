@@ -15,7 +15,7 @@ import { describe, expect, test } from 'vitest'
 import { buildRunConfigFromSections } from './runConfigBuilder.js'
 // schemaCommon.js 没有 .d.ts，allowJs 下推断出的是 string[]，这里就按 string[] 用。
 import { SUPPORTED_LYCORIS_ALGOS } from './schemaCommon.js'
-import { buildRunConfig, createDefaultConfig, getFieldDefinition } from './schemaIndex.js'
+import { buildRunConfig, createDefaultConfig, getFieldDefinition, getSectionsForType, isFieldVisible } from './schemaIndex.js'
 
 type Cfg = Record<string, unknown>
 type FieldSpec = [key: string, type: string]
@@ -1146,10 +1146,37 @@ describe('runConfigBuilder: adapter entity mutex', () => {
   })
 
   test('TurboCore CUDA forces the Triton optimizer mode off', () => {
-    const payload = build({ turbocore_enabled: true, turbocore_optimizer_mode: 'triton' }, 'sdxl-lora', mutexFields)
+    const payload = build({ turbocore_enabled: true, turbocore_optimizer_mode: 'auto' }, 'sdxl-lora', mutexFields)
     expect(payload.turbocore_optimizer_mode).toBe('off')
-    const without = build({ turbocore_enabled: false, turbocore_optimizer_mode: 'triton' }, 'sdxl-lora', mutexFields)
-    expect(without.turbocore_optimizer_mode).toBe('triton')
+    const without = build({ turbocore_enabled: false, turbocore_optimizer_mode: 'auto' }, 'sdxl-lora', mutexFields)
+    expect(without.turbocore_optimizer_mode).toBe('auto')
+  })
+
+  test('turbocore_enabled normalizes execution_core to turbo, otherwise standard', () => {
+    const onPayload = build({ turbocore_enabled: true }, 'sdxl-lora', mutexFields)
+    expect(onPayload.execution_core).toBe('turbo')
+    expect(onPayload.turbocore_enabled).toBe(true)
+
+    const offPayload = build({ turbocore_enabled: false }, 'sdxl-lora', mutexFields)
+    expect(offPayload.execution_core).toBe('standard')
+    expect(offPayload.turbocore_enabled).toBe(false)
+
+    const defaultPayload = build({}, 'sdxl-lora', mutexFields)
+    expect(defaultPayload.execution_core).toBe('standard')
+
+    const peripheralPayload = build({}, 'yolo', [['unrelated', 'string']])
+    expect(peripheralPayload).not.toHaveProperty('execution_core')
+  })
+
+  test('legacy turbocore_profile values normalize to the supported basic profile', () => {
+    expect(build({ turbocore_profile: 'balanced' }, 'sdxl-lora', [['turbocore_profile', 'select']]).turbocore_profile).toBe('basic')
+    expect(build({ turbocore_profile: 'aggressive' }, 'sdxl-lora', [['turbocore_profile', 'select']]).turbocore_profile).toBe('basic')
+    expect(build({ turbocore_profile: 'fast' }, 'sdxl-lora', [['turbocore_profile', 'select']]).turbocore_profile).toBe('fast')
+  })
+
+  test('removeUiOnlyFields strips lulynx_experimental_core_enabled', () => {
+    const payload = build({ lulynx_experimental_core_enabled: true }, 'sdxl-lora', [['lulynx_experimental_core_enabled', 'boolean']])
+    expect(payload).not.toHaveProperty('lulynx_experimental_core_enabled')
   })
 })
 
@@ -1213,7 +1240,7 @@ describe('runConfigBuilder: real schema behaviour', () => {
       for (const key of [
         'optimizer_args_custom', 'network_args_custom', 'prodigy_d0', 'prodigy_d_coef',
         'enable_block_weights', 'enable_base_weight', 'ui_custom_params', 'train_length_mode',
-        'layered_alpha_enabled', 'wan22_tower_choice',
+        'layered_alpha_enabled', 'wan22_tower_choice', 'lulynx_experimental_core_enabled',
       ]) {
         expect(payload, `${typeId}/${key}`).not.toHaveProperty(key)
       }
@@ -1259,5 +1286,70 @@ describe('runConfigBuilder: real schema behaviour', () => {
     }
     const payload = buildRunConfig(draft, typeId) as Cfg
     expect(JSON.parse(String(payload.network_alpha_map_json))).toEqual({ self_attn: 32, mlp: 16 })
+  })
+
+  test('wan22_expert_timestep_preset roundtrips when variant is t2v-a14b', () => {
+    const typeId = 'wan22-ti2v-lora'
+    const draft = {
+      ...(createDefaultConfig(typeId) as Cfg),
+      wan22_model_variant: 't2v-a14b',
+      wan22_expert_timestep_preset: 'high',
+    }
+    const payload = buildRunConfig(draft, typeId) as Cfg
+    expect(payload.wan22_expert_timestep_preset).toBe('high')
+  })
+
+  test('turbocore_data_pipeline_enabled submits without requiring turbocore_enabled', () => {
+    const typeId = 'sdxl-lora'
+    const draft = {
+      ...(createDefaultConfig(typeId) as Cfg),
+      turbocore_enabled: false,
+      turbocore_data_pipeline_enabled: true,
+    }
+    const payload = buildRunConfig(draft, typeId) as Cfg
+    expect(payload.turbocore_data_pipeline_enabled).toBe(true)
+    expect(payload.turbocore_enabled).toBe(false)
+    expect(payload.execution_core).toBe('standard')
+  })
+
+  test('native runtime controls follow the backend architecture support matrix', () => {
+    const sdxlField = getFieldDefinition('native_runtime_profile', 'sdxl-lora')
+    const animaField = getFieldDefinition('native_runtime_profile', 'anima-lora')
+    const newbieField = getFieldDefinition('native_runtime_profile', 'newbie-lora')
+    const fluxField = getFieldDefinition('native_runtime_profile', 'flux-lora')
+    const steadyField = getFieldDefinition('lulynx_steady_accel', 'anima-lora')
+    expect(sdxlField).toBeTruthy()
+    expect(animaField).toBeTruthy()
+    expect(newbieField).toBeTruthy()
+    expect(fluxField).toBeTruthy()
+
+    const sdxlOptions = typeof sdxlField?.options === 'function' ? sdxlField.options({ model_train_type: 'sdxl-lora' }) : sdxlField?.options
+    const animaOptions = typeof animaField?.options === 'function' ? animaField.options({ model_train_type: 'anima-lora' }) : animaField?.options
+    const newbieOptions = typeof newbieField?.options === 'function' ? newbieField.options({ model_train_type: 'newbie-lora' }) : newbieField?.options
+
+    const sdxlValues = (sdxlOptions as Array<{ value: string }>).map((o) => o.value)
+    const animaValues = (animaOptions as Array<{ value: string }>).map((o) => o.value)
+    const newbieValues = (newbieOptions as Array<{ value: string }>).map((o) => o.value)
+
+    expect(sdxlValues).toEqual(['standard', 'aggressive'])
+    expect(animaValues).toEqual(['standard', 'aggressive', 'anima_fast', 'anima_low_vram', 'anima_experimental'])
+    expect(newbieValues).toEqual(['standard', 'aggressive', 'anima_fast'])
+    expect(isFieldVisible(fluxField!, { model_train_type: 'flux-lora', performance_expert_mode: true })).toBe(false)
+    expect(isFieldVisible(steadyField!, { model_train_type: 'sdxl-lora' })).toBe(false)
+    expect(isFieldVisible(steadyField!, { model_train_type: 'newbie-lora' })).toBe(true)
+
+    const sdxlDraft: Cfg = { ...(createDefaultConfig('sdxl-lora') as Cfg), performance_expert_mode: true, native_runtime_profile: 'anima_fast' }
+    sdxlDraft.model_type = 'anima'
+    const newbieDraft = { ...(createDefaultConfig('newbie-lora') as Cfg), performance_expert_mode: true, native_runtime_profile: 'anima_fast' }
+    const fluxDraft = { ...(createDefaultConfig('flux-lora') as Cfg), performance_expert_mode: true, native_runtime_profile: 'aggressive' }
+    expect((buildRunConfig(sdxlDraft, 'sdxl-lora') as Cfg).native_runtime_profile).toBe('standard')
+    expect((buildRunConfig(newbieDraft, 'newbie-lora') as Cfg).native_runtime_profile).toBe('anima_fast')
+    expect(buildRunConfig(fluxDraft, 'flux-lora')).not.toHaveProperty('native_runtime_profile')
+  })
+
+  test('TurboCore product section participates in the standard wizard path', () => {
+    const section = getSectionsForType('sdxl-lora').find((item) => item.id === 'turbocore-settings')
+    expect(section).toBeTruthy()
+    expect((section as typeof section & { expert?: boolean })?.expert).toBe(false)
   })
 })

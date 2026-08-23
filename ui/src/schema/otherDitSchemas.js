@@ -869,6 +869,12 @@ export const WAN22_TI2V_LORA_SECTIONS = [
       { value: 'high', label: 'high_noise' },
       { value: 'low', label: 'low_noise' }
     ], visibleWhen: when('wan22_model_variant', 't2v-a14b') },
+    { key: 'wan22_expert_timestep_preset', type: 'select', label: '按塔限定时间步', title: 'wan22_expert_timestep_preset', desc: '默认关。开启后按后端的噪声塔 σ 边界填时间步先验（high→[875,1000)，low→[0,875)）。只写你没填的字段：手填过范围或分段权重时本预设不生效。', defaultValue: 'off', options: [
+      { value: 'off', label: '关闭（默认）' },
+      { value: 'auto', label: 'auto（跟随所选塔）' },
+      { value: 'high', label: '强制 high 区间' },
+      { value: 'low', label: '强制 low 区间' }
+    ], visibleWhen: when('wan22_model_variant', 't2v-a14b') },
     { key: 'wan22_max_text_length', type: 'number', label: '最大文本长度', title: 'wan22_max_text_length', desc: 'umT5 序列长度，默认 512。', defaultValue: 512, min: 64, max: 1024 },
     { key: 'wan22_timestep_sampling', type: 'select', label: '时间步采样', title: 'wan22_timestep_sampling', desc: 'flow matching 采样，默认 shift。', defaultValue: 'shift', options: [
       { value: 'shift', label: 'shift（推荐）' },
@@ -930,6 +936,12 @@ export const WAN22_T2V_A14B_LORA_SECTIONS = [
     { key: 'wan22_noise_stage', type: 'select', label: 'A14B 噪声塔', title: 'wan22_noise_stage', desc: '仅 t2v-a14b：high/low 单塔', defaultValue: 'high', options: [
       { value: 'high', label: 'high_noise' },
       { value: 'low', label: 'low_noise' }
+    ], visibleWhen: when('wan22_model_variant', 't2v-a14b') },
+    { key: 'wan22_expert_timestep_preset', type: 'select', label: '按塔限定时间步', title: 'wan22_expert_timestep_preset', desc: '默认关。开启后按后端的噪声塔 σ 边界填时间步先验（high→[875,1000)，low→[0,875)）。只写你没填的字段：手填过范围或分段权重时本预设不生效。', defaultValue: 'off', options: [
+      { value: 'off', label: '关闭（默认）' },
+      { value: 'auto', label: 'auto（跟随所选塔）' },
+      { value: 'high', label: '强制 high 区间' },
+      { value: 'low', label: '强制 low 区间' }
     ], visibleWhen: when('wan22_model_variant', 't2v-a14b') },
     { key: 'wan22_max_text_length', type: 'number', label: '最大文本长度', title: 'wan22_max_text_length', desc: 'umT5 序列长度，默认 512。', defaultValue: 512, min: 64, max: 1024 },
     { key: 'wan22_timestep_sampling', type: 'select', label: '时间步采样', title: 'wan22_timestep_sampling', desc: 'flow matching 采样，默认 shift。', defaultValue: 'shift', options: [
