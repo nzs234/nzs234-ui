@@ -13,7 +13,7 @@
 // anima 专属常量(S_ANIMA_INFERENCE_ACCEL / animaConcept* )就地定义,不外泄。
 // ================================================================
 import {
-  when, all, sec, ds, flowParams,
+  when, all, sec, ds,
   ditGradientCheckpointingField, ditTrainFields,
   NATIVE_ADAPTER_TYPES, ADAPTER_INIT_STRATEGY_OPTIONS, ADAPTER_INIT_EXPORT_MODE_OPTIONS,
   LOFTQ_QUANT_TYPE_OPTIONS, LYCORIS_DELTA_ALGOS,
@@ -29,6 +29,7 @@ import {
   S_LR_DIT,
   S_LR_TARGET_DIT,
   S_LR_FT_DIT,
+  excludeKeys,
   S_TRAIN,
   S_PREVIEW,
   S_QUALITY_EVAL,
@@ -72,6 +73,33 @@ import {
 // Anima 预览出图推理加速(DiT 块缓存 skip)。仅 Anima 路线;默认关=精确逐块计算=parity。
 // 关时方案/强度字段隐藏不输出 → 后端 sample_cache_seam_backend 默认 'none';enable_inference_accel 为纯 UI gate,
 // 由 runConfigBuilder.removeUiOnlyFields 删除不传后端。probe 双开由 sampler.create_sampler_from_trainer 据 backend 自动补。
+/**
+ * 数据驱动去重：从 candidate 中剔除已被 claimed 数组占用的 key。
+ * 替代手写排除表——手写表漏排一个重叠键就会在同段渲染两次。
+ */
+function dedupeByClaimedKeys(candidate, claimedArrays) {
+  const claimed = new Set();
+  for (const group of claimedArrays) {
+    for (const field of group) {
+      if (field?.key) claimed.add(field.key);
+    }
+  }
+  return candidate.filter((field) => !claimed.has(field.key));
+}
+
+// Anima lora_type 下拉：与后端 config_adapter.py:371-405 映射集逐值对齐。
+// gdlokr 无 lora_type 直映分支（config_adapter.py:374-405 无该 case），靠
+// normalizeAdapterEntityMutex 写 gdlokr_enabled 实体旗标注入；oft 经别名表映射为
+// diag-oft。两者均可用但路径间接，label 就地标注，避免「直映缺失」被当成幻影项误删。
+const ANIMA_ADAPTER_TYPE_NOTES = {
+  gdlokr: 'GDLoKr（经 gdlokr_enabled 实体旗标注入）',
+  oft: 'OFT（后端别名映射 diag-oft）',
+};
+export const ANIMA_ADAPTER_TYPE_OPTIONS = NATIVE_ADAPTER_TYPES.map((value) => (
+  typeof value === 'string' && ANIMA_ADAPTER_TYPE_NOTES[value]
+    ? { value, label: ANIMA_ADAPTER_TYPE_NOTES[value] }
+    : value
+));
 const S_ANIMA_INFERENCE_ACCEL = [
   { key: 'enable_inference_accel', type: 'boolean', label: '允许推理加速 (预览出图)', desc: '可选地加速预览出图：Spectrum/SmoothCache 会跳过部分', defaultValue: false, visibleWhen: when('enable_preview', true) },
   { key: 'sample_cache_seam_backend', type: 'select', label: '加速方案', desc: '加速方案', defaultValue: 'spectrum', options: [{ value: 'spectrum', label: 'Spectrum (块缓存线性外推)' }, { value: 'smoothcache', label: 'SmoothCache (误差引导缓存)' }], visibleWhen: all(when('enable_preview', true), when('enable_inference_accel', true)) },
@@ -100,6 +128,8 @@ const S_ADAPTER_TARGET_POLICY = [
     { value: 'gradient_selected', label: 'Gradient Selected (按梯度选择)' },
     { value: 'cka_selected', label: 'CKA Selected (按相似度选择)' },
   ] },
+  // 非 all 档必需：policy mixin 读不到该文件会告警并整体回退 all（trainer_config_adapter_policy_mixin.py:49-60）。
+  { key: 'adapter_target_policy_profile_path', type: 'string', label: 'Profile 文件路径', title: 'adapter_target_policy_profile_path', desc: '预计算的逐层重要性 profile JSON 路径。缺失或不可读时后端回退 all 目标。', defaultValue: '', placeholder: './output/fg_lora_profile.json', visibleWhen: (c) => c.adapter_target_policy !== 'all' },
   { key: 'fg_lora_rank_policy', type: 'select', label: 'Rank 分配策略', title: 'fg_lora_rank_policy', desc: 'Rank 分配策略', defaultValue: 'uniform', options: [
     { value: 'uniform', label: 'uniform（统一 rank）' },
     { value: 'coupled_prune', label: 'coupled_prune（剔除不重要层）' },
@@ -135,8 +165,82 @@ const S_LAYERED_ALPHA = [
   { key: 'alpha_llm_adapter', type: 'number', label: 'LLM Adapter Alpha', title: 'alpha_llm_adapter', desc: 'LLM Adapter 的 alpha。', defaultValue: '', min: 1, step: 1, visibleWhen: when('layered_alpha_enabled', true) },
 ];
 
+// Anima 时间步采样分布：后端合法集 = anima/anima_flow.py:131-186 的九个分支
+// （raise 信息即全集）。所有 Anima 族共用这一份常量，禁止再派生 6 选项子集副本
+// ——旧 anima-params 副本缺 qwen_shift/ideogram4_shift/logsnr，选中即 ValueError。
+export const ANIMA_TIMESTEP_SAMPLING_OPTIONS = [
+  { value: 'shift', label: 'shift（推荐，sigmoid 偏置 + flow shift）' },
+  { value: 'sigma', label: 'sigma（传统均匀，torch.rand）' },
+  { value: 'uniform', label: 'uniform（均匀 linspace）' },
+  { value: 'sigmoid', label: 'sigmoid（sigmoid 压缩）' },
+  { value: 'logit_normal', label: 'logit_normal（Flux 风格）' },
+  { value: 'flux_shift', label: 'flux_shift（Flux + dynamic shift）' },
+  { value: 'qwen_shift', label: 'qwen_shift（Qwen 变体）' },
+  { value: 'ideogram4_shift', label: 'ideogram4_shift（Ideogram 4 变体）' },
+  { value: 'logsnr', label: 'logsnr（log-SNR 均匀）' },
+];
+
+// 概念编辑等收窄面只挂 flow 采样本体（无 weighting/prediction/loss 面）。
+export const animaFlowCoreFields = () => [
+  { key: 'timestep_sampling', type: 'select', label: '时间步采样分布', title: 'timestep_sampling', desc: '时间步采样策略', defaultValue: 'shift', options: ANIMA_TIMESTEP_SAMPLING_OPTIONS },
+  { key: 'discrete_flow_shift', type: 'number', label: 'Flow Shift', title: 'discrete_flow_shift', desc: 'shift/sigmoid/flux_shift 等分布的离散偏移系数', defaultValue: 3.0, min: 0.1, max: 10.0, step: 0.1, visibleWhen: (c) => ['shift', 'sigmoid', 'flux_shift', 'qwen_shift', 'ideogram4_shift'].includes(c.timestep_sampling) },
+  { key: 'anima_sigmoid_scale', type: 'number', label: 'Sigmoid Scale', title: 'anima_sigmoid_scale', desc: 'sigmoid 分布的压缩系数', defaultValue: 1.0, min: 0.1, max: 5.0, step: 0.1, visibleWhen: (c) => ['sigmoid', 'shift'].includes(c.timestep_sampling) },
+];
+
+// Anima 缓存管线补暴露（§1.7 反向差集）：模式键为 checks:314-323 强约束的
+// native_cache_mode（alias 表同时接受 anima_cache_mode）；其余六键消费点：
+//   target_resolution/resize_*/build_* → trainer_anima_cache_runtime.py:507-508 /
+//   anima_cache_encoding.py:128-158；text_token_limit 族 → trainer_execution_dataset_setup.py:390。
+export const ANIMA_CACHE_PIPELINE_FIELDS = [
+  { key: 'native_cache_mode', type: 'select', label: 'Anima 缓存模式', title: 'native_cache_mode', desc: 'cache_first 使用已有缓存；online_cache 用冻结 VAE/Qwen3 在线补缓存；rebuild_cache 强制重建；force_cache_only 只用缓存（缺缓存报错）。全参微调仅接受 cache_first / online_cache / force_cache_only。', defaultValue: 'cache_first', options: [
+    { value: 'cache_first', label: 'cache_first（默认，使用已有缓存）' },
+    { value: 'online_cache', label: 'online_cache（在线生成缺失缓存）' },
+    { value: 'rebuild_cache', label: 'rebuild_cache（强制重建）' },
+    { value: 'force_cache_only', label: 'force_cache_only（仅缓存，缺失即报错）' },
+  ] },
+  { key: 'anima_cached_training', type: 'boolean', label: '启用缓存优先训练', title: 'anima_cached_training', desc: 'cache_first / force_cache_only 模式下必须开启（启动前检查强约束）。', defaultValue: true },
+  { key: 'anima_cache_target_resolution', type: 'number', label: '缓存目标分辨率', title: 'anima_cache_target_resolution', desc: '0=跟随训练分辨率；<0 保持源图尺寸；>0 为显式目标边长。', defaultValue: 0, min: -2, step: 64 },
+  { key: 'anima_cache_resize_mode', type: 'select', label: '缓存缩放模式', title: 'anima_cache_resize_mode', desc: 'longest=长边对齐目标；shortest=短边对齐并封顶长边；freefit=不放大、自由适配。', defaultValue: 'longest', options: [
+    { value: 'longest', label: 'longest（长边）' },
+    { value: 'shortest', label: 'shortest（短边）' },
+    { value: 'freefit', label: 'freefit（自由适配）' },
+  ], visibleWhen: (c) => Number(c.anima_cache_target_resolution || 0) !== 0 },
+  { key: 'anima_cache_resize_max_edge', type: 'number', label: '缓存最长边上限', title: 'anima_cache_resize_max_edge', desc: 'shortest 模式下长边封顶值；0=自动取 2×目标分辨率。', defaultValue: 0, min: 0, step: 64, visibleWhen: (c) => Number(c.anima_cache_target_resolution || 0) !== 0 && c.anima_cache_resize_mode === 'shortest' },
+  { key: 'anima_cache_build_batch_size', type: 'number', label: '缓存构建批量', title: 'anima_cache_build_batch_size', desc: 'VAE/文本编码一次编码的样本数。显存紧张时调小。', defaultValue: 8, min: 1, step: 1 },
+  { key: 'anima_cache_build_prefetch', type: 'boolean', label: '缓存构建预解码', title: 'anima_cache_build_prefetch', desc: '一个 CPU worker 预先解码下一块图像，构建更快但多占一份内存。', defaultValue: false },
+  { key: 'anima_text_token_limit', type: 'number', label: '文本 Token 上限（在线路径）', title: 'anima_text_token_limit', desc: '0=不截断；>0 时按该长度截断 Qwen3/T5 文本。', defaultValue: 0, min: 0, step: 64 },
+  { key: 'anima_cached_text_token_limit', type: 'number', label: '文本 Token 上限（缓存路径）', title: 'anima_cached_text_token_limit', desc: '0=完整缓存文本；>0 仅用于冒烟/调试的前缀截断。', defaultValue: 0, min: 0, step: 64 },
+];
+
+// Anima 全参微调分组学习率（launcher schema anima_finetune.py:122-143 同名同义）；
+// check_learning_rates（training_config_checks.py:144-167）按 learning_rate +
+// 五组判「全 0 报错」，unet_lr/text_encoder_lr 不参与 → 对该型是死键不暴露。
+export const S_ANIMA_GROUPED_LR = [
+  { key: 'anima_self_attn_lr', type: 'number', label: 'Self-Attention 学习率', title: 'anima_self_attn_lr', desc: '0=使用全局学习率', defaultValue: 0, min: 0, step: 1e-6 },
+  { key: 'anima_cross_attn_lr', type: 'number', label: 'Cross-Attention 学习率', title: 'anima_cross_attn_lr', desc: '0=使用全局学习率', defaultValue: 0, min: 0, step: 1e-6 },
+  { key: 'anima_mlp_lr', type: 'number', label: 'MLP 学习率', title: 'anima_mlp_lr', desc: '0=使用全局学习率', defaultValue: 0, min: 0, step: 1e-6 },
+  { key: 'anima_mod_lr', type: 'number', label: 'Modulation 学习率', title: 'anima_mod_lr', desc: '0=使用全局学习率', defaultValue: 0, min: 0, step: 1e-6 },
+  { key: 'anima_llm_adapter_lr', type: 'number', label: 'LLM Adapter 学习率', title: 'anima_llm_adapter_lr', desc: '0=使用全局学习率', defaultValue: 0, min: 0, step: 1e-6 },
+];
+
+// Anima 注意力显式入口（V9）：launcher schema anima_lora.py:346-386 的 runtime
+// 矩阵。空/auto 保留运行时意图；normalizeAttention 会把显式值同步进 attention_backend，
+// anima_vram_optimizer 契约据此判定 flash2 升级或安全降级。
+export const ANIMA_ATTN_MODE_FIELD = {
+  key: 'attn_mode', type: 'select', label: '注意力模式', title: 'attn_mode', desc: '自动=跟随启动环境 runtime 默认；显式选择会写入 attention_backend。显存优化器仅在 FlashAttention 2 后端下真正生效。', defaultValue: '', options: [
+    { value: '', label: '自动（跟随启动环境）' },
+    { value: 'sdpa', label: 'SDPA' },
+    { value: 'xformers', label: 'xFormers' },
+    { value: 'flash2', label: 'FlashAttention 2' },
+    { value: 'sageattn', label: 'SageAttention' },
+    { value: 'flexattn', label: 'FlexAttention（Blackwell 实验运行时）' },
+  ],
+};
+
 // Anima 时间步采样策略 (timestep_sampling_strategy)。控制训练时采样哪些时间步。
 // 默认 'disabled' 全范围均匀采样=传统训练=parity。'simple' 限制到指定范围，'advanced' 支持分段权重采样。
+// 本卡是 Anima Flow/时间步参数的唯一挂载点（旧版与 anima-params 各挂一份、选项集还不一致，
+// 提交时后渲染者静默覆盖前者的用户输入——V1/V2/V3/V5/V6 已收敛到这里）。
 const S_TIMESTEP_SAMPLING_STRATEGY = [
   { key: 'timestep_sampling_mode', type: 'select', label: '时间步采样模式', desc: '时间步采样模式', defaultValue: 'disabled', options: [
     { value: 'disabled', label: 'Disabled (全范围均匀采样，传统训练)' },
@@ -147,44 +251,38 @@ const S_TIMESTEP_SAMPLING_STRATEGY = [
   { key: 'max_timestep', type: 'number', label: '最大时间步', title: 'max_timestep', desc: '训练时采样的最大时间步（不包含）。', defaultValue: 1000, min: 0, max: 1000, step: 1, visibleWhen: (c) => c.timestep_sampling_mode === 'simple' },
   { key: 'timestep_segments', type: 'textarea', label: '分段配置', title: 'timestep_segments', desc: '时间步分段采样', defaultValue: '', placeholder: '例如: 0:300:0.2, 300:700:0.6, 700:1000:0.2', visibleWhen: (c) => c.timestep_sampling_mode === 'advanced' },
   // ── Anima Flow 时间步分布 (独立于上方的范围过滤) ──
-  // 选项必须覆盖后端 anima/anima_flow.py 的全部分支（:131-:169）。原先只给 shift，
-  // 导致 qwen_shift/ideogram4_shift/logsnr 三个真实模式选不到，而且下方
-  // anima_sigmoid_scale 锚的 'sigmoid'、flow_logit_* 锚的 'logit_normal' 都是死锚。
-  { key: 'timestep_sampling', type: 'select', label: '时间步采样分布', title: 'timestep_sampling', desc: '时间步采样策略', defaultValue: 'shift', options: [
-    { value: 'shift', label: 'shift（推荐，sigmoid 偏置 + flow shift）' },
-    { value: 'sigma', label: 'sigma（传统均匀，torch.rand）' },
-    { value: 'uniform', label: 'uniform（均匀 linspace）' },
-    { value: 'sigmoid', label: 'sigmoid（sigmoid 压缩）' },
-    { value: 'logit_normal', label: 'logit_normal（Flux 风格）' },
-    { value: 'flux_shift', label: 'flux_shift（Flux + dynamic shift）' },
-    { value: 'qwen_shift', label: 'qwen_shift（Qwen 变体）' },
-    { value: 'ideogram4_shift', label: 'ideogram4_shift（Ideogram 4 变体）' },
-    { value: 'logsnr', label: 'logsnr（log-SNR 均匀）' },
-  ] },
+  { key: 'timestep_sampling', type: 'select', label: '时间步采样分布', title: 'timestep_sampling', desc: '时间步采样策略', defaultValue: 'shift', options: ANIMA_TIMESTEP_SAMPLING_OPTIONS },
   { key: 'discrete_flow_shift', type: 'number', label: 'Flow Shift', title: 'discrete_flow_shift', desc: 'shift/sigmoid/flux_shift', defaultValue: 3.0, min: 0.1, max: 10.0, step: 0.1, visibleWhen: (c) => ['shift', 'sigmoid', 'flux_shift', 'qwen_shift', 'ideogram4_shift'].includes(c.timestep_sampling) },
   { key: 'anima_sigmoid_scale', type: 'number', label: 'Sigmoid Scale', title: 'anima_sigmoid_scale', desc: 'sigmoid 分布的压缩系数', defaultValue: 1.0, min: 0.1, max: 5.0, step: 0.1, visibleWhen: (c) => ['sigmoid', 'shift'].includes(c.timestep_sampling) },
-  { key: 'anima_weighting_scheme', type: 'select', label: 'Loss 加权方案', title: 'anima_weighting_scheme', desc: 'Loss 加权方案', defaultValue: '', options: [
+  { key: 'anima_weighting_scheme', type: 'select', label: 'Loss 加权方案', title: 'anima_weighting_scheme', desc: 'Loss 加权方案。留空=不加权；uniform 是后端接受的 legacy 别名（等价不加权）。', defaultValue: '', options: [
     { value: '', label: '不加权 (none)' },
     { value: 'sigma_sqrt', label: 'sigma_sqrt（均衡高低噪声）' },
     { value: 'logit_normal', label: 'logit_normal（logit-normal 加权）' },
     { value: 'mode', label: 'mode（单峰）' },
     { value: 'cosmap', label: 'cosmap（余弦映射）' },
   ] },
+  // mode_scale 只在 weighting_scheme=mode 时被后端消费（builder 读 anima_mode_scale
+  // → anima_flow.py mode 加权）；旧版无条件渲染且与 anima-params 副本同区重复。
+  { key: 'mode_scale', type: 'number', label: 'mode 权重缩放', title: 'mode_scale', desc: 'mode 权重策略的缩放系数', defaultValue: '', step: 0.01, visibleWhen: (c) => c.anima_weighting_scheme === 'mode' },
   { key: 'flow_logit_mean', type: 'number', label: 'Logit Mean', title: 'flow_logit_mean', desc: 'logit_normal 分布的均值参数（logit', defaultValue: 0.0, min: -5.0, max: 5.0, step: 0.1, visibleWhen: (c) => c.timestep_sampling === 'logit_normal' || c.anima_weighting_scheme === 'logit_normal' },
   { key: 'flow_logit_std', type: 'number', label: 'Logit Std', title: 'flow_logit_std', desc: 'logit_normal 分布的标准差参数。', defaultValue: 1.0, min: 0.1, max: 5.0, step: 0.1, visibleWhen: (c) => c.timestep_sampling === 'logit_normal' || c.anima_weighting_scheme === 'logit_normal' },
+  // 预测目标：后端主循环只读 anima_model_prediction_type（builder:269 → anima_flow.py:228-239，
+  // 合法集 velocity/noise/epsilon/sample）。旧的 plain model_prediction_type(raw/additive/sigma_scaled)
+  // 与后端值域完全不相交，属幻影键，不再暴露。
+  { key: 'anima_model_prediction_type', type: 'select', label: '模型预测目标', title: 'anima_model_prediction_type', desc: 'velocity=noise−latent（标准 v 预测，默认）；noise/epsilon=预测加噪项；sample=预测干净样本。', defaultValue: 'velocity', options: [
+    { value: 'velocity', label: 'velocity（推荐）' },
+    { value: 'noise', label: 'noise' },
+    { value: 'epsilon', label: 'epsilon（=noise 别名）' },
+    { value: 'sample', label: 'sample（x0 预测）' },
+  ] },
+  { key: 'loss_type', type: 'select', label: '损失函数类型', title: 'loss_type', desc: '损失函数类型', defaultValue: 'l2', options: ['l1', 'l2', 'huber', 'smooth_l1'] },
   // Smart Noise Scheduler（默认关闭）
   { key: 'smart_noise_enabled', type: 'boolean', label: 'Smart Noise Scheduler', title: 'smart_noise_enabled', desc: 'Smart Noise Scheduler', defaultValue: false },
   { key: 'smart_noise_logsnr_focus', type: 'number', label: 'Smart Noise 焦点 logSNR', title: 'smart_noise_logsnr_focus', desc: 'Smart Noise 焦点 logSNR', defaultValue: 0.0, min: -3.0, max: 3.0, step: 0.1, visibleWhen: (c) => c.smart_noise_enabled },
   { key: 'smart_noise_focus_strength', type: 'number', label: 'Smart Noise 聚焦强度', title: 'smart_noise_focus_strength', desc: 'Smart Noise 聚焦强度', defaultValue: 0.5, min: 0.0, max: 1.0, step: 0.05, visibleWhen: (c) => c.smart_noise_enabled },
   { key: 'smart_noise_focus_spread', type: 'number', label: 'Smart Noise 焦点宽度', title: 'smart_noise_focus_spread', desc: '焦点高斯分布的标准差（logSNR 单位）。', defaultValue: 2.0, min: 0.5, max: 5.0, step: 0.1, visibleWhen: (c) => c.smart_noise_enabled },
-  // BP-low (Low-Resolution Backward，默认关闭)
-  { key: 'bp_low_enabled', type: 'boolean', label: 'BP-low 低分辨率反传', title: 'bp_low_enabled', desc: '高噪声 timestep 使用低分辨率反传以节省显存（SDXL 约 37%', defaultValue: false },
-  { key: 'bp_low_factor', type: 'number', label: 'BP-low 下采样倍数', title: 'bp_low_factor', desc: 'BP-low 下采样倍数', defaultValue: 2, min: 2, max: 4, step: 1, visibleWhen: (c) => c.bp_low_enabled },
-  { key: 'bp_low_noise_threshold', type: 'number', label: 'BP-low 噪声阈值', title: 'bp_low_noise_threshold', desc: '触发低分辨率反传的 sigma 阈值。', defaultValue: 0.5, min: 0.1, max: 0.9, step: 0.05, visibleWhen: (c) => c.bp_low_enabled },
-  { key: 'bp_low_schedule', type: 'select', label: 'BP-low 调度策略', title: 'bp_low_schedule', desc: 'BP-low 调度策略', defaultValue: 'step', options: [
-    { value: 'step', label: 'step（阶跃）' },
-    { value: 'cosine', label: 'cosine（余弦平滑）' },
-  ], visibleWhen: (c) => c.bp_low_enabled },
+  // BP-low 归 sampling-optimization 专家卡（那边才有完整的含 bp_low_scale 五键组；
+  // 这里曾挂一份缺 bp_low_scale 的四键副本，构成双 master）。
 ];
 
 
@@ -262,7 +360,8 @@ const S_ANIMA_ADVANCED = [
   { key: 'anima_mlp_lr', type: 'number', label: 'MLP 学习率', desc: 'Anima DiT MLP（前馈网络）层的独立学习率。', defaultValue: 0, min: 0, step: 1e-6 },
   { key: 'anima_mod_lr', type: 'number', label: 'Modulation 学习率', desc: 'Anima DiT Modulation', defaultValue: 0, min: 0, step: 1e-6 },
   { key: 'anima_llm_adapter_lr', type: 'number', label: 'LLM Adapter 学习率', desc: 'Anima LLM Adapter 的独立学习率。', defaultValue: 0, min: 0, step: 1e-6 },
-  { key: 'anima_train_llm_adapter', type: 'boolean', label: '训练 LLM Adapter', desc: '是否训练 Anima LLM Adapter。开启后额外注入 llm_adapter 目标。', defaultValue: false },
+  // anima_train_llm_adapter 的唯一入口在 network-settings（非 expert）；这里曾挂第二份
+  // 布尔构成双 master，已删。
   { key: 'anima_fixed_text_tokens', type: 'number', label: '固定文本 Token 长度', desc: '固定文本 Token 长度', defaultValue: 0, min: 0, step: 64 },
   { key: 'anima_fixed_qwen3_tokens', type: 'number', label: '固定 Qwen3 Token 长度', desc: '0 = 动态长度；仅约束 Qwen3 hidden states。', defaultValue: 0, min: 0, step: 64 },
   { key: 'anima_fixed_t5_tokens', type: 'number', label: '固定 T5 Token 长度', desc: '0 = 动态长度；仅约束 T5 token ids。', defaultValue: 0, min: 0, step: 64 },
@@ -300,13 +399,15 @@ const animaConceptEditModelFields = (typeId) => [
 ];
 
 const animaConceptEditNetworkFields = [
-  { key: 'lora_type', type: 'select', label: '适配器类型', title: 'lora_type', desc: 'Anima 概念编辑当前支持原生 LoRA / DoRA / LoRA+ /', defaultValue: 'lora', options: NATIVE_ADAPTER_TYPES },
+  { key: 'lora_type', type: 'select', label: '适配器类型', title: 'lora_type', desc: 'Anima 概念编辑当前支持原生 LoRA / DoRA / LoRA+ /', defaultValue: 'lora', options: ANIMA_ADAPTER_TYPE_OPTIONS },
   { key: 'network_dim', type: 'slider', label: '网络维度', title: 'network_dim', desc: '网络维度，常用 4~64。概念编辑通常不需要太大 rank。', defaultValue: 16, min: 1, max: 256, step: 1 },
   { key: 'network_alpha', type: 'slider', label: '网络 Alpha', title: 'network_alpha', desc: '常用值：等于 network_dim 或更小。', defaultValue: 16, min: 1, max: 256, step: 1 },
   { key: 'dim_from_weights', type: 'boolean', label: '从权重推断 Dim', title: 'dim_from_weights', desc: '从已有 network_weights 自动推断 rank / dim', defaultValue: false },
   { key: 'scale_weight_norms', type: 'number', label: '最大范数正则化', title: 'scale_weight_norms', desc: '最大范数正则化。如果使用，推荐从 1 附近开始', defaultValue: '', min: 0, step: 0.01 },
   { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '额外训练带可学习参数的归一化层', defaultValue: false },
-  { key: 'dora_wd', type: 'boolean', label: '启用 DoRA', title: 'dora_wd', desc: '仅在 Anima 原生 LoRA 路线下生效。', defaultValue: false, visibleWhen: when('lora_type', 'lora') },
+  // dora_wd 是 legacy 别名（后端 normalizer 映射成 use_dora/dora_enabled）。
+  // 可见 master 统一为 S_LORA_VARIANTS 的 dora_enabled，避免双开关互不同步。
+  { key: 'dora_wd', type: 'hidden', defaultValue: false },
   { key: 'bypass_mode', type: 'boolean', label: 'Bypass Mode', title: 'bypass_mode', desc: 'Bypass Mode', defaultValue: false, visibleWhen: (c) => c.lora_type === 'lora' && !doraEnabled(c) },
   { key: 'adapter_init_strategy', type: 'select', label: 'LoRA 初始化策略', title: 'adapter_init_strategy', desc: '统一初始化入口：默认 LoRA / PiSSA /', defaultValue: 'default', options: ADAPTER_INIT_STRATEGY_OPTIONS, visibleWhen: (c) => c.lora_type === 'lora' && !doraEnabled(c) },
   { key: 'adapter_init_export_mode', type: 'select', label: '初始化导出模式', title: 'adapter_init_export_mode', desc: 'auto 会在最终保存时导出成可加载到原始底模的 LoRA', defaultValue: 'auto', options: ADAPTER_INIT_EXPORT_MODE_OPTIONS, visibleWhen: (c) => c.lora_type === 'lora' && nativeLoraInitSelected(c) },
@@ -315,7 +416,7 @@ const animaConceptEditNetworkFields = [
   { key: 'network_dropout', type: 'number', label: 'Dropout', title: 'network_dropout', desc: '原生 LoRA / LoRA-FA / VeRA / T-LoRA /', defaultValue: 0, min: 0, step: 0.01, visibleWhen: (c) => ['lora', 'dora', 'lora_plus', 'rs_lora', 'lora_fa', 'vera', 'tlora', 'flexrank', 'hydralora', 'fera', 'gdlokr', ...LYCORIS_DELTA_ALGOS].includes(c.lora_type) },
   { key: 'flexrank_lora_rank_range_min', type: 'number', label: 'FlexRank 最小 Rank', title: 'flexrank_lora_rank_range_min', desc: 'FlexRank 每步随机采样激活 rank 的下界', defaultValue: 1, min: 1, visibleWhen: when('lora_type', 'flexrank') },
   { key: 'tlora_min_rank', type: 'number', label: 'T-LoRA 最小 Rank', title: 'tlora_min_rank', desc: 'T-LoRA 最小动态 rank', defaultValue: 1, min: 1, visibleWhen: when('lora_type', 'tlora') },
-  { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: 'T-LoRA 动态 rank 调度策略', defaultValue: 'cosine', options: ['cosine', 'linear'], visibleWhen: when('lora_type', 'tlora') },
+  { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: 'T-LoRA 动态 rank 调度策略（后端支持 constant/linear/geometric）', defaultValue: 'constant', options: ['constant', 'linear', 'geometric'], visibleWhen: when('lora_type', 'tlora') },
   { key: 'tlora_orthogonal_init', type: 'boolean', label: 'T-LoRA 正交初始化', title: 'tlora_orthogonal_init', desc: '对 lora_down 使用正交初始化（）', defaultValue: false, visibleWhen: when('lora_type', 'tlora') },
   { key: 'lokr_factor', type: 'number', label: 'LoKr 系数', title: 'lokr_factor', desc: 'LoKr 分解因子', defaultValue: 8, min: -1, visibleWhen: when('lora_type', 'lokr') },
   { key: 'pissa_init', type: 'boolean', label: '启用 PiSSA 初始化', title: 'pissa_init', desc: '产品入口：开启后映射', defaultValue: false, visibleWhen: (c) => c.lora_type === 'lora' && !doraEnabled(c) },
@@ -365,8 +466,8 @@ const animaConceptEditTrainingFields = (defaults = {}) => [
 
 const animaConceptEditSections = ({ typeId, mode, maxTrainSteps, minTimestep = '', maxTimestep = '' }) => [
   sec('model-settings', 'model', '训练用模型', 'Anima 概念编辑底模、Qwen3/T5 组件与恢复训练。', animaConceptEditModelFields(typeId)),
-  sec('anima-params', 'model', 'Anima 专用参数', 'Anima 概念编辑会沿用自身的 flow/noise/prompt 编码链路。', [
-    ...flowParams({ ts: 'shift', dfs: 3.0, tsExtra: ['logit_normal'] }),
+  sec('anima-params', 'model', 'Anima 专用参数', 'Anima 概念编辑会沿用自身的 flow/noise/prompt 编码链路。概念编辑差分损失不经主链加权，故不暴露 weighting/prediction 面。', [
+    ...animaFlowCoreFields(),
     { key: 'qwen3_max_token_length', type: 'number', label: 'Qwen3 最大 token', title: 'qwen3_max_token_length', desc: 'Qwen3 最大 token 长度', defaultValue: 512, min: 1 },
     { key: 't5_max_token_length', type: 'number', label: 'T5 最大 token', title: 't5_max_token_length', desc: 'T5 最大 token 长度', defaultValue: 512, min: 1 },
     { key: 'attn_mode', type: 'select', label: 'Attention 实现', title: 'attn_mode', desc: '默认自动：跟随启动器 runtime 的默认', defaultValue: '', attentionBackendOptions: true, options: [
@@ -427,13 +528,13 @@ export const ANIMA_LORA_SECTIONS = [
     { key: 'resume', type: 'folder', pickerType: 'output-folder', label: '继续训练路径', title: 'resume', desc: '从某个 save_state 保存的中断状态继续训练，选择 save-state 目录', defaultValue: '' },
   ]),
   sec('anima-params', 'model', 'Anima 专用参数', '', [
-    ...flowParams({ ts: 'shift', dfs: 3.0, tsExtra: ['logit_normal'] }),
     { key: 'qwen3_max_token_length', type: 'number', label: 'Qwen3 最大 token', title: 'qwen3_max_token_length', desc: 'Qwen3 最大 token 长度', defaultValue: 512, min: 1 },
-    { key: 'mode_scale', type: 'number', label: 'mode 权重缩放', title: 'mode_scale', desc: 'mode 权重策略的缩放系数', defaultValue: '', step: 0.01 },
     { key: 'flow_uncertainty_weighting_enabled', type: 'boolean', label: 'EDM2 自适应损失权重', title: 'flow_uncertainty_weighting_enabled', desc: '学习一个按 sigma 的不确定度 u(σ)，损失变为 loss', defaultValue: false },
     { key: 'flow_uncertainty_weighting_lr', type: 'number', label: 'EDM2 学习率', title: 'flow_uncertainty_weighting_lr', desc: 'EDM2 不确定度参数的学习率', defaultValue: 0.01, min: 0, max: 1, step: 0.001, visibleWhen: (c) => c.flow_uncertainty_weighting_enabled },
     { key: 'flow_uncertainty_weighting_channels', type: 'number', label: 'EDM2 通道数', title: 'flow_uncertainty_weighting_channels', desc: 'EDM2 Fourier 特征库大小。', defaultValue: 128, min: 32, max: 512, step: 32, visibleWhen: (c) => c.flow_uncertainty_weighting_enabled },
-    { key: 'anima_guidance_scale', type: 'number', label: 'CFG 引导强度', title: 'anima_guidance_scale', desc: 'Classifier-Free Guidance 强度。', defaultValue: 1.0, min: 1, max: 10, step: 0.1 },
+    // 双端死键（configs_anima.py:79 声明后全仓零消费）：hidden 保旧草稿回显，
+    // 提交层 PHANTOM_KEYS 剥除。CFG 引导等预览链接线后再考虑重新露出。
+    { key: 'anima_guidance_scale', type: 'hidden', defaultValue: 1.0 },
     { key: 't5_max_token_length', type: 'number', label: 'T5 最大 token', title: 't5_max_token_length', desc: 'T5 最大 token 长度', defaultValue: 512, min: 1 },
     { key: 'split_attn', type: 'boolean', label: '拆分 attention', title: 'split_attn', desc: '拆分 attention 以节省显存', defaultValue: false },
     { key: 'vae_chunk_size', type: 'number', label: 'VAE 分块大小', title: 'vae_chunk_size', desc: 'VAE 解码时的分块大小，更小值更省显存', defaultValue: '', min: 2 },
@@ -443,14 +544,16 @@ export const ANIMA_LORA_SECTIONS = [
   sec('caption-settings', 'dataset', 'Caption 选项', '', S_CAPTION.filter((f) => f.key !== 'max_token_length')),
   sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
   sec('network-settings', 'network', '网络设置', 'LoRA / T-LoRA / LoKr 模式。', [
-    { key: 'lora_type', type: 'select', label: '适配器类型', title: 'lora_type', desc: 'LoRA 是基础路线', defaultValue: 'lora', options: NATIVE_ADAPTER_TYPES },
+    { key: 'lora_type', type: 'select', label: '适配器类型', title: 'lora_type', desc: 'LoRA 是基础路线；DoRA/HydraLoRA 等变体在「LoRA 结构变体」卡以实体旗标托管。', defaultValue: 'lora', options: ANIMA_ADAPTER_TYPE_OPTIONS },
     { key: 'network_dim', type: 'slider', label: '网络维度', title: 'network_dim', desc: '网络维度', defaultValue: 16, min: 1, max: 256, step: 1 },
     { key: 'network_alpha', type: 'slider', label: '网络 Alpha', title: 'network_alpha', desc: '网络 Alpha', defaultValue: 16, min: 1, max: 256, step: 1 },
     { key: 'dim_from_weights', type: 'boolean', label: '从权重推断 Dim', title: 'dim_from_weights', desc: '从已有 network_weights 自动推断 rank / dim', defaultValue: false },
     { key: 'scale_weight_norms', type: 'number', label: '最大范数正则化', title: 'scale_weight_norms', desc: '最大范数正则化。如果使用，推荐为 1', defaultValue: '', min: 0, step: 0.01 },
     { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '训练 Norm 层', defaultValue: false },
     { key: 'anima_train_llm_adapter', type: 'boolean', label: '训练 LLM Adapter', title: 'anima_train_llm_adapter', desc: '普通 Anima LoRA 更接近低显存参考路径', defaultValue: false },
-    { key: 'dora_wd', type: 'boolean', label: '启用 DoRA', title: 'dora_wd', desc: '仅在 Anima 原生 LoRA 路线下生效。', defaultValue: false, visibleWhen: when('lora_type', 'lora') },
+    // dora_wd 是 legacy 别名（后端 normalizer 映射成 use_dora/dora_enabled）。
+    // 可见 master 统一为 S_LORA_VARIANTS 的 dora_enabled，避免双开关互不同步。
+    { key: 'dora_wd', type: 'hidden', defaultValue: false },
     { key: 'bypass_mode', type: 'boolean', label: 'Bypass Mode', title: 'bypass_mode', desc: 'Bypass Mode', defaultValue: false, visibleWhen: (c) => c.lora_type === 'lora' && !doraEnabled(c) },
     { key: 'adapter_init_strategy', type: 'select', label: 'LoRA 初始化策略', title: 'adapter_init_strategy', desc: '统一初始化入口：默认 LoRA / PiSSA /', defaultValue: 'default', options: ADAPTER_INIT_STRATEGY_OPTIONS, visibleWhen: (c) => c.lora_type === 'lora' && !doraEnabled(c) },
     { key: 'adapter_init_export_mode', type: 'select', label: '初始化导出模式', title: 'adapter_init_export_mode', desc: 'auto 会在最终保存时导出成可加载到原始底模的 LoRA', defaultValue: 'auto', options: ADAPTER_INIT_EXPORT_MODE_OPTIONS, visibleWhen: (c) => c.lora_type === 'lora' && nativeLoraInitSelected(c) },
@@ -460,12 +563,15 @@ export const ANIMA_LORA_SECTIONS = [
     { key: 'network_dropout', type: 'number', label: 'Dropout', desc: 'Dropout 概率', defaultValue: 0, min: 0, step: 0.01, visibleWhen: (c) => ['lora', 'dora', 'lora_plus', 'rs_lora', 'lora_fa', 'vera', 'tlora', 'flexrank', 'hydralora', 'fera', 'gdlokr', ...LYCORIS_DELTA_ALGOS].includes(c.lora_type) },
     { key: 'flexrank_lora_rank_range_min', type: 'number', label: 'FlexRank 最小 Rank', title: 'flexrank_lora_rank_range_min', desc: 'FlexRank 每步随机采样激活 rank 的下界', defaultValue: 1, min: 1, visibleWhen: when('lora_type', 'flexrank') },
     { key: 'tlora_min_rank', type: 'number', label: 'T-LoRA 最小 Rank', title: 'tlora_min_rank', desc: 'T-LoRA 最小动态 rank', defaultValue: 1, min: 1, visibleWhen: when('lora_type', 'tlora') },
-    { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: 'T-LoRA 动态 rank 调度策略', defaultValue: 'cosine', options: ['cosine', 'linear'], visibleWhen: when('lora_type', 'tlora') },
+    // 后端仅认 constant/linear/geometric（configs_training_methods.py ln 声明）；
+    // cosine 为非法值，运行时静默退化为 constant。与 SDXL 桶共享副本同规则。
+    { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: 'T-LoRA 动态 rank 调度策略（后端支持 constant/linear/geometric）', defaultValue: 'constant', options: ['constant', 'linear', 'geometric'], visibleWhen: when('lora_type', 'tlora') },
     { key: 'tlora_orthogonal_init', type: 'boolean', label: 'T-LoRA 正交初始化', title: 'tlora_orthogonal_init', desc: '对 lora_down 使用正交初始化（）', defaultValue: false, visibleWhen: when('lora_type', 'tlora') },
     { key: 'pissa_init', type: 'boolean', label: '启用 PiSSA 初始化', title: 'pissa_init', desc: '启用 PiSSA 初始化（，仅 LoRA 类型下生效）', defaultValue: false, visibleWhen: when('lora_type', 'lora') },
     { key: 'network_args_custom', type: 'textarea', label: '自定义 network_args', title: 'network_args_custom', desc: '自定义 network_args，每行一个参数。', defaultValue: '' },
-    ...S_LORA_VARIANTS,
   ]),
+  // S_LORA_VARIANTS 与 SDXL 对齐为 expert 子卡：network 主区只留 lora_type/rank/alpha/init。
+  sec('lora-variants', 'network', 'LoRA 结构变体', '实体注入器（硬互斥）与叠加增强（DoRA）。可选结构变体。', [...S_LORA_VARIANTS], { expert: true }),
   sec('fg-lora-settings', 'network', 'FG-LoRA / 选择性注入', '选择性训练重要的层，减少参数量或重分配 rank。默认 all=训练所有层。', [...S_ADAPTER_TARGET_POLICY]),
   sec('layered-alpha-settings', 'network', '分层 Alpha', '按模块类型分别设置 LoRA alpha。关闭= 全局统一 = 传统 LoRA。', [...S_LAYERED_ALPHA]),
   sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...S_LR_ANIMA_LORA]),
@@ -476,16 +582,24 @@ export const ANIMA_LORA_SECTIONS = [
   sec('progressive-training', 'frontier', '渐进式 / 分阶段训练', '按 optimizer progress 切换阶段；当前首版使用稳定 JSON contract。', [...S_PROGRESSIVE_TRAINING, ...S_ADAPTIVE_TRAINING]),
   sec('preview-settings', 'preview', '预览图设置', '', [...S_PREVIEW, ...S_QUALITY_EVAL, ...S_ANIMA_INFERENCE_ACCEL]),
   sec('validation-settings', 'preview', '验证设置', '验证集划分与验证频率。', [...S_VALIDATION]),
-  sec('speed-settings', 'speed', '速度优化', '', [...VRAM_AUTO_ENHANCE_FIELDS, ...ANIMA_BLOCK_RESIDENCY_FIELDS, ...S_DIT_PERFORMANCE_EXPERT, ...S_SPEED_FLOW.filter((f) => !new Set([
-    'cache_latents', 'cache_latents_to_disk', 'latent_cache_disk_format', 'latent_cache_disk_dtype',
-    'cache_text_encoder_outputs', 'cache_text_encoder_outputs_to_disk',
-    'text_encoder_outputs_cache_disk_format', 'text_encoder_outputs_cache_disk_dtype',
-    'disable_mmap_load_safetensors', 'torch_compile', 'dynamo_backend',
-    // 与上面 S_DIT_PERFORMANCE_EXPERT 重叠；不排除会在同一段里渲染两次，
-    // 且 flow 版的 window 默认值会盖掉 expert 版。
-    'acceleration_profile',
-    'experimental_attention_profile_enabled', 'experimental_attention_profile_window',
-  ]).has(f.key))]),
+  sec('speed-settings', 'speed', '速度优化', '', [
+    ANIMA_ATTN_MODE_FIELD,
+    ...VRAM_AUTO_ENHANCE_FIELDS,
+    ...ANIMA_BLOCK_RESIDENCY_FIELDS,
+    // data_backend 归 dataset-settings（ds()）一处；这里曾挂第二份同门控副本。
+    ...S_DIT_PERFORMANCE_EXPERT.filter((f) => f.key !== 'data_backend'),
+    ...dedupeByClaimedKeys(S_SPEED_FLOW, [
+      VRAM_AUTO_ENHANCE_FIELDS,
+      ANIMA_BLOCK_RESIDENCY_FIELDS,
+      S_DIT_PERFORMANCE_EXPERT,
+      // torch_compile/dynamo_backend 归 compile-settings（S_EXECUTION_BACKEND），
+      // cache_* 归 cache-system-settings（S_CACHE_SYSTEM）——按已挂载数据去重，
+      // 避免手写排除表漏排导致同一段重复渲染。
+      S_EXECUTION_BACKEND,
+      S_COMPILE_EXPERT,
+      S_CACHE_SYSTEM,
+    ]),
+  ]),
     sec('compile-settings', 'speed', '编译与执行后端',
     'execution_backend / torch.compile / Thunder 与 compile expert 旋钮；从速度页拆出以免与缓存/注意力搅在一起。',
     [...S_EXECUTION_BACKEND, ...S_COMPILE_EXPERT], { expert: true }),
@@ -493,7 +607,10 @@ export const ANIMA_LORA_SECTIONS = [
   // 门控，是后端真正读得到的一套）。S_NOISE 里那份是空串且渲染在前，留着只会在 UI 上重复出现两次。
   sec('noise-settings', 'training', '噪声设置', '噪声偏移与多分辨率噪声。',
     S_NOISE.filter((f) => !['min_timestep', 'max_timestep'].includes(f.key))),
-  sec('timestep-sampling-settings', 'training', '时间步采样策略', '控制训练时采样哪些时间步。可用于集中训练特定噪声阶段。', [...S_TIMESTEP_SAMPLING_STRATEGY]),
+  // Flow/时间步参数唯一挂载点（旧版 anima-params 与本卡各一份且选项集不一致）：
+  // 采样模式 + 九值分布 + shift/sigmoid 门控 + weighting(mode_scale 附着) +
+  // 预测目标 + loss_type + Smart Noise，一张卡收拢。
+  sec('timestep-sampling-settings', 'training', 'Flow / 时间步采样', '时间步范围过滤、Flow 采样分布、Loss 加权与预测目标、Smart Noise。控制训练时采样哪些时间步。', [...S_TIMESTEP_SAMPLING_STRATEGY]),
   // 画质：质量包 + Pattern + 感知锚/频域 + Wavelet（从 safeguard 拆入质量叙事）
   sec('quality-pack-settings', 'frontier', '图像质量与感知损失', '线稿/DCT/Gram/困难样本/多尺度监督 + Pattern Loss + 感知锚/频域纹理 + Wavelet。', [...S_QUALITY_OPTIMIZATION_PACK, ...S_PATTERN_LOSS, ...S_PERCEPTUAL_ANCHOR_LOSS, ...S_WAVELET_LOSS]),
   // 块跳过：固定 BlockSkip + Adaptive Caching 同组
@@ -525,7 +642,7 @@ export const ANIMA_LORA_SECTIONS = [
     [...S_MEMORY_OFFLOAD], { expert: true }),
     sec('quantization-settings', 'speed', '量化 / QLoRA', '底模量化加载与 bnb 4bit。', [...S_QUANTIZATION], { expert: true }),
   sec('turbo-lora-settings', 'speed', 'TurboLoRA Phase-1', '当前仅提供 default-off 草稿初始化与 detached teacher packet CPU 契约；主训练蒸馏、trajectory replay、推理加速和收益结论等待 GPU A/B。', [...S_TURBO_LORA], { expert: true }),
-  sec('cache-system-settings', 'speed', '缓存系统', '训练缓存配置：latent/文本编码器输出的磁盘格式、精度与存储位置。', [...S_CACHE_SYSTEM, ...S_CACHED_DATALOADER]),
+  sec('cache-system-settings', 'speed', '缓存系统', '训练缓存配置：缓存模式、latent/文本编码器输出的磁盘格式、精度与存储位置，以及 Anima 缓存构建参数。', [...S_CACHE_SYSTEM, ...S_CACHED_DATALOADER, ...ANIMA_CACHE_PIPELINE_FIELDS]),
   sec('anima-advanced-settings', 'model', 'Anima 高级配置', 'Anima 分组学习率、LoRA 目标模块与其他高级选项。仅在需要精细控制时调整。', [...S_ANIMA_ADVANCED], { expert: true }),
   sec('training-misc-settings', 'training', '其他训练选项', '随机种子、蒙版损失、训练备注与断点续训偏移。', [
     { key: 'goal_forecast_tool', type: 'action', label: '训练达标预测（Copilot 只读预测器）', desc: '读取已训练 run 的 loss / 验证 loss / L2 时序', buttonLabel: ' 打开达标预测', handler: 'openGoalForecastTool' },
@@ -656,10 +773,10 @@ export const ANIMA_FT_SECTIONS = [
     { key: 'resume', type: 'folder', pickerType: 'output-folder', label: '继续训练路径', title: 'resume', desc: '继续训练路径', defaultValue: '' },
   ]),
   sec('anima-params', 'model', 'Anima 专用参数', '', [
-    ...flowParams({ ts: 'shift', dfs: 3.0, tsExtra: ['logit_normal'] }),
     { key: 'qwen3_max_token_length', type: 'number', label: 'Qwen3 最大 token', title: 'qwen3_max_token_length', desc: 'Qwen3 最大 token', defaultValue: 512, min: 1 },
-    { key: 'mode_scale', type: 'number', label: 'mode 权重缩放', title: 'mode_scale', desc: 'mode 权重策略的缩放系数', defaultValue: '', step: 0.01 },
     { key: 'flow_uncertainty_weighting_enabled', type: 'boolean', label: 'EDM2 自适应损失权重', title: 'flow_uncertainty_weighting_enabled', desc: '学习一个按 sigma 的不确定度 u(σ)，损失变为 loss', defaultValue: false },
+    // 双端死键：hidden 保旧草稿回显，提交层 PHANTOM_KEYS 剥除。
+    { key: 'anima_guidance_scale', type: 'hidden', defaultValue: 1.0 },
     { key: 't5_max_token_length', type: 'number', label: 'T5 最大 token', title: 't5_max_token_length', desc: 'T5 最大 token', defaultValue: 512, min: 1 },
     { key: 'split_attn', type: 'boolean', label: '拆分 attention', title: 'split_attn', desc: '拆分 attention', defaultValue: false },
   ]),
@@ -676,15 +793,25 @@ export const ANIMA_FT_SECTIONS = [
   sec('dataset-settings', 'dataset', '数据集设置', '', ds('1024,1024', 2048, 64)),
   sec('caption-settings', 'dataset', 'Caption 选项', '', S_CAPTION.filter((f) => f.key !== 'max_token_length')),
   sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
-  sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...S_LR_FT_DIT]),
+  // anima-finetune 的 LR 检查（training_config_checks.py:144-167）只看 learning_rate +
+  // 五组分组 LR；unet_lr/text_encoder_lr 不参与 → 对该型是死键，不暴露不收集。
+  sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [
+    ...excludeKeys(S_LR_FT_DIT, ['unet_lr', 'text_encoder_lr']),
+    ...S_ANIMA_GROUPED_LR,
+  ]),
   sec('training-settings', 'training', '训练参数', '', S_TRAIN(10)),
   sec('preview-settings', 'preview', '预览图设置', '', [...S_PREVIEW, ...S_QUALITY_EVAL]),
   sec('validation-settings', 'preview', '验证设置', '验证集划分与验证频率。', [...S_VALIDATION]),
-  sec('speed-settings', 'speed', '速度优化', '', [...S_SPEED_FLOW]),
+  sec('speed-settings', 'speed', '速度优化', '', [ANIMA_ATTN_MODE_FIELD, ...S_SPEED_FLOW]),
+  sec('timestep-sampling-settings', 'training', 'Flow / 时间步采样', '时间步范围过滤、Flow 采样分布、Loss 加权与预测目标、Smart Noise。', [...S_TIMESTEP_SAMPLING_STRATEGY]),
+  sec('cache-system-settings', 'speed', '缓存系统', 'Anima 缓存模式（全参微调仅接受 cache_first / online_cache / force_cache_only）与缓存构建参数。', [...ANIMA_CACHE_PIPELINE_FIELDS]),
     sec('compile-settings', 'speed', '编译与执行后端',
     'execution_backend / torch.compile / Thunder 与 compile expert 旋钮；从速度页拆出以免与缓存/注意力搅在一起。',
     [...S_EXECUTION_BACKEND, ...S_COMPILE_EXPERT], { expert: true }),
-  sec('noise-settings', 'advanced', '噪声设置', '噪声偏移与多分辨率噪声。', [...S_NOISE]),
+  // min_timestep / max_timestep 归上面的 timestep-sampling-settings 管；S_NOISE 里那份
+  // 默认空串且渲染在后，会把带门控的那份盖成空串。
+  sec('noise-settings', 'advanced', '噪声设置', '噪声偏移与多分辨率噪声。',
+    S_NOISE.filter((f) => !['min_timestep', 'max_timestep'].includes(f.key))),
   sec('advanced-settings', 'advanced', '其他设置', '', [...S_ADV_DIT]),
   sec('thermal-settings', 'training', '散热与功耗', '训练期间冷却与功率管理。', [...S_THERMAL]),
   sec('distributed-settings', 'advanced', '分布式训练', '多 GPU / 多机分布式训练配置。', [...S_DISTRIBUTED]),
@@ -713,7 +840,7 @@ export const ANIMA_CN_SECTIONS = [
     { key: 'resume', type: 'folder', pickerType: 'output-folder', label: '继续训练路径', title: 'resume', desc: '继续训练路径', defaultValue: '' },
   ]),
   sec('anima-params', 'model', 'Anima 专用参数', '时间步与文本长度等 Anima RF 参数。', [
-    ...flowParams({ ts: 'shift', dfs: 3.0, tsExtra: ['logit_normal'] }),
+    ...animaFlowCoreFields(),
     { key: 'qwen3_max_token_length', type: 'number', label: 'Qwen3 最大 token', title: 'qwen3_max_token_length', desc: 'Qwen3 最大 token', defaultValue: 512, min: 1 },
     { key: 't5_max_token_length', type: 'number', label: 'T5 最大 token', title: 't5_max_token_length', desc: 'T5 最大 token', defaultValue: 512, min: 1 },
   ]),

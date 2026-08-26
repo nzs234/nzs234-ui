@@ -22,7 +22,50 @@ const STANDARD_SCHEDULERS = [
   'loss_weighted_annealed_cosine',
   'warmup_stable_decay',
   'piecewise_constant',
+  // 后端 SchedulerType（configs_enums.py:112-131）剩余四值；原值透传不做 type 改写。
+  'one_cycle',
+  'restart_linear',
+  'lulynx_exponential_warmup',
+  'plugin',
 ];
+
+// 幻影键（后端零读者，2026-08 SDXL 桶审计 §8.1）：schema 层 hidden 保旧草稿回显，
+// 提交层剥除，避免假旋钮的值进入 payload。
+const PHANTOM_KEYS = new Set([
+  'control_net_lr',
+  'weights',
+  'sc_trigger_dropout', 'sc_style_dropout', 'sc_quality_dropout',
+  'sc_content_dropout', 'sc_modifier_dropout', 'sc_locked_tags',
+  // ANIMA 桶（2026-08）：anima_guidance_scale 双端死键（configs_anima.py:79 声明后
+  // 全仓零消费者）；schema 层 hidden 保旧草稿回显，这里剥除避免假旋钮值出站。
+  'anima_guidance_scale',
+  // ── 第 3 站桶（2026-08）：Newbie / SD / FLUX / MiniMax-H3 全参数修正。──────
+  // 以下键后端全仓零读者（仅 configs_* mixin 声明），schema 层 hidden 保旧草稿
+  // 回显，提交层统一剥除：
+  'dora_init_scale', 'dora_use_scalar_magnitude', 'dora_normalize_magnitude',
+  'lora2_adaptive_rank_threshold',
+  'ed_lora_fusion_alpha',
+  'ac_early_stopping_threshold', 'ac_te_freeze_step', 'ac_auto_lr_scale_factor', 'ac_target_loss',
+  'compile_cache_prewarm', 'torch_compile_first_step_timeout',
+  'apply_t5_attn_mask',
+  // ── 第 6 站桶（2026-08）：boogu 三幻影。schema 层 hidden 保旧草稿回显，
+  // 提交层剥除（全仓零消费者，见 otherDitSchemas.js B 项注释）：
+  //   boogu_task                 写而不读（loader 按版本派生 / cache 按 training_type）
+  //   boogu_max_text_length      零消费者（configs_boogu.py:29 唯一出现处）
+  //   boogu_control_image_max_pixels 零消费者（Edit ref/VLM 编码路径无读者）
+  'boogu_task', 'boogu_max_text_length', 'boogu_control_image_max_pixels',
+]);
+
+// 类型域幻影（第 3 站审计 B6）：flux-lora 的 sigmoid_scale / weighting_scheme /
+// mode_scale / model_prediction_type。unified FLUX 训练器读裸键
+// （flux_trainer_loss_mixin.py:112-117 / flux_train_step.py:36-38），但别名表全局
+// 改名 anima_*（field_alias_map.py:37-38,329）且 UnifiedTrainingConfig 无裸字段
+// （extra=ignore）→ 任何出站键都到不了消费者；mode_scale 连 FluxFlowConfig 都不
+// 接收。注意：这些键在 ANIMA 族经别名/自有键真实消费，绝不可进全局 PHANTOM_KEYS，
+// 只按 typeId 剥除。
+const FLUX_LORA_DEAD_FLOW_KEYS = new Set([
+  'sigmoid_scale', 'weighting_scheme', 'mode_scale', 'model_prediction_type',
+]);
 
 const LR_KEYS = new Set(['learning_rate', 'unet_lr', 'text_encoder_lr', 'control_net_lr']);
 const LYCORIS_MODULE_ALIASES = new Set(['lycoris.kohya', 'lycoris.locon', 'lycoris']);
@@ -250,16 +293,10 @@ function normalizeLycorisNetworkArgs(payload, typeId) {
     payload.lokr_unbalanced_factorization = true;
     networkArgs.push('unbalanced_factorization=True');
   }
-  if (payload.dora_wd) {
-    networkArgs.push('dora_wd=True');
-    if (['locon', 'loha', 'lokr'].includes(algo) && payload.wd_on_output != null) {
-      networkArgs.push('wd_on_output=' + (payload.wd_on_output ? 'True' : 'False'));
-    }
-  }
-  const forcedBypassMode = payload.dora_wd ? false : payload.bypass_mode;
-  if (forcedBypassMode != null) networkArgs.push('bypass_mode=' + (forcedBypassMode ? 'True' : 'False'));
-  if (payload.scale_weight_norms != null && String(payload.scale_weight_norms) !== '') networkArgs.push('scale_weight_norms=' + payload.scale_weight_norms);
-
+  // 后端第一方 LyCORIS 注入器只消费显式配置字段（lokr_*/glora_*/train_norm 等），
+  // network_args 仅被解析 rs_lora/train_llm_adapter。dora_wd/wd_on_output/
+  // bypass_mode 写进 network_args 是零接收者的惰性输出，且 LyCORIS 注入链先于
+  // use_dora 分派（DoRA 在该路线被整体忽略）——这里一律不再生成，UI 键直接清除。
   const customLines = String(payload.network_args_custom || '')
     .trim()
     .split(/[\n\r]+/)
@@ -494,6 +531,16 @@ function normalizeTheoryVariantAliases(payload) {
     const dora = String(payload.dora_variant || 'classic').trim().toLowerCase();
     payload.dora_variant = doraAliases[dora] || (dora === 'lulynx_stopgrad_dora' ? dora : 'classic');
   }
+  // dora_mode 旧值收敛（后端复核 2026-08）：运行时 DoRALinear._normalize_mode
+  // （lulynx/dora_layer.py:103-119）只区分 full/style/structure；wd 是 full 的
+  // 别名，split/merged 属未知值（告警后兜回 full）。提交前统一到真实支持域；
+  // dora_wd=true 时下游互斥仍会按后端 config_adapter.py:516 的 setdefault 语义
+  // 写回 dora_mode='wd'，与服务器侧行为逐字一致。
+  if (Object.prototype.hasOwnProperty.call(payload, 'dora_mode')) {
+    const rawMode = String(payload.dora_mode || 'full').trim().toLowerCase().replaceAll('-', '_');
+    const doraModeAliases = { wd: 'full', weight_decomposed: 'full', split: 'full', merged: 'full' };
+    payload.dora_mode = ['full', 'style', 'structure'].includes(rawMode) ? rawMode : (doraModeAliases[rawMode] || 'full');
+  }
   if (payload.dp_dmd_variant) {
     payload.dp_dmd_variant = String(payload.dp_dmd_variant).trim().toLowerCase() === 'standard'
       ? 'standard'
@@ -524,8 +571,42 @@ function normalizeTheoryVariantAliases(payload) {
   }
 }
 
-function removeUiOnlyFields(payload) {
-  // F-purge: evo legacy draft key wan22_tower_choice -> configs wan22_noise_stage
+// B7（第 3 站审计）：MiniMax-H3 swap>0 时后端硬性要求 unsloth checkpointing
+// （configs_h3.py:105-109 ValueError）。UI 只 disable 非 unsloth 选项但不改值，
+// 「先选 selective 再把 swap 调 >0」的草稿仍会带病提交 → 提交层联动复位。
+function normalizeMiniMaxH3SwapCheckpoint(payload) {
+  if (!Object.prototype.hasOwnProperty.call(payload, 'h3_blocks_to_swap')) return;
+  if (Number(payload.h3_blocks_to_swap || 0) <= 0) return;
+  if (payload.h3_checkpoint_mode && payload.h3_checkpoint_mode !== 'unsloth') {
+    payload.h3_checkpoint_mode = 'unsloth';
+  }
+}
+
+// B（第 6 站桶）：krea2_vram_preset=aggressive 的槽位覆写此前被前端 always-submit
+// 的 standard 档默认值短路——后端只在「用户未显式设置」时才按预设覆写
+// slots/prefetch/pin（configs.py:341-347 的 model_fields_set 判断），而前端在
+// residency=block_offload 下恒显式提交 4/2/true ⇒ 选 aggressive 后三键仍是
+// standard 档。提交层对齐预设语义：aggressive 且三键仍是「未触碰的注入默认」时
+// 不出站，让后端预设真正生效；用户显式改过的值照常透传——含「改回 standard 档
+// 数值」的意图，此时剥除会让预设覆写掉用户要的 4/2/true。
+// 「未触碰」判定走调用方注入的 explicitKeys（TrainPage/WizardPage 的
+// markExplicit 通道）：草稿是纯值袋子，schema 默认值与用户手填的默认值同形，
+// 只有编辑来源能区分二者。
+function normalizeKrea2VramPreset(payload, explicitKeys) {
+  if (String(payload.krea2_vram_preset || '').trim().toLowerCase() !== 'aggressive') return;
+  const standardDefaults = {
+    krea2_block_offload_gpu_slots: 4,
+    krea2_block_offload_prefetch_depth: 2,
+    krea2_block_offload_pin_memory: true,
+  };
+  for (const [key, value] of Object.entries(standardDefaults)) {
+    if (payload[key] !== value) continue;
+    if (explicitKeys && explicitKeys.has(key)) continue;
+    delete payload[key];
+  }
+}
+
+function removeUiOnlyFields(payload) {  // F-purge: evo legacy draft key wan22_tower_choice -> configs wan22_noise_stage
   if (payload && payload.wan22_tower_choice != null && (payload.wan22_noise_stage == null || payload.wan22_noise_stage === '')) {
     payload.wan22_noise_stage = payload.wan22_tower_choice;
   }
@@ -537,7 +618,25 @@ function removeUiOnlyFields(payload) {
   if (payload) delete payload.ui_custom_params;
   if (payload) delete payload.lulynx_experimental_core_enabled;
 
-  if (!payload.enable_block_weights) {
+  // ── BlockWeight 双 master 归一（schemaFieldGroups.S_LULYNX_SDXL 注释同源）──────
+  // lulynx_* 是旧草稿兼容别名：非空即视为迁移前用户数据，覆盖标准键后剥除，
+  // 保证 payload 只剩 enable_block_weights + down/mid/up_lr_weight 一套表示。
+  // 新配置里 lulynx_* 恒为空默认，不会干扰标准键。
+  const blockWeightOn = payload.enable_block_weights === true
+    || payload.lulynx_block_weight_enabled === true;
+  if (payload.lulynx_down_lr_weight) payload.down_lr_weight = payload.lulynx_down_lr_weight;
+  if (payload.lulynx_mid_lr_weight) payload.mid_lr_weight = payload.lulynx_mid_lr_weight;
+  if (payload.lulynx_up_lr_weight) payload.up_lr_weight = payload.lulynx_up_lr_weight;
+  if (payload.lulynx_block_lr_zero_threshold) {
+    payload.block_lr_zero_threshold = payload.lulynx_block_lr_zero_threshold;
+  }
+  delete payload.lulynx_block_weight_enabled;
+  delete payload.lulynx_down_lr_weight;
+  delete payload.lulynx_mid_lr_weight;
+  delete payload.lulynx_up_lr_weight;
+  delete payload.lulynx_block_lr_zero_threshold;
+
+  if (!blockWeightOn) {
     delete payload.down_lr_weight;
     delete payload.mid_lr_weight;
     delete payload.up_lr_weight;
@@ -547,26 +646,40 @@ function removeUiOnlyFields(payload) {
   delete payload.train_length_mode;
   delete payload.enable_inference_accel;
 
+  // sdxl_fixed_block_swap 死守卫修复：后端 preflight/route-contract 读的是
+  // sdxl_fixed_block_swap（training_config_checks.py:192 / route contract），而真实
+  // 配置字段是 sdxl_low_vram_fixed_block_swap 且无别名桥接 —— 守卫永远读到空。
+  // 提交层补写镜像，让既有守卫真正生效（UnifiedTrainingConfig extra=allow 接受）。
+  if (payload.sdxl_low_vram_optimization === true) {
+    payload.sdxl_fixed_block_swap = payload.sdxl_low_vram_fixed_block_swap !== false;
+  } else {
+    delete payload.sdxl_fixed_block_swap;
+  }
+
+  // finetune train_text_encoder 显式 master：queue_support.py 以
+  // network_train_unet_only = not train_text_encoder 派生；两键必须一致出站，
+  // 避免三方默认打架（schema False / shim True / 前端隐式）。
+  if (Object.prototype.hasOwnProperty.call(payload, 'train_text_encoder')) {
+    payload.network_train_unet_only = !payload.train_text_encoder;
+    payload.network_train_text_encoder_only = false;
+  }
+
+  for (const key of PHANTOM_KEYS) delete payload[key];
+
   const initStrategy = String(payload.adapter_init_strategy || payload.init_lora_weights || 'default').trim().toLowerCase();
   const pissaStrategy = initStrategy === 'pissa' || Boolean(payload.pissa_init) || Boolean(payload.pissa_enabled);
   if (pissaStrategy) {
     payload.adapter_init_strategy = 'pissa';
     payload.pissa_init = true;
     payload.pissa_enabled = true;
-    // UI 历史键 → 后端 master 键
+    // UI 历史键 → 后端 master 键。中文导出 label→枚举的映射已上移到草稿层
+    // （configStore.LEGACY_VALUE_MIGRATIONS），schema 选项本身也已枚举化，
+    // 这里不再保留第二份映射。
     if (payload.pissa_method && !payload.pissa_svd_algo) {
       payload.pissa_svd_algo = payload.pissa_method;
     }
     if (payload.pissa_niter != null && payload.pissa_niter !== '' && (payload.pissa_init_iters == null || payload.pissa_init_iters === '')) {
       payload.pissa_init_iters = payload.pissa_niter;
-    }
-    // 中文导出 label 归一到后端枚举
-    const exportMap = {
-      'LoRA无损兼容导出': 'lora_compatible',
-      'LoRA快速近似导出': 'approximate',
-    };
-    if (exportMap[payload.pissa_export_mode]) {
-      payload.pissa_export_mode = exportMap[payload.pissa_export_mode];
     }
   }
   if (!pissaStrategy) {
@@ -632,7 +745,11 @@ function normalizeUniversalDitRoute(payload) {
   }
 }
 
-export function buildRunConfigFromSections(config, typeId, { getSectionsForType, isFieldVisible }) {
+export function buildRunConfigFromSections(config, typeId, hooks) {
+  const { getSectionsForType, isFieldVisible } = hooks;
+  // explicitKeys：调用方注入的「用户显式编辑过」键集（可省略，见
+  // normalizeKrea2VramPreset）。
+  const explicitKeys = hooks && hooks.explicitKeys;
   const resolvedTypeId = typeId || config.model_train_type || 'sdxl-lora';
   const payload = collectVisiblePayload(config, resolvedTypeId, getSectionsForType, isFieldVisible);
   for (const key of ['semantic_region_weighting_enabled', 'semantic_segmentation_provider', 'semantic_segmentation_model_path']) {
@@ -648,6 +765,12 @@ export function buildRunConfigFromSections(config, typeId, { getSectionsForType,
   normalizeListTextareas(payload);
   normalizeAdapterEnabledFlags(payload);
   removeUiOnlyFields(payload);
+  // 类型域剥除放在全局 PHANTOM 之后：两处都命中时结果一致，顺序仅影响可读性。
+  if (resolvedTypeId === 'flux-lora') {
+    for (const key of FLUX_LORA_DEAD_FLOW_KEYS) delete payload[key];
+  }
+  if (resolvedTypeId.startsWith('krea2')) normalizeKrea2VramPreset(payload, explicitKeys);
+  normalizeMiniMaxH3SwapCheckpoint(payload);
   normalizeAttention(payload);
   normalizeAnimaVramOptimizer(payload);
   normalizeLayeredAlpha(payload);

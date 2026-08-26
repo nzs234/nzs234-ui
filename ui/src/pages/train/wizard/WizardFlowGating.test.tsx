@@ -191,10 +191,12 @@ describe('WizardFlowGating: gating / preflight / restore', () => {
     expect(useWizardStore.getState().activeStepByType['anima-lora']).toBe('model')
 
     // Choosing a matching card advances past the model step.
+    // finetune 无适配器面（network_train_* 已被 train_text_encoder master 取代），
+    // adapter 步不再有字段 → 直接落到 files。
     await user.click(await screen.findByRole('button', { name: typeCardName(typeMeta('sdxl-finetune')) }))
     await waitFor(() => {
       expect(useTrainConfigStore.getState().typeId).toBe('sdxl-finetune')
-      expect(useWizardStore.getState().activeStepByType['sdxl-finetune']).toBe('adapter')
+      expect(useWizardStore.getState().activeStepByType['sdxl-finetune']).toBe('files')
     })
   })
 
@@ -221,10 +223,8 @@ describe('WizardFlowGating: gating / preflight / restore', () => {
     await user.click(await screen.findByRole('button', { name: uiText('wizard.actions.next') }))
 
     // 这条用例验的是 pickFile 抛错后的 toast 链路,不是按钮文案本身。
-    // 浏览按钮走 t('field.browse'),该键当前在语言包里缺失(生产缺陷,由
-    // i18n/i18nParity.test.ts 单独把门),formatMessage 会把裸键渲染出来。
-    // uiTextOrBareKey 精确复刻这条回落,所以断言命中的仍是真实可见文本,
-    // 且语言包补齐前后这条用例都不用改。
+    // 浏览按钮走 t('field.browse'),uiTextOrBareKey 精确复刻生产 formatMessage 的
+    // 回落语义,所以语言包补齐前后这条用例都不用改;断言命中的始终是真实可见文本。
     const browseButtons = await screen.findAllByRole('button', { name: uiTextOrBareKey('field.browse') })
     expect(browseButtons.length).toBeGreaterThan(0)
     await user.click(browseButtons[0])

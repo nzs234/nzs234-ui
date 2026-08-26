@@ -7,6 +7,7 @@ import { FieldControl } from './FieldControl'
 import { WeightComposerPreview } from './WeightComposerPreview'
 import { TrainingIntentProfilePreview } from './TrainingIntentProfilePreview'
 import { ProgressivePhaseEditor } from './ProgressivePhaseEditor'
+import { useI18n, resolveDisabledReason } from '@/i18n/useI18n'
 
 /* 一个 schema section → 一张面板卡;字段可见性(visibleWhen)+ 搜索过滤,全部不可见则整卡隐藏 */
 
@@ -46,6 +47,7 @@ export function SectionCard({
   managedMessage: string
   expert?: boolean
 }) {
+  const { language } = useI18n()
   const visibleFields = useMemo(
     () =>
       section.fields.filter(
@@ -82,8 +84,12 @@ export function SectionCard({
             value={config[f.key]}
             onChange={(raw) => onChange(f.key, raw)}
             onHelp={onHelp}
-            disabled={managedKeys.has(f.key)}
-            disabledReason={managedKeys.has(f.key) ? managedMessage : ''}
+            disabled={managedKeys.has(f.key) || f.disabled === true}
+            disabledReason={
+              managedKeys.has(f.key) ? managedMessage
+              : f.disabled === true ? resolveDisabledReason(f, language)
+              : ''
+            }
           />
         ))}
       </div>

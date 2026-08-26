@@ -107,8 +107,24 @@ function migrateLegacyQuantTrainMode(value: unknown): unknown {
   return text === 'true' || text === '1'
 }
 
+/**
+ * pissa_export_mode 曾把中文 label 直接当 value 存（sdxl schema 旧选项）。
+ * 现已枚举化（lora_compatible/approximate/raw/auto），旧草稿值在草稿层迁移，
+ * 提交层不再保留第二份映射（与 quant_train_mode 同一模式）。
+ */
+function migrateLegacyPissaExportMode(value: unknown): unknown {
+  if (value == null) return value
+  const text = String(value).trim()
+  const aliases: Record<string, string> = {
+    'LoRA无损兼容导出': 'lora_compatible',
+    'LoRA快速近似导出': 'approximate',
+  }
+  return aliases[text] ?? value
+}
+
 const LEGACY_VALUE_MIGRATIONS: Record<string, (value: unknown) => unknown> = {
   quant_train_mode: migrateLegacyQuantTrainMode,
+  pissa_export_mode: migrateLegacyPissaExportMode,
 }
 
 /**

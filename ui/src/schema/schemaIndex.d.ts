@@ -25,6 +25,10 @@ export interface SchemaField {
   step?: number
   placeholder?: string
   visibleWhen?: (config: Record<string, unknown>) => boolean
+  /** Schema-level hard disable: the backend rejects this field outright (e.g. flux train_t5xxl preflight error). */
+  disabled?: boolean
+  /** Rendered next to the control while `disabled` is set. */
+  disabledReason?: string
   [extra: string]: unknown
 }
 
@@ -34,6 +38,8 @@ export interface SchemaSection {
   title: string
   description?: string
   fields: SchemaField[]
+  /** Expert-only section: hidden unless performance_expert_mode is on. */
+  expert?: boolean
 }
 
 export interface AdapterFamilyCapability {
@@ -63,6 +69,8 @@ export interface TrainingTypeMeta {
   hidden?: boolean
   disabled?: boolean
   disabledReason?: string
+  /** Non-blocking entry annotation (e.g. lab-probe launch surface) shown as the rail tooltip. */
+  note?: string
 }
 
 export interface UiTab {
@@ -82,7 +90,12 @@ export function getAvailableTabs(typeId: string, config?: Record<string, unknown
 export function isFieldVisible(field: SchemaField, config: Record<string, unknown>): boolean
 export function createDefaultConfig(typeId: string): Record<string, unknown>
 export function normalizeDraftValue(field: SchemaField | undefined, rawValue: unknown): unknown
-export function buildRunConfig(config: Record<string, unknown>, typeId: string): Record<string, unknown>
+export function buildRunConfig(
+  config: Record<string, unknown>,
+  typeId: string,
+  /** explicitKeys：用户显式编辑过的键集；缺省时提交层把所有值视为注入默认。 */
+  opts?: { explicitKeys?: ReadonlySet<string> }
+): Record<string, unknown>
 export function applyBackendConfigOptions(payload: unknown): boolean
 /** Raw adapter family capabilities from the latest backend config/options payload. */
 export function getBackendAdapterFamilyCapabilities(): AdapterFamilyCapabilities

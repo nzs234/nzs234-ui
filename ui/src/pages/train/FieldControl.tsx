@@ -30,6 +30,7 @@ import {
   resolveFieldLabel,
   resolveFieldDesc,
   resolveOptionLabel,
+  resolveDisabledReason,
 } from '@/i18n/useI18n'
 
 /* schema 字段 → 控件。11 种字段类型的统一渲染入口。 */
@@ -51,7 +52,7 @@ function optionsOf(
         value,
         label: resolveOptionLabel(field.key, opt, language),
         disabled: Boolean(opt.disabled),
-        title: opt.disabledReason,
+        title: resolveDisabledReason(opt, language),
       }
     }
     const value = String(o)

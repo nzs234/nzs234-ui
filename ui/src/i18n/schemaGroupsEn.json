@@ -7,5 +7,6 @@
   "其他模型训练": "Other model training",
   "Finetune": "Finetune",
   "ControlNet": "ControlNet",
-  "Textual Inversion": "Textual Inversion"
+  "Textual Inversion": "Textual Inversion",
+  "专项训练": "Specialized"
 }

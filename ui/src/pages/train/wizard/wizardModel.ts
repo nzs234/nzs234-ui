@@ -124,7 +124,9 @@ export const WIZARD_CATEGORY_DESCRIPTIONS: Record<WizardCategory, string> = {
   controlnet: 'Train an additional structural or conditioning control branch.',
   textual_inversion: 'Train text embeddings that plug into prompts.',
   specialized: 'Specialized flows such as Turbo, Few-step, and Distiller.',
-  other: 'YOLO, aesthetic scoring, and other model families.',
+  // 仅当语言包缺 wizard.category.other_desc 时才会显示的回落文案；
+  // YOLO 入口已隐藏，不得再宣传。
+  other: 'Aesthetic scoring and other model families.',
 }
 
 const CATEGORY_ORDER: WizardCategory[] = ['lora', 'finetune', 'controlnet', 'textual_inversion', 'specialized', 'other']
@@ -151,9 +153,46 @@ const GLOBAL_OWNERSHIP_OVERRIDES: Record<string, BucketId> = {
   yolo_data_config_path: 'dataset',
   dataset_intelligence_enabled: 'dataset-intelligence',
   sample_difficulty_weighting: 'dataset-intelligence',
+  // SDXL 桶新增类型（dreambooth / lllite / ip-adapter）与补暴露字段的归属。
+  instance_prompt: 'dataset',
+  class_prompt: 'dataset',
+  num_class_images: 'dataset',
+  train_text_encoder: 'core',
+  tag_group_shuffle: 'dataset',
+  tag_group_separator: 'dataset',
+  ip_image_encoder_path: 'files',
+  ip_num_tokens: 'controlnet',
+}
+
+// Anima 族分桶修正（2026-08 ANIMA 桶）：分组 LR 与 Flow/时间步参数同属一张卡，
+// 却被 token 启发式拆进 3 个步——anima_llm_adapter_lr 因 'adapter' 命中 adapter 步、
+// 其余分组 LR 落 other-settings、discrete_flow_shift/sigmoid_scale/weighting_scheme
+// 落 optional 而 timestep_sampling 命中 'timestep' 落 core。这里统一钉进 core。
+const ANIMA_CORE_OVERRIDES: Record<string, BucketId> = {
+  anima_self_attn_lr: 'core',
+  anima_cross_attn_lr: 'core',
+  anima_mlp_lr: 'core',
+  anima_mod_lr: 'core',
+  anima_llm_adapter_lr: 'core',
+  timestep_sampling: 'core',
+  discrete_flow_shift: 'core',
+  anima_sigmoid_scale: 'core',
+  sigmoid_scale: 'core',
+  anima_weighting_scheme: 'core',
+  weighting_scheme: 'core',
+  mode_scale: 'core',
+  anima_model_prediction_type: 'core',
+  loss_type: 'core',
+  flow_logit_mean: 'core',
+  flow_logit_std: 'core',
+  qwen3_max_token_length: 'core',
+  t5_max_token_length: 'core',
 }
 
 const TYPE_OWNERSHIP_OVERRIDES: Record<string, Record<string, BucketId>> = {
+  'anima-lora': ANIMA_CORE_OVERRIDES,
+  'anima-finetune': ANIMA_CORE_OVERRIDES,
+  'anima-controlnet': ANIMA_CORE_OVERRIDES,
   'aesthetic-scorer': {
     dropout: 'core',
     batch_size: 'core',
@@ -193,29 +232,37 @@ const TYPE_OWNERSHIP_OVERRIDES: Record<string, Record<string, BucketId>> = {
     teacher_lora_scope: 'fewstep',
     dry_run: 'fewstep',
   },
+  // Lab 探针契约页真实存在的键才进 fewstep 步。曾为它路由 batch_size /
+  // learning_rate / distillation_loss_weight / teacher_lora_scope —— 这四个键在
+  // schema 与 lab contract（contracts/tools.py DitFewStepLoraRequest）里都不存在，
+  // 属死覆盖项，已清理。
   'anima-few-step-lora': {
-    batch_size: 'fewstep',
-    learning_rate: 'fewstep',
     distill_method: 'fewstep',
-    distillation_loss_weight: 'fewstep',
     few_step_objective: 'fewstep',
     guidance_scale: 'fewstep',
     seed: 'fewstep',
     sigma_schedule: 'fewstep',
-    teacher_lora_scope: 'fewstep',
     dry_run: 'fewstep',
   },
+  // Lab 探针契约页真实存在的键才进 fewstep 步。曾为它路由 batch_size /
+  // learning_rate / distillation_loss_weight / teacher_lora_scope —— 这四个键在
+  // schema 与 lab contract（contracts/tools.py DitFewStepLoraRequest）里都不存在，
+  // 属死覆盖项，已清理（与 anima-few-step-lora 同批对齐，2026-08 第 3 站）。
   'newbie-few-step-lora': {
-    batch_size: 'fewstep',
-    learning_rate: 'fewstep',
     distill_method: 'fewstep',
-    distillation_loss_weight: 'fewstep',
     few_step_objective: 'fewstep',
     guidance_scale: 'fewstep',
     seed: 'fewstep',
     sigma_schedule: 'fewstep',
-    teacher_lora_scope: 'fewstep',
     dry_run: 'fewstep',
+  },
+  // universal-dit-lora：network_module 恒为隐藏 networks.lora，无算法卡可选面；
+  // rank/alpha/dropout 钉进 core 与学习率同屏，避免 specialized 类别下出现
+  // 「不需要单独选择适配器」文案却挂着三个网络字段的矛盾空步。
+  'universal-dit-lora': {
+    network_dim: 'core',
+    network_alpha: 'core',
+    network_dropout: 'core',
   },
 }
 
@@ -265,8 +312,9 @@ const GOAL_KEYS = new Set([
   'training_preset',
   'intent_profile',
   'profile',
-  'dataset_intelligence_enabled',
-  'sample_difficulty_weighting',
+  // dataset_intelligence_enabled / sample_difficulty_weighting 曾列在这里，
+  // 但 GLOBAL_OWNERSHIP_OVERRIDES 先行把它们路由到 dataset-intelligence，
+  // 这两条是永远不可达的死分支——归属单一事实源在 overrides 表。
 ])
 
 const OUTPUT_KEYS = new Set([
@@ -351,6 +399,8 @@ export function categoryForTrainingType(typeId: string): WizardCategory {
   if (group === 'finetune' || /finetune|dreambooth/.test(typeId)) return 'finetune'
   if (group.includes('controlnet') || typeId.includes('controlnet')) return 'controlnet'
   if (group.includes('textual') || typeId.includes('textual-inversion')) return 'textual_inversion'
+  // 实验训练（universal-dit-lora）：与专项流程同属 specialized，不混入新手 LoRA 卡列表。
+  if (group.includes('实验') || /experiment/.test(group)) return 'specialized'
   if (group.includes('专项') || /turbo|few-step|distiller/.test(typeId)) return 'specialized'
   if (group === 'lora' || typeId.endsWith('-lora')) return 'lora'
   return 'other'

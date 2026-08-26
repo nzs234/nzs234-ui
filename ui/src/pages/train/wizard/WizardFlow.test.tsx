@@ -27,11 +27,13 @@ import { categoryForTrainingType } from './wizardModel'
 import { useWizardStore } from './wizardStore'
 import {
   I18N_LANGUAGES,
+  setLanguage,
   uiText,
   uiTextOrBareKey,
   wizardCategoryLabelPrefix,
 } from '@/test/i18n'
-import { adapterCardName, adapterCategoryButtonName, fieldLabelRegex, wizardStepButtonName } from '@/test/wizardQueries'
+import { adapterCardLabel, adapterCardName, adapterCategoryButtonName, fieldLabelRegex, wizardStepButtonName } from '@/test/wizardQueries'
+import { textPrefix } from '@/test/i18n'
 import { typeCardName } from '@/test/wizardQueries'
 import { currentDraft, resetStores, seedTrainApiDefaults } from '@/test/trainPageFixture'
 import type { UiLanguage } from '@/stores/localeStore'
@@ -82,11 +84,31 @@ vi.mock('@/motion/useEntrance', () => ({
   usePageEntrance: () => ({ current: null }),
 }))
 
+/**
+ * 后端能力是 schemaCommon 的模块级状态，用例之间必须显式归零：
+ * 这里装一份"常用家族全部可用"的中性载荷，个别门禁用例再自行覆盖。
+ * 家族集合只需覆盖本文件会真正选择的方法（lora/locon/loha/lokr/vera）。
+ */
+function installNeutralBackendCaps(): void {
+  applyBackendConfigOptions({
+    training_capabilities: {
+      adapter_families: {
+        lora: { supports_rank: true, supports_alpha: true, supports_dora: true },
+        locon: { supports_rank: true },
+        loha: { supports_rank: true },
+        lokr: { supports_rank: true },
+        vera: { supports_rank: false, supports_alpha: false },
+      },
+    },
+  })
+}
+
 beforeEach(() => {
   vi.resetAllMocks()
   localStorage.clear()
   resetStores()
   seedTrainApiDefaults()
+  installNeutralBackendCaps()
 })
 
 function typeMeta(typeId: string) {
@@ -216,7 +238,7 @@ describe('WizardFlow: primary flows', () => {
     })
   })
 
-  test('adapter mutex: VeRA then the default LoRA card clears vera_enabled and sets lora_type', async () => {
+  test('adapter mutex: VeRA entity toggle then the default LoRA card clears vera_enabled and sets lora_type', async () => {
     const user = userEvent.setup()
     render(<TrainPage />)
 
@@ -227,18 +249,16 @@ describe('WizardFlow: primary flows', () => {
     // 点击步骤轨进入适配器步骤
     await user.click(await screen.findByRole('button', { name: wizardStepButtonName('adapter') }))
 
-    // 点击其他系列 Tab 切换到包含 VeRA 的类别
-    await user.click(await screen.findByRole('tab', { name: adapterCategoryButtonName('other') }))
-    const select = await screen.findByLabelText(uiText('wizard.adapter.method_select'))
-    expect((select as HTMLSelectElement).value).toBe('')
-    await user.selectOptions(select, 'vera')
+    // VeRA 是第 3 层「实体注入器」开关，不在基础算法的方法下拉里
+    const veraToggle = await screen.findByRole('checkbox', { name: 'VeRA' })
+    await user.click(veraToggle)
 
     await waitFor(() => {
       expect(useTrainConfigStore.getState().drafts[typeId].vera_enabled).toBe(true)
       expect(useTrainConfigStore.getState().drafts[typeId].lora_type).toBe('vera')
     })
 
-    // 切回 LoRA 系列 Tab，由于当前选的是 VeRA（属于 other），切到 lora tab 时不会自动选择，select value 应该为空
+    // VeRA（实体注入器）不是基础算法：切回 LoRA 系列时方法下拉不会自动选中
     await user.click(await screen.findByRole('tab', { name: adapterCategoryButtonName('lora') }))
     const selectLora = await screen.findByLabelText(uiText('wizard.adapter.method_select'))
     expect((selectLora as HTMLSelectElement).value).toBe('')
@@ -257,9 +277,11 @@ describe('WizardFlow: primary flows', () => {
     ['sdxl-finetune', { pretrained_model_name_or_path: '/m/sdxl.safetensors' }],
     ['sdxl-controlnet', { pretrained_model_name_or_path: '/m/sdxl.safetensors' }],
     ['sd-textual-inversion', { pretrained_model_name_or_path: '/m/sd15.safetensors' }],
-    ['yolo', {}],
+    ['sd-dreambooth', { pretrained_model_name_or_path: '/m/sd15.safetensors', train_data_dir: '/d/img' }],
     ['anima-few-step-lora', { base_model_path: '/m/anima.safetensors' }],
     ['lab-distiller', { unet_path: '/m/unet.safetensors' }],
+    // 收官审计补注册的实验类型：specialized 分类卡 → 契约张量目录直通 review。
+    ['universal-dit-lora', { pretrained_model_name_or_path: '/m/custom-dit', train_data_dir: '/d/precomputed-tensors' }],
   ])('representative flow %s reaches review and runs preflight', async (typeId, fill) => {
     const user = userEvent.setup()
     render(<TrainPage />)
@@ -277,7 +299,7 @@ describe('WizardFlow: primary flows', () => {
     applyBackendConfigOptions({
       training_capabilities: {
         adapter_families: {
-          lora: { supports_rank: true, supports_alpha: true },
+          lora: { supports_rank: true, supports_alpha: true, supports_dora: false },
           vera: { supports_rank: false, supports_alpha: false },
         },
       },
@@ -292,18 +314,19 @@ describe('WizardFlow: primary flows', () => {
     // 点击步骤轨进入适配器步骤
     await user.click(await screen.findByRole('button', { name: wizardStepButtonName('adapter') }))
 
-    // LoRA 系列可用，select 中包含 lora 可选，dora 禁用
+    // LoRA 系列可用，select 中包含 lora 可选；DoRA 不是方法选项
     const select = await screen.findByLabelText(uiText('wizard.adapter.method_select'))
     const loraOpt = select.querySelector('option[value="lora"]') as HTMLOptionElement
-    const doraOpt = select.querySelector('option[value="dora"]') as HTMLOptionElement
     expect(loraOpt.disabled).toBe(false)
-    expect(doraOpt.disabled).toBe(true)
+    expect(select.querySelector('option[value="dora"]')).toBeNull()
 
-    // 切到其他系列，vera 可选
-    await user.click(await screen.findByRole('tab', { name: adapterCategoryButtonName('other') }))
-    const selectOther = await screen.findByLabelText(uiText('wizard.adapter.method_select'))
-    const veraOpt = selectOther.querySelector('option[value="vera"]') as HTMLOptionElement
-    expect(veraOpt.disabled).toBe(false)
+    // 后端声明标准 LoRA 不支持叠加时，DoRA 权重分解开关被禁用
+    const doraToggle = await screen.findByRole('checkbox', { name: uiText('wizard.adapter.dora_toggle') })
+    expect(doraToggle).toBeDisabled()
+
+    // VeRA 是实体注入器开关；后端提供了 vera 能力 → 可用（不在方法下拉里）
+    const veraToggle = await screen.findByRole('checkbox', { name: 'VeRA' })
+    expect(veraToggle).toBeEnabled()
   })
 
   test('tab switching does not mutate draft config or automatically pick first option', async () => {
@@ -331,11 +354,11 @@ describe('WizardFlow: primary flows', () => {
     expect(select.value).toBe('')
     expect(screen.getByText(uiText('wizard.adapter.no_selection_summary'))).toBeInTheDocument()
 
-    // 切换到 Other tab
-    const otherTab = await screen.findByRole('tab', { name: adapterCategoryButtonName('other') })
-    await user.click(otherTab)
+    // 切换到 LoRA 系列 Tab：草稿仍不被改动；标准 LoRA 是默认赢家，方法下拉回显选中
+    const loraTab = await screen.findByRole('tab', { name: adapterCategoryButtonName('lora') })
+    await user.click(loraTab)
     expect(useTrainConfigStore.getState().drafts[typeId]).toEqual(initialDraft)
-    expect((screen.getByLabelText(uiText('wizard.adapter.method_select')) as HTMLSelectElement).value).toBe('')
+    expect((screen.getByLabelText(uiText('wizard.adapter.method_select')) as HTMLSelectElement).value).toBe('lora')
   })
 
   test('only one method control source in wizard when selecting LyCORIS algorithms and network_module is hidden', async () => {
@@ -357,7 +380,7 @@ describe('WizardFlow: primary flows', () => {
     }
   })
 
-  test('DoRA method card replaces the legacy dora_wd toggle instead of shipping both', async () => {
+  test('DoRA renders as a stackable rider instead of a method option', async () => {
     const user = userEvent.setup()
     render(<TrainPage />)
 
@@ -366,33 +389,182 @@ describe('WizardFlow: primary flows', () => {
 
     // sdxl-lora 的 schema 同时定义 dora_enabled(master)与 dora_wd(network_args 旧入口)，
     // 后端 normalizer 会把 dora_wd 映射成 dora_enabled/use_dora —— 两者是同一个概念。
-    // 向导只保留方法卡这一个入口；dora_wd 的原始字段留给专家模式。
+    // 向导只保留 DoRA 叠加开关这一个入口；方法列表里没有独立的 DORA 项。
     expect(getFieldDefinition('dora_wd', typeId)).toBeTruthy()
     expect(screen.queryByLabelText(fieldLabelRegex('dora_wd', typeId))).not.toBeInTheDocument()
 
     const select = await screen.findByLabelText(uiText('wizard.adapter.method_select'))
-    expect(select.querySelector('option[value="dora"]')).toBeTruthy()
+    expect(select.querySelector('option[value="dora"]')).toBeNull()
+
+    const toggle = await screen.findByRole('checkbox', { name: uiText('wizard.adapter.dora_toggle') })
+    expect(toggle).toBeEnabled()
   })
 
-  test('selecting LoRA-FA/T-LoRA/VeRA/FlexRank in wizard maintains selected family without duplicate method inputs', async () => {
+  test('DoRA rider is disabled on LyCORIS LoKr and re-enabled on native LoRA', async () => {
     const user = userEvent.setup()
     render(<TrainPage />)
 
     const typeId = 'sdxl-lora'
     await beginFlow(user, typeId)
 
-    // 切换到 Other 选 VeRA
-    await user.click(await screen.findByRole('tab', { name: adapterCategoryButtonName('other') }))
-    const otherSelect = await screen.findByLabelText(uiText('wizard.adapter.method_select'))
-    await user.selectOptions(otherSelect, 'vera')
+    // 后端注入链 LyCORIS 分支先于 use_dora 分派：LoKr 路线叠加 DoRA 不生效，
+    // rider 必须禁用；切回标准 LoRA 后恢复可用。
+    await user.click(await screen.findByRole('tab', { name: adapterCategoryButtonName('lycoris') }))
+    const select = await screen.findByLabelText(uiText('wizard.adapter.method_select'))
+    await user.selectOptions(select, 'lokr')
+
+    const toggle = () => screen.getByRole('checkbox', { name: uiText('wizard.adapter.dora_toggle') })
+    await waitFor(() => {
+      expect(toggle()).toBeDisabled()
+      const draft = useTrainConfigStore.getState().drafts[typeId]
+      expect(draft.network_module).toBe('lycoris.kohya')
+      expect(draft.lycoris_algo).toBe('lokr')
+      expect(draft.lora_type).toBeUndefined()
+    })
+
+    // 切回标准 LoRA：rider 恢复可用。
+    await user.click(await screen.findByRole('tab', { name: adapterCategoryButtonName('lora') }))
+    const selectLora = await screen.findByLabelText(uiText('wizard.adapter.method_select'))
+    await user.selectOptions(selectLora, 'lora')
+
+    await waitFor(() => {
+      const draft = useTrainConfigStore.getState().drafts[typeId]
+      expect(draft.network_module).toBe('networks.lora')
+    })
+    expect(toggle()).toBeEnabled()
+  })
+
+  test('phantom switch train_t5xxl renders disabled with its preflight reason (station 5)', async () => {
+    const user = userEvent.setup()
+    render(<TrainPage />)
+
+    const typeId = 'flux-lora'
+    await beginFlow(user, typeId)
+
+    // flux_preflight.py 对 train_t5xxl/train_text_encoder 直接 error（FLUX LoRA
+    // 恒冻结 CLIP/T5）：开关必须以 disabled+原因提示渲染，而不是放行到预检被打回。
+    // 原因文案从 schema 定义派生，测试不抄字面量。
+    const fieldDef = getFieldDefinition('train_t5xxl', typeId)
+    expect(fieldDef?.disabled).toBe(true)
+    expect(String(fieldDef?.disabledReason || '')).not.toBe('')
+
+    // 步骤轨按完成度锁步：填完必填项逐「下一步」走到开关所在的「其它设置」步骤。
+    const nextLabel = uiText('wizard.actions.next')
+    let guard = 0
+    while (guard++ < 40) {
+      const step = useWizardStore.getState().activeStepByType[typeId]
+      if (step === 'other-settings' || step === 'review') break
+      for (const [key, value] of Object.entries({
+        pretrained_model_name_or_path: '/models/flux/flux.safetensors',
+        ae: '/models/flux/ae.safetensors',
+        clip_l: '/models/flux/clip_l.safetensors',
+        t5xxl: '/models/flux/t5xxl.safetensors',
+        train_data_dir: '/datasets/flux',
+      })) {
+        const input = screen.queryByLabelText(fieldLabelRegex(key, typeId))
+        if (input && (input as HTMLInputElement).value !== value) {
+          await user.clear(input)
+          await user.type(input, value)
+        }
+      }
+      const nextButton = screen.getByRole('button', { name: nextLabel })
+      expect(nextButton).toBeEnabled()
+      await user.click(nextButton)
+    }
+    expect(useWizardStore.getState().activeStepByType[typeId]).toBe('other-settings')
+
+    // FieldControl 布尔控件渲染为 role="switch"（components/form.tsx Switch）。
+    const toggle = await screen.findByRole('switch', { name: fieldLabelRegex('train_t5xxl', typeId) })
+    expect(toggle).toBeDisabled()
+    expect(await screen.findByText(String(fieldDef?.disabledReason || ''))).toBeInTheDocument()
+
+    // 禁用控件不落草稿：draft 保持默认关闭。
+    expect(useTrainConfigStore.getState().drafts[typeId].train_t5xxl).toBeFalsy()
+  })
+
+  test('adapter card copy follows UI language switches while parked on the adapter step', async () => {
+    // 评审修复：adapterOptions/doraToggleState 经 getState() 非响应式读语言，
+    // memo 缺 language 依赖时停在 adapter 步切语言，卡片文案不跟随。
+    resetStores('zh')
+    const user = userEvent.setup()
+    render(<TrainPage />)
+
+    const typeId = 'anima-lora'
+    await beginFlow(user, typeId)
+    await user.click(await screen.findByRole('button', { name: wizardStepButtonName('adapter') }))
+
+    const zhLabel = adapterCardLabel(currentDraft(typeId), typeId, 'lora')
+    // 摘要卡标题（<strong>）与方法下拉 <option> 同文案，用 STRONG 标签匹配器锁定卡片。
+    const summaryTitle = (label: string) => (_: string, element: Element | null) =>
+      element?.tagName === 'STRONG' && element.textContent === label
+    expect(await screen.findByText(summaryTitle(zhLabel))).toBeInTheDocument()
+
+    setLanguage('en')
+    const enLabel = adapterCardLabel(currentDraft(typeId), typeId, 'lora')
+    expect(enLabel).not.toBe(zhLabel)
+    expect(await screen.findByText(summaryTitle(enLabel))).toBeInTheDocument()
+    expect(screen.queryByText(summaryTitle(zhLabel))).toBeNull()
+  })
+
+  test('[zh] review notes join with locale-neutral separators (no CJK punctuation leaks)', async () => {
+    resetStores('zh')
+    const user = userEvent.setup()
+    render(<TrainPage />)
+
+    const typeId = 'anima-lora'
+    await beginFlow(user, typeId)
+    await walkToReview(user, typeId, {
+      pretrained_model_name_or_path: '/models/anima/dit.safetensors',
+    })
+
+    // 本次 diff 新增的三条 review 拼接行改用 locale 无关分隔符（': '/'; '/', '），
+    // zh 界面下不再出现代码硬编码的全角冒号/顿号（bundle 内的本地化标点不在此列）。
+    const review = document.querySelector('.lx-w-review')
+    expect(review).toBeTruthy()
+    const notes = Array.from(review!.querySelectorAll('.lx-w-review-note')).map((node) => node.textContent ?? '')
+    expect(notes.some((note) => note === `${uiText('wizard.review.explicit_fields')}: pretrained_model_name_or_path`)).toBe(true)
+    for (const note of notes) {
+      if (note.startsWith(uiText('wizard.review.explicit_fields')) || note.startsWith(uiText('wizard.review.managed_fields'))) {
+        expect(note, note).not.toContain('：')
+      }
+      expect(note, note).not.toContain('、')
+    }
+  })
+
+  test('selecting entity injectors (LoRA-FA/T-LoRA/VeRA/FlexRank) maintains selected family without duplicate method inputs', async () => {
+    const user = userEvent.setup()
+    render(<TrainPage />)
+
+    const typeId = 'sdxl-lora'
+    await beginFlow(user, typeId)
+
+    // 实体注入器开关：VeRA
+    const veraToggle = await screen.findByRole('checkbox', { name: 'VeRA' })
+    await user.click(veraToggle)
 
     await waitFor(() => {
       expect(useTrainConfigStore.getState().drafts[typeId].network_module).toBe('networks.vera')
       expect(useTrainConfigStore.getState().drafts[typeId].vera_enabled).toBe(true)
     })
-    expect((otherSelect as HTMLSelectElement).value).toBe('vera')
     for (const key of ['network_module', 'lycoris_algo', 'vera_enabled']) {
       expect(screen.queryByLabelText(fieldLabelRegex(key, typeId))).not.toBeInTheDocument()
+    }
+
+    // 关掉 VeRA：身份字段回落标准 LoRA，赢家解析回 default lora
+    await user.click(await screen.findByRole('checkbox', { name: 'VeRA' }))
+    await waitFor(() => {
+      const draft = useTrainConfigStore.getState().drafts[typeId]
+      expect(draft.vera_enabled).toBe(false)
+      expect(draft.network_module).toBe('networks.lora')
+    })
+
+    // 其余实体注入器仍以开关形式存在，方法下拉只保留基础算法
+    for (const name of ['LoRA-FA', 'T-LoRA', 'FlexRank']) {
+      expect(await screen.findByRole('checkbox', { name })).toBeInTheDocument()
+    }
+    const select = screen.getByLabelText(uiText('wizard.adapter.method_select')) as HTMLSelectElement
+    for (const family of ['vera', 'lora-fa', 'tlora', 'flexrank']) {
+      expect(select.querySelector(`option[value="${family}"]`)).toBeNull()
     }
   })
 })

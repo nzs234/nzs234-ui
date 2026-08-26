@@ -137,7 +137,7 @@ function TypeRail({ typeId, onSelect }: { typeId: string; onSelect: (id: string)
                 type="button"
                 className={['lx-type-btn', t.id === typeId ? 'on' : ''].filter(Boolean).join(' ')}
                 disabled={t.disabled}
-                title={t.disabled ? t.disabledReason || tt('common.unavailable') : t.id}
+                title={t.disabled ? t.disabledReason || tt('common.unavailable') : (t.note || t.id)}
                 onClick={() => onSelect(t.id)}
               >
                 <i>{String(n).padStart(2, '0')}</i>
@@ -284,7 +284,13 @@ export default function TrainPage() {
 
   const buildPayload = () => {
     const state = useTrainConfigStore.getState()
-    return buildRunConfig(state.drafts[state.typeId] ?? {}, state.typeId)
+    // 「用户显式编辑过」的键集（会话 ref + 持久化 wizard 记录取并集）：
+    // 提交层靠它区分注入默认与手填值（krea2 aggressive 预设剥除等）。
+    const explicitKeys = new Set<string>([
+      ...(explicitFieldsByType.current.get(state.typeId) ?? []),
+      ...(useWizardStore.getState().explicitFieldsByType[state.typeId] ?? []),
+    ])
+    return buildRunConfig(state.drafts[state.typeId] ?? {}, state.typeId, { explicitKeys })
   }
 
   const doIgnite = async () => {

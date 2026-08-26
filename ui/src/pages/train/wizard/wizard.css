@@ -293,11 +293,42 @@
 .lx-w-choice small { color: var(--lx-dim); font-size: var(--lx-text-xs); }
 .lx-w-choice:disabled { cursor: not-allowed; opacity: 0.45; }
 
-/* 适配器方法选择区 (重构：三大类 Tab + 紧凑 select + 摘要卡) */
+/* 适配器方法选择区（三层信息架构：基础算法 → 叠加增强 → 实体注入器） */
 .lx-w-adapter-selector {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 类型专属硬限制提示（FLUX 仅原生 lora / MiniMax-H3 拒 LyCORIS 与 DoRA 等） */
+.lx-w-adapter-restriction {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px dashed color-mix(in srgb, var(--lx-warn, #b8860b) 55%, var(--lx-border));
+  border-radius: var(--lx-radius, 6px);
+  background: color-mix(in srgb, var(--lx-warn, #b8860b) 8%, var(--lx-surface));
+  color: var(--lx-dim);
+  font-size: var(--lx-text-xs);
+  line-height: 1.5;
+}
+
+/* 层级标题（基础算法 / 叠加增强 / 实体注入器 共用） */
+.lx-w-adapter-tier-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--lx-border);
+}
+.lx-w-adapter-tier-head strong {
+  font-size: var(--lx-text-sm);
+  font-weight: 650;
+  color: var(--lx-text);
+}
+.lx-w-adapter-tier-head small {
+  font-size: var(--lx-text-xs);
+  color: var(--lx-dim);
+  line-height: 1.45;
 }
 .lx-w-adapter-categories {
   display: grid;
@@ -442,6 +473,133 @@
   background: var(--lx-accent-soft);
   color: var(--lx-accent-text, var(--lx-accent));
   border: 1px solid color-mix(in srgb, var(--lx-accent) 30%, transparent);
+}
+
+/* 第 2 层：叠加增强（rsLoRA / LoRA+ / DoRA rider） */
+.lx-w-adapter-enhancers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lx-w-adapter-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border: var(--lx-border-w, 1px) solid var(--lx-border);
+  border-radius: var(--lx-radius, 6px);
+  background: var(--lx-surface-2);
+  cursor: pointer;
+  transition: all var(--lx-dur-fast);
+}
+.lx-w-adapter-toggle:hover:not(.is-blocked) {
+  border-color: var(--lx-border-strong);
+}
+.lx-w-adapter-toggle.is-active {
+  border-color: color-mix(in srgb, var(--lx-accent) 55%, var(--lx-border));
+  background: var(--lx-accent-soft);
+}
+.lx-w-adapter-toggle.is-blocked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.lx-w-adapter-toggle input[type='checkbox'] {
+  margin-top: 3px;
+  accent-color: var(--lx-accent);
+}
+.lx-w-adapter-toggle-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.lx-w-adapter-toggle-body > span {
+  font-size: var(--lx-text-sm);
+  font-weight: 600;
+  color: var(--lx-text);
+}
+.lx-w-adapter-toggle-body small {
+  font-size: var(--lx-text-xs);
+  line-height: 1.45;
+  color: var(--lx-dim);
+}
+
+/* 第 3 层：实体注入器（硬互斥开关网格） */
+.lx-w-adapter-entities {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lx-w-adapter-entity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.lx-w-adapter-entity-card {
+  min-height: 58px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: var(--lx-border-w, 1px) solid var(--lx-border);
+  border-radius: var(--lx-radius, 6px);
+  background: var(--lx-field-bg, var(--lx-surface-2));
+  cursor: pointer;
+  transition: all var(--lx-dur-fast);
+}
+.lx-w-adapter-entity-card:hover:not(.is-blocked) {
+  border-color: var(--lx-border-strong);
+  background: var(--lx-surface-2);
+}
+.lx-w-adapter-entity-card.is-active {
+  border-color: var(--lx-accent);
+  background: var(--lx-accent-soft);
+  box-shadow: 0 0 0 1px var(--lx-accent);
+}
+.lx-w-adapter-entity-card.is-blocked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.lx-w-adapter-entity-card input[type='checkbox'] {
+  margin-top: 2px;
+  accent-color: var(--lx-accent);
+}
+
+/* DoRA 权重分解叠加开关（骑在所选算法上，不是独立方法卡） */
+.lx-w-dora-rider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border: 1px dashed color-mix(in srgb, var(--lx-accent) 45%, var(--lx-border));
+  border-radius: var(--lx-radius, 6px);
+  background: var(--lx-surface);
+}
+.lx-w-dora-rider.is-unsupported {
+  border-color: var(--lx-border);
+  opacity: 0.7;
+}
+.lx-w-dora-rider-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.lx-w-dora-rider.is-unsupported .lx-w-dora-rider-control {
+  cursor: not-allowed;
+}
+.lx-w-dora-rider-control input[type='checkbox'] {
+  accent-color: var(--lx-accent);
+}
+.lx-w-dora-rider-control > span {
+  font-size: var(--lx-text-sm);
+  font-weight: 600;
+  color: var(--lx-text);
+}
+.lx-w-dora-rider > small {
+  font-size: var(--lx-text-xs);
+  line-height: 1.5;
+  color: var(--lx-dim);
 }
 .lx-w-adapter-summary-card.is-unsupported .lx-w-adapter-summary-badge {
   background: var(--lx-danger-soft);
@@ -638,6 +796,9 @@
     grid-template-columns: 1fr;
   }
   .lx-w-adapter-method-box {
+    grid-template-columns: 1fr;
+  }
+  .lx-w-adapter-entity-grid {
     grid-template-columns: 1fr;
   }
   .lx-w-fields {

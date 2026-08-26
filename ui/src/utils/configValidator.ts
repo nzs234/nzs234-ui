@@ -17,6 +17,12 @@ export interface ValidationMessage {
 }
 
 import { resolveTrainingInputs } from '@/pages/train/wizard/trainingInputs'
+import {
+  baseAlgoFamilyForDora,
+  doraEnabled,
+  doraStackableFamiliesForType,
+  doraSupportAuditedForType,
+} from '@/schema/schemaCommon.js'
 
 /**
  * 验证训练配置，检测冲突和潜在问题
@@ -25,6 +31,15 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
   const errors: ValidationMessage[] = []
   const warnings: ValidationMessage[] = []
   const autoFixes: Record<string, any> = {}
+
+  // 草稿里没有 training_type/model_type 键；路由身份只有 model_train_type
+  // （hidden schema 字段，值为 typeId，如 'anima-lora' / 'sdxl-finetune'）。
+  const routeId = String(typeId || config.model_train_type || '').trim().toLowerCase()
+  const isLoraRoute = routeId.includes('lora')
+  // DreamBooth（sd-dreambooth / sdxl-dreambooth）同样是全参微调路线：只认
+  // 'finetune' 子串会漏掉它们，小显存 Gradient Release 建议永远不触发。
+  const isFinetuneRoute = /finetune|dreambooth/.test(routeId)
+  const isAnimaLoraRoute = routeId.includes('anima') && isLoraRoute
 
   // ========== 冲突 1: Gradient Release Full/Compatible vs TurboCore → 自动 fallback ==========
   const turbocoreEnabled = config.turbocore_enabled === true
@@ -60,13 +75,12 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
   }
 
   // ========== 建议 1: 全参微调 + 小显存 → 建议 Gradient Release ==========
-  const trainingType = String(config.training_type || '').toLowerCase()
   const vramMB = typeof window !== 'undefined' && (window as any).__SYSTEM_VRAM_MB
     ? (window as any).__SYSTEM_VRAM_MB
     : null
 
   if (
-    trainingType === 'full_finetune' &&
+    isFinetuneRoute &&
     vramMB !== null &&
     vramMB < 24000 &&
     gradientReleaseMode === 'off'
@@ -81,9 +95,8 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
 
   // ========== 建议 2: LoRA + 大 rank → 过拟合风险 ==========
   const networkDim = config.network_dim ? parseInt(config.network_dim) : 0
-  const modelType = String(config.model_type || '').toLowerCase()
 
-  if (trainingType === 'lora' && networkDim > 64) {
+  if (isLoraRoute && networkDim > 64) {
     warnings.push({
       message:
         `LoRA rank (network_dim) 设置为 ${networkDim}，可能导致过拟合。` +
@@ -116,16 +129,106 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
     })
   }
 
-  // ========== 冲突 3: LoRA + network_alpha > network_dim ==========
+  // ========== 冲突 3: DoRA 叠加与基础算法不兼容 → 自动关闭 ==========
+  // 单一事实源 DORA_SUPPORT_BY_MODEL_FAMILY：按模型家族查可叠加 family。
+  // 五站管线审计已全部转正（无 pending 行）：所有已知家族要么仅原生 LoRA 可叠加
+  // （注入链 LyCORIS 分支先于 use_dora 分派），要么整体不可启动（隐藏类型行）。
+  // audited:false 仅剩未知 family 键的防御性回退，此时文案不写绝对化结论。
+  if (doraEnabled(config)) {
+    const baseAlgo = baseAlgoFamilyForDora(config)
+    if (!doraStackableFamiliesForType(routeId).includes(baseAlgo)) {
+      const audited = doraSupportAuditedForType(routeId)
+      warnings.push({
+        message: audited
+          ? `DoRA 只能叠加在标准 LoRA 路线上（${routeId || '当前类型'} 管线已经过后端实证）：` +
+            `当前基础算法 ${baseAlgo || 'lora'} 不支持叠加（后端会忽略该开关），已自动关闭 DoRA。`
+          : `DoRA 当前仅允许叠加在标准 LoRA 路线上：` +
+            `当前基础算法 ${baseAlgo || 'lora'} 不在允许列表（后端会忽略该开关），已自动关闭 DoRA。`,
+        fields: ['dora_enabled', 'use_dora', 'dora_wd'],
+      })
+      autoFixes.dora_enabled = false
+      autoFixes.use_dora = false
+      autoFixes.dora_wd = false
+    }
+  }
+
+  // ========== 冲突 4: LoRA + network_alpha > network_dim ==========
   const networkAlpha = config.network_alpha ? parseInt(config.network_alpha) : 0
 
-  if (trainingType === 'lora' && networkAlpha > 0 && networkDim > 0 && networkAlpha > networkDim) {
+  if (isLoraRoute && networkAlpha > 0 && networkDim > 0 && networkAlpha > networkDim) {
     warnings.push({
       message:
         `network_alpha (${networkAlpha}) 大于 network_dim (${networkDim})，会降低 LoRA 的实际学习率。` +
         '推荐设置 network_alpha = network_dim / 2（例如 dim=16 → alpha=8）。',
       fields: ['network_alpha', 'network_dim']
     })
+  }
+
+  // ========== 第 3 站桶（2026-08）显隐矛盾修复 ==========
+  const compileRequested = String(config.execution_backend || '').trim().toLowerCase() === 'torch_compile'
+
+  // E3：Newbie torch.compile 需要 cache-first（compile_contract.py:297-299 直接把
+  // resolved 压成 off 并给 reason）。前端加联动提示，避免「开了 compile 却没生效」。
+  if (routeId === 'newbie-lora' && compileRequested && config.use_cache !== true) {
+    warnings.push({
+      message:
+        'Newbie 的 torch.compile 需要 cache-first 训练：当前「启用缓存流程」已关闭，' +
+        '后端会把编译计划降级为 off（compile_contract.py:297）。请开启缓存流程或改回 optimized 后端。',
+      fields: ['use_cache', 'execution_backend']
+    })
+  }
+
+  // E4：torch.compile 与 blocks_to_swap>0 互斥（offload_product_contract.py:147-154
+  // severity=error；training_loop_init_memory.py:146 会静默禁用 swap）。
+  const blocksToSwap = Number(config.blocks_to_swap || 0)
+  if ((routeId === 'flux-lora' || routeId === 'newbie-lora') && compileRequested && blocksToSwap > 0) {
+    warnings.push({
+      message:
+        `torch.compile 与 Block Swap（blocks_to_swap=${blocksToSwap}）互斥：` +
+        '后端契约按冲突处理（可能直接报错或静默关闭交换）。请二选一：关闭编译，或把交换块数设为 0。',
+      fields: ['blocks_to_swap', 'execution_backend']
+    })
+  }
+
+  // B7 联动提示：MiniMax-H3 swap>0 仅允许 unsloth checkpointing（configs_h3.py:105-109
+  // ValueError 硬拒）；提交层会自动复位为 unsloth，这里给出可见反馈。
+  const h3Swap = Number(config.h3_blocks_to_swap || 0)
+  if (
+    (routeId === 'minimax-h3-lora' || routeId === 'minimax-h3-finetune') &&
+    h3Swap > 0 &&
+    config.h3_checkpoint_mode &&
+    config.h3_checkpoint_mode !== 'unsloth'
+  ) {
+    warnings.push({
+      message:
+        `H3 Block Swap 开启时仅支持 Unsloth checkpointing（当前 ${config.h3_checkpoint_mode}）。` +
+        '提交时会自动复位为 unsloth（configs_h3.py:105 硬约束）。',
+      fields: ['h3_blocks_to_swap', 'h3_checkpoint_mode']
+    })
+    autoFixes.h3_checkpoint_mode = 'unsloth'
+  }
+
+  // A 组合提示：Newbie「仅构建缓存」+「强制重建缓存」同开时只重建不训练
+  // （training_config_checks.py:424-425 warning），schema 文案已注明，这里兜底提醒。
+  if (routeId === 'newbie-lora' && config.newbie_force_cache_only === true && config.newbie_rebuild_cache === true) {
+    warnings.push({
+      message:
+        '「仅构建缓存」与「强制重建缓存」同时开启：本次运行只会重建缓存并跳过训练循环。',
+      fields: ['newbie_force_cache_only', 'newbie_rebuild_cache']
+    })
+  }
+
+  // E2（第 6 站桶）：wan22 深度扩层仅支持 TI2V-5B 单塔——A14B 双塔组合后端直接
+  // ValueError（wan22_depth_expansion_runtime.py:51-56）。schema 层扩组已按
+  // variant 显隐，这里兜底「先开扩层、后切 A14B」的旧草稿：自动关闭并给出反馈。
+  if (routeId.startsWith('wan22') && String(config.wan22_model_variant || '') === 't2v-a14b' && config.wan22_depth_expansion_enabled === true) {
+    warnings.push({
+      message:
+        'Wan2.2 深度扩层仅支持 TI2V-5B 单塔：T2V-A14B 双塔变体不支持扩层' +
+        '（后端会直接拒绝该组合）。已自动关闭深度扩层。',
+      fields: ['wan22_model_variant', 'wan22_depth_expansion_enabled']
+    })
+    autoFixes.wan22_depth_expansion_enabled = false
   }
 
   // ========== 必填输入：按当前 schema/type 解析，而不是假设所有训练都是 SDXL ==========
@@ -149,7 +252,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
   }
 
   // ========== 建议 5: Anima + 短训练推荐设置 ==========
-  if (modelType === 'anima' && trainingType === 'lora' && maxTrainSteps > 0 && maxTrainSteps < 800) {
+  if (isAnimaLoraRoute && maxTrainSteps > 0 && maxTrainSteps < 800) {
     const steady = String(config.lulynx_steady_accel || 'auto').trim().toLowerCase()
     const recommendations: string[] = []
     const fields = ['max_train_steps']

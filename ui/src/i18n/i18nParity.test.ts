@@ -20,6 +20,12 @@ import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import zh from '@/i18n/zh.json'
 import en from '@/i18n/en.json'
+import schemaFieldLabelsEn from '@/i18n/schemaFieldLabelsEn.json'
+import schemaFieldDescsEn from '@/i18n/schemaFieldDescsEn.json'
+import schemaFieldOptionsEn from '@/i18n/schemaFieldOptionsEn.json'
+import { WIZARD_STEP_ORDER } from '@/pages/train/wizard/wizardModel'
+import { TRAINING_TYPES } from '@/schema/trainingTypeRegistry.js'
+import { createDefaultConfig, getSectionsForType } from '@/schema/schemaIndex.js'
 
 const BUNDLES: Record<string, Record<string, string>> = { zh, en }
 const LANGUAGES = Object.keys(BUNDLES)
@@ -130,5 +136,131 @@ describe('i18n key usage', () => {
       }
     }
     expect(suspicious, `bundle values that look like bare keys: ${suspicious.join(', ')}`).toEqual([])
+  })
+})
+
+// ── 孤儿键门禁 ──────────────────────────────────────────────────────────────
+// 缺键会让用户看到裸键;孤儿键是反方向的腐烂:语言包里留着指向已删字段的条目,
+// 看似"覆盖很全",实则永远渲染不出来,还会把后续翻译者引向不存在的字段。
+// 与 tools/i18nGapScan.mjs 同一条判定链,这里钉住"不许新增"。
+
+/** 全 schema 字段 key 集合(含隐藏类型;hidden section 由 getSectionsForType 过滤)。 */
+function schemaFieldKeys(): Set<string> {
+  const keys = new Set<string>()
+  for (const type of TRAINING_TYPES) {
+    let sections: ReturnType<typeof getSectionsForType> = []
+    try {
+      sections = getSectionsForType(type.id)
+    } catch {
+      continue
+    }
+    for (const section of sections) {
+      for (const field of section.fields || []) {
+        if (field?.key) keys.add(field.key)
+      }
+    }
+  }
+  return keys
+}
+
+/** `fieldKey|value` option 键集合(options 函数按默认配置求值)。 */
+function schemaOptionKeys(): Set<string> {
+  const keys = new Set<string>()
+  for (const type of TRAINING_TYPES) {
+    let sections: ReturnType<typeof getSectionsForType> = []
+    try {
+      sections = getSectionsForType(type.id)
+    } catch {
+      continue
+    }
+    const defaults = (() => {
+      try {
+        return createDefaultConfig(type.id)
+      } catch {
+        return {}
+      }
+    })()
+    for (const section of sections) {
+      for (const field of section.fields || []) {
+        if (!field?.key || (field.type !== 'select' && field.type !== 'multiSelect')) continue
+        let raw: unknown = null
+        try {
+          raw = typeof field.options === 'function' ? (field.options as (c: Record<string, unknown>) => unknown)(defaults) : field.options
+        } catch {
+          continue
+        }
+        if (!raw) continue
+        for (const option of Array.isArray(raw) ? raw : Array.from(raw as Iterable<unknown>)) {
+          const value = option && typeof option === 'object' ? (option as { value?: unknown }).value : option
+          keys.add(`${field.key}|${String(value ?? '').trim()}`)
+        }
+      }
+    }
+  }
+  return keys
+}
+
+describe('i18n schema EN packs', () => {
+  test('schemaFieldLabelsEn / schemaFieldDescsEn contain no orphan entries', () => {
+    const fieldKeys = schemaFieldKeys()
+    expect(fieldKeys.size).toBeGreaterThan(1000)
+    for (const [packName, pack] of [
+      ['schemaFieldLabelsEn.json', schemaFieldLabelsEn],
+      ['schemaFieldDescsEn.json', schemaFieldDescsEn],
+    ] as const) {
+      const orphans = Object.keys(pack).filter((key) => !fieldKeys.has(key))
+      expect(orphans, `${packName} orphan entries: ${orphans.join(', ')}`).toEqual([])
+    }
+  })
+
+  test('schemaFieldOptionsEn contains no orphan entries', () => {
+    const optionKeys = schemaOptionKeys()
+    expect(optionKeys.size).toBeGreaterThan(500)
+    const orphans = Object.keys(schemaFieldOptionsEn).filter((key) => !optionKeys.has(key))
+    expect(orphans, `schemaFieldOptionsEn.json orphan entries: ${orphans.join(', ')}`).toEqual([])
+  })
+})
+
+describe('i18n bundle dead keys', () => {
+  /**
+   * bundle 里不再被任何代码路径引用的键。引用判定:
+   *  1. 源码里的点分字符串字面量(含 adapterModel 注册的 noticeKey/familyNote 等);
+   *  2. 模板字面量前缀(仅收含 '.' 的 i18n 形状前缀,如 `generate.status_${status}`、
+   *     `wizard.step.${id}`,排除 lx-input- 这类 DOM id);
+   *  3. wizardModel 导出的步骤 id 展开出的 wizard.step(_desc).<id> 动态族与
+   *     wizard.status.<status> / wizard.category.<c>(_desc) 动态族。
+   * 门禁目标是防回潮(不许新增死键),不是证明每个键都被引用 —— 判定偏保守。
+   */
+  test('zh/en bundles expose no unreferenced keys', () => {
+    const literals = new Set<string>()
+    const stems = new Set<string>()
+    for (const file of sourceFiles()) {
+      const text = readFileSync(file, 'utf8')
+      for (const match of text.matchAll(/['"`]([a-zA-Z][a-zA-Z0-9]*(?:\.[A-Za-z0-9_]+)+)['"`]/g)) {
+        literals.add(match[1])
+      }
+      for (const match of text.matchAll(/`([a-zA-Z][a-zA-Z0-9._-]*)\$\{/g)) {
+        // 只认带点的翻译键形状前缀,避免 DOM id 前缀把门禁放成筛子。
+        if (match[1].includes('.')) stems.add(match[1])
+      }
+    }
+    for (const stepId of WIZARD_STEP_ORDER) {
+      literals.add(`wizard.step.${stepId}`)
+      literals.add(`wizard.step_desc.${stepId}`)
+    }
+    for (const status of ['locked', 'active', 'complete', 'warning', 'error', 'stale', 'pending']) {
+      literals.add(`wizard.status.${status}`)
+    }
+
+    const dead: string[] = []
+    for (const language of LANGUAGES) {
+      for (const key of Object.keys(BUNDLES[language])) {
+        if (literals.has(key)) continue
+        if (['wizard.category.', 'wizard.adapter_group.'].some((stem) => key.startsWith(stem))) continue
+        if ([...stems].some((stem) => key.startsWith(stem))) continue
+        dead.push(`${language}:${key}`)
+      }
+    }
+    expect(dead, `unreferenced bundle keys:\n  ${dead.join('\n  ')}`).toEqual([])
   })
 })

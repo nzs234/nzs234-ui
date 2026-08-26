@@ -107,14 +107,6 @@ export const LTX23_LORA_SECTIONS = dropDuplicateFieldKeys([
     { key: 'output_dir', type: 'folder', pickerType: 'folder', label: '输出目录', title: 'output_dir', desc: '训练输出目录', defaultValue: './output/ltx23' },
     { key: 'output_name', type: 'string', label: '输出名称', title: 'output_name', desc: 'LoRA 输出文件名', defaultValue: 'ltx23-lora' },
     { key: 'ltx23_max_text_length', type: 'number', label: '最大文本长度', title: 'ltx23_max_text_length', desc: '构建 Gemma 文本缓存时的 token 上限；2.3/2.5 共用。', defaultValue: 256, min: 16, max: 1024, step: 1 },
-    { key: 'ltx23_timestep_sampling', type: 'select', label: '时间步采样', title: 'ltx23_timestep_sampling', desc: 'flow matching 采样，默认 shift。', defaultValue: 'shift', options: [
-      { value: 'shift', label: 'shift（推荐）' },
-      { value: 'uniform', label: 'uniform' },
-      { value: 'sigma', label: 'sigma' },
-    ] },
-    { key: 'ltx23_discrete_flow_shift', type: 'number', label: 'Flow shift', title: 'ltx23_discrete_flow_shift', desc: '默认 1.0', defaultValue: 1.0, min: 0.1, step: 0.1 },
-    { key: 'ltx23_isolate_modalities', type: 'boolean', label: '隔离模态', title: 'ltx23_isolate_modalities', desc: 'true=视觉-only，关闭 a2v/v2a 交叉。', defaultValue: true },
-    { key: 'ltx23_fps', type: 'number', label: 'FPS', title: 'ltx23_fps', desc: 'RoPE 用帧率', defaultValue: 24.0, min: 1, max: 60, step: 1 },
   ]),
   sec('dataset-settings', 'dataset', '数据集设置', '图像按单帧或短 clip 进入 cache-first LTX 数据链。', [
     { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '训练图片目录', title: 'train_data_dir', desc: '训练图片或短视频目录。', defaultValue: './output/lulynx' },
@@ -139,6 +131,19 @@ export const LTX23_LORA_SECTIONS = dropDuplicateFieldKeys([
   ]),
   sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...S_LR_DIT]),
   sec('training-settings', 'training', '训练设置', '', S_TRAIN(20)),
+  // 排版重排（F，2026-08 第 6 站桶）：timestep/模态隔离/fps 从 model 页移入
+  // training 页独立 Flow Matching 组——后端 schema 即放在 training tab 的
+  // Flow Matching section（ltx23_schemas.py:107-119,284），语义分组对齐。
+  sec('ltx23-flow-matching', 'training', 'Flow Matching 采样', '时间步采样、模态隔离与 RoPE 帧率。', [
+    { key: 'ltx23_timestep_sampling', type: 'select', label: '时间步采样', title: 'ltx23_timestep_sampling', desc: 'flow matching 采样，默认 shift。', defaultValue: 'shift', options: [
+      { value: 'shift', label: 'shift（推荐）' },
+      { value: 'uniform', label: 'uniform' },
+      { value: 'sigma', label: 'sigma' },
+    ] },
+    { key: 'ltx23_discrete_flow_shift', type: 'number', label: 'Flow shift', title: 'ltx23_discrete_flow_shift', desc: '默认 1.0', defaultValue: 1.0, min: 0.1, step: 0.1 },
+    { key: 'ltx23_isolate_modalities', type: 'boolean', label: '隔离模态', title: 'ltx23_isolate_modalities', desc: 'true=视觉-only，关闭 a2v/v2a 交叉。', defaultValue: true },
+    { key: 'ltx23_fps', type: 'number', label: 'FPS', title: 'ltx23_fps', desc: 'RoPE 用帧率', defaultValue: 24.0, min: 1, max: 60, step: 1 },
+  ]),
   sec('weight-composer', 'frontier', '统一权重组合', '空间、时间步、噪声与样本难度权重按乘法组合。', [...S_WEIGHT_COMPOSER]),
   sec('progressive-training', 'frontier', '渐进式 / 分阶段训练', '按 optimizer progress 切换阶段。', [...S_PROGRESSIVE_TRAINING, ...S_ADAPTIVE_TRAINING]),
   sec('speed-settings', 'speed', '速度优化', '', [...LTX2_LORA_SPEED_FIELDS]),

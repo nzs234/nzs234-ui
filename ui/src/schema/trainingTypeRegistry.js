@@ -3,6 +3,9 @@
 export const UI_TABS = [
   { key: 'model', label: '模型' },
   { key: 'dataset', label: '数据参数' },
+  // universal-dit-lora 专属页签（后端 schema 第 3 个 tab「契约」）；getAvailableTabs
+  // 按 tabSet 过滤，无该 section 的类型不会显示此页签。
+  { key: 'contract', label: '契约' },
   { key: 'training', label: '训练' },
   { key: 'network', label: '网络' },
   { key: 'optimizer', label: '优化器' },
@@ -16,17 +19,26 @@ export const TRAINING_TYPES = [
   { id: 'sdxl-lora', group: 'LoRA', label: 'SDXL' },
   { id: 'anima-lora', group: 'LoRA', label: 'Anima' },
   { id: 'newbie-lora', group: 'LoRA', label: 'Newbie' },
-  { id: 'krea2-lora', group: 'LoRA', label: 'Krea-2' },
+  // ── 第 6 站桶（2026-08）P0：以下 krea2/flux2/zimage/boogu/wan22 共 12 型在
+  // 后端 schema 注册表（launcher/api/domain/schemas/__init__.py get_all_schemas）
+  // 中无条目：/api/run → training_request_adapter.py:494-496 直接抛
+  // "Unknown training schema"（已执行探针实证），preflight / VRAM profile 托管 /
+  // saved-config 恢复同链路失败。按先例（anima-edit-model/yolo/multi-addift）
+  // hidden+disabled 保旧草稿识别，数据定义完整保留在 SECTIONS_MAP，后端补注册后
+  // 去掉这三处标记即可一键恢复可见。
+  { id: 'krea2-lora', group: 'LoRA', label: 'Krea-2', hidden: true, disabled: true, disabledReason: '后端未注册 Krea-2 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
   { id: 'minimax-h3-lora', group: 'LoRA', label: 'MiniMax H3' },
-  { id: 'flux2-lora', group: 'LoRA', label: 'FLUX.2 Klein' },
-  { id: 'zimage-lora', group: 'LoRA', label: 'Z-Image' },
-  { id: 'wan22-ti2v-lora', group: 'LoRA', label: 'Wan2.2 TI2V-5B' },
-  { id: 'wan22-t2v-a14b-lora', group: 'LoRA', label: 'Wan2.2 T2V-A14B' },
+  { id: 'flux2-lora', group: 'LoRA', label: 'FLUX.2 Klein', hidden: true, disabled: true, disabledReason: '后端未注册 FLUX.2 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'zimage-lora', group: 'LoRA', label: 'Z-Image', hidden: true, disabled: true, disabledReason: '后端未注册 Z-Image 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'wan22-ti2v-lora', group: 'LoRA', label: 'Wan2.2 TI2V-5B', hidden: true, disabled: true, disabledReason: '后端未注册 Wan2.2 TI2V 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'wan22-t2v-a14b-lora', group: 'LoRA', label: 'Wan2.2 T2V-A14B', hidden: true, disabled: true, disabledReason: '后端未注册 Wan2.2 T2V-A14B 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
   { id: 'ltx23-lora', group: 'LoRA', label: 'LTX-2.3' },
   { id: 'ltx25-lora', group: 'LoRA', label: 'LTX-2.5' },
-  { id: 'boogu-lora', group: 'LoRA', label: 'Boogu-Image' },
-  { id: 'boogu-edit-lora', group: 'Edit 模型', label: 'Boogu-Image Edit' },
-  { id: 'anima-edit-model', group: 'Edit 模型', label: 'Anima' },
+  { id: 'boogu-lora', group: 'LoRA', label: 'Boogu-Image', hidden: true, disabled: true, disabledReason: '后端未注册 Boogu-Image 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'boogu-edit-lora', group: 'Edit 模型', label: 'Boogu-Image Edit', hidden: true, disabled: true, disabledReason: '后端未注册 Boogu-Image Edit 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  // 后端无 anima-edit-model schema/路由（get_training_schema 会 404）；
+  // 保留数据定义以兼容已存草稿，入口隐藏。
+  { id: 'anima-edit-model', group: 'Edit 模型', label: 'Anima', hidden: true },
   { id: 'concept-edit', group: '概念编辑', label: '概念编辑训练', hidden: true, disabled: true, disabledReason: '该训练类型暂未开放启动。' },
   // 以下旧入口保留但隐藏（existing configs 兼容）
   { id: 'sdxl-ileco', group: 'LoRA 概念编辑', label: 'SDXL iLECO', hidden: true },
@@ -34,11 +46,21 @@ export const TRAINING_TYPES = [
   { id: 'sdxl-multi-addift', group: 'LoRA 概念编辑', label: 'SDXL Multi-ADDifT', hidden: true },
   { id: 'anima-ileco', group: 'LoRA 概念编辑', label: 'Anima iLECO', hidden: true },
   { id: 'anima-addift', group: 'LoRA 概念编辑', label: 'Anima ADDifT', hidden: true },
-  { id: 'anima-multi-addift', group: 'LoRA 概念编辑', label: 'Anima Multi-ADDifT', hidden: true },
+  // 后端零 schema/路由/别名（全仓 grep multi-addift 空）：恢复/导入可识别，
+  // 但普通链路必启动失败 → 按先例（yolo/concept-edit）hidden+disabled。
+  { id: 'anima-multi-addift', group: 'LoRA 概念编辑', label: 'Anima Multi-ADDifT', hidden: true, disabled: true, disabledReason: '后端未注册 Multi-ADDifT 的 schema 与训练路由，无法启动；仅保留注册用于旧配置识别。' },
   { id: 'sdxl-turbo-lora', group: '专项训练', label: 'SDXL Turbo / LCM LoRA' },
   { id: 'lab-distiller', group: '专项训练', label: 'LAB Distiller' },
-  { id: 'anima-few-step-lora', group: '专项训练', label: 'Anima Few-step LoRA' },
-  { id: 'newbie-few-step-lora', group: '专项训练', label: 'Newbie Few-step LoRA' },
+  // /api/lulynx-lab 探针（contracts/tools.py DitFewStepLoraRequest，lab_id=dit-few-step-lora）：
+  // 普通 /train 链路无 schema/路由，经 Lab runner 产出契约产物。保留可见但标注入口属性。
+  { id: 'anima-few-step-lora', group: '专项训练', label: 'Anima Few-step LoRA', note: 'Lab 探针：经 /api/lulynx-lab (lab_id=dit-few-step-lora) 启动；本页仅生成契约产物。' },
+  // 与 anima-few-step-lora 同链路（lab runner 产出契约产物）；第 3 站补标注入口属性。
+  { id: 'newbie-few-step-lora', group: '专项训练', label: 'Newbie Few-step LoRA', note: 'Lab 探针：经 /api/lulynx-lab (lab_id=dit-few-step-lora) 启动；本页仅生成契约产物。' },
+  // 后端已独立注册 universal-dit-lora schema（launcher/api/domain/schemas/universal_dit_schema.py；
+  // 路由表 training_route_catalog.py:50 → ("lora","universal_dit")，runtime=standard 走
+  // entry_train + UnifiedTrainingConfig）。experimental=true、status=configurable_not_verified：
+  // 入口可见但标注实验属性，schema 面见 universalDitFields.UNIVERSAL_DIT_LORA_SECTIONS。
+  { id: 'universal-dit-lora', group: '实验训练', label: '高级自定义 DiT', note: '实验功能：预计算张量 Universal DiT LoRA。不装配 VAE/文本编码器，需自备含 latents 的契约张量目录与 AutoModel config 模型目录；启动前务必跑预检。' },
   { id: 'flux-lora', group: 'LoRA', label: 'FLUX' },
   { id: 'lumina-lora', group: 'LoRA', label: 'Lumina', hidden: true },
   { id: 'qwen-image-lora', group: 'LoRA', label: 'Qwen Image', hidden: true },
@@ -49,22 +71,31 @@ export const TRAINING_TYPES = [
   { id: 'sd-multi-addift', group: 'LoRA 概念编辑', label: 'SD 1.5 Multi-ADDifT', hidden: true },
   { id: 'sdxl-finetune', group: 'Finetune', label: 'SDXL' },
   { id: 'anima-finetune', group: 'Finetune', label: 'Anima' },
-  { id: 'krea2-finetune', group: 'Finetune', label: 'Krea-2' },
-  { id: 'boogu-finetune', group: 'Finetune', label: 'Boogu-Image' },
+  // 第 6 站桶 P0：同上，后端 schema 注册缺失（见 LoRA 组注释）。
+  { id: 'krea2-finetune', group: 'Finetune', label: 'Krea-2', hidden: true, disabled: true, disabledReason: '后端未注册 Krea-2 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'boogu-finetune', group: 'Finetune', label: 'Boogu-Image', hidden: true, disabled: true, disabledReason: '后端未注册 Boogu-Image 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
   { id: 'ltx23-finetune', group: 'Finetune', label: 'LTX-2.3' },
   { id: 'ltx25-finetune', group: 'Finetune', label: 'LTX-2.5' },
-  { id: 'flux2-finetune', group: 'Finetune', label: 'FLUX.2 Klein' },
-  { id: 'zimage-finetune', group: 'Finetune', label: 'Z-Image' },
-  { id: 'wan22-finetune', group: 'Finetune', label: 'Wan2.2 TI2V-5B' },
+  { id: 'flux2-finetune', group: 'Finetune', label: 'FLUX.2 Klein', hidden: true, disabled: true, disabledReason: '后端未注册 FLUX.2 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'zimage-finetune', group: 'Finetune', label: 'Z-Image', hidden: true, disabled: true, disabledReason: '后端未注册 Z-Image 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'wan22-finetune', group: 'Finetune', label: 'Wan2.2 TI2V-5B', hidden: true, disabled: true, disabledReason: '后端未注册 Wan2.2 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
   { id: 'minimax-h3-finetune', group: 'Finetune', label: 'MiniMax H3' },
   { id: 'lumina-finetune', group: 'Finetune', label: 'Lumina', hidden: true },
   { id: 'sd-dreambooth', group: 'Finetune', label: 'SD DreamBooth' },
+  // 后端已接线（training_route_catalog.py:56 dreambooth×sdxl，entry_train 分派
+  // DreamBoothTrainer）但 UI 此前无入口 —— 2026-08 SDXL 桶补注册。
+  { id: 'sdxl-dreambooth', group: 'Finetune', label: 'SDXL DreamBooth' },
   { id: 'sd-controlnet', group: 'ControlNet', label: 'SD 1.5' },
   { id: 'sdxl-controlnet', group: 'ControlNet', label: 'SDXL' },
+  // 后端路由 training_route_catalog.py:63（lllite×sdxl → LLLiteTrainer）。
+  { id: 'sdxl-controlnet-lllite', group: 'ControlNet', label: 'SDXL LLLite' },
+  // 后端路由 training_route_catalog.py:69（ip-adapter×sdxl → IPAdapterTrainer）。
+  { id: 'sdxl-ip-adapter', group: 'ControlNet', label: 'SDXL IP-Adapter' },
   { id: 'anima-controlnet', group: 'ControlNet', label: 'Anima' },
   { id: 'sd-textual-inversion', group: 'Textual Inversion', label: 'SD 1.5 TI' },
   { id: 'sdxl-textual-inversion', group: 'Textual Inversion', label: 'SDXL TI' },
-  { id: 'yolo', group: '其他模型训练', label: 'YOLO 模型训练' },
+  // 后端 yolo schema 为 registered_placeholder（启动被 400 拒绝）；隐藏对齐。
+  { id: 'yolo', group: '其他模型训练', label: 'YOLO 模型训练', hidden: true, disabled: true, disabledReason: '该训练类型暂未开放启动。' },
   { id: 'aesthetic-scorer', group: '其他模型训练', label: '美学评分模型训练' },
 ];
 

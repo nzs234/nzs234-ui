@@ -126,3 +126,25 @@ export function resolveOptionLabel(
   if (typeof option.label === 'string' && option.label.trim()) return option.label
   return value
 }
+
+/**
+ * Resolve a disabled option/field reason for current language.
+ *
+ * schema 的 disabledReason 默认是中文；带 disabledReason_en 的条目（可见的
+ * disabled 选项：KL-Shampoo/Gluon、flux train_t5xxl/tlora_flux 等）在 EN 下走英文，
+ * 不再裸露中文。与 resolveFieldLabel 的双语字段优先级同构：en 命中 → zh 原文。
+ */
+export function resolveDisabledReason(
+  target: { disabledReason?: string; disabledReason_en?: string } | undefined,
+  language: string,
+): string {
+  if (!target) return ''
+  if (
+    language === 'en' &&
+    typeof target.disabledReason_en === 'string' &&
+    target.disabledReason_en.trim()
+  ) {
+    return target.disabledReason_en
+  }
+  return typeof target.disabledReason === 'string' ? target.disabledReason : ''
+}

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
 import { describe, expect, it } from 'vitest'
 import {
+  describeTrainingTypeAccess,
   isRegisteredTrainingType,
   isRestorableTrainingType,
   isVisibleTrainingType,
@@ -25,6 +26,15 @@ describe('trainingTypeAccess', () => {
       expect(isVisibleTrainingType(id), `${id} should be hidden`).toBe(false)
       expect(isRestorableTrainingType(id), `${id} should be restorable`).toBe(true)
     }
+  })
+
+  it('types without any backend schema/launch route are hidden (anima-edit-model) or disabled (yolo placeholder)', () => {
+    // 后端 get_training_schema('anima-edit-model') 会 404 → 入口隐藏但草稿可恢复。
+    expect(isVisibleTrainingType('anima-edit-model')).toBe(false)
+    expect(isRestorableTrainingType('anima-edit-model')).toBe(true)
+    // 后端 yolo schema 为 registered_placeholder，启动被 400 拒绝 → 禁用。
+    expect(isVisibleTrainingType('yolo')).toBe(false)
+    expect(describeTrainingTypeAccess('yolo')).toBe('disabled')
   })
 
   it('concept-edit is registered but disabled → never visible nor restorable', () => {

@@ -20,17 +20,17 @@ import { activeLanguage, textContains, textPrefix, uiText, uiTextPrefix } from '
  * 前缀卡)而误选到别的方案。
  */
 export function typeCardName(meta: TrainingTypeMeta): (accessibleName: string) => boolean {
+  // id 必须是完整 token（后随字符不得还是 id 字符），否则 'sdxl-controlnet' 会
+  // 同时命中 'SDXL' 与 'SDXL LLLite / sdxl-controlnet-lllite' 两张卡。
+  const idPattern = new RegExp(`${meta.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![-\\w])`)
   return (accessibleName: string) =>
-    accessibleName.startsWith(meta.label) && accessibleName.includes(meta.id)
+    accessibleName.startsWith(meta.label) && idPattern.test(accessibleName)
 }
 
 /**
  * 适配器卡片标题。取自 adapterOptions() 的投影,也就是 WizardPage 渲染 ChoiceCard
- * 时用的同一个 label(schema option label 优先,其次 adapterModel 的 FAMILY_LABELS)。
- *
- * 注意:这些 label 目前仍由 adapterModel 直接给出中文常量,并未接入 t() —— 所以它
- * 不随 UI 语言切换。这里刻意不做假设,只跟随生产投影;真要 i18n 化,改的是生产侧
- * 的 label 来源,本函数无须变动。
+ * 时用的同一个 label(schema option label 优先,其次 adapterModel 的 FAMILY_LABELS;
+ * 两者都按当前 UI 语言解析,与生产渲染同链路)。
  */
 export function adapterCardLabel(
   config: Record<string, unknown>,

@@ -10,7 +10,8 @@
 //
 // 注意：这是 WebUI 侧预留 schema。后端 schema / route 接好前，入口保持隐藏。
 // ================================================================
-import { when, all, sec, flowParams, ditGradientCheckpointingField, doraEnabled } from './schemaCommon.js';
+import { when, all, sec, ditGradientCheckpointingField, doraEnabled } from './schemaCommon.js';
+import { animaFlowCoreFields } from './animaSchema.js';
 import {
   S_QUALITY_OPTIMIZATION_PACK,
   S_DIAGNOSTICS_MONITORING,
@@ -158,8 +159,11 @@ const MODEL_FIELDS = [
 ];
 
 // ---- Anima 专用参数 ----
+// 概念编辑差分损失不经主链加权/预测目标解析（concept_edit_loss 自管），
+// 只挂 flow 采样本体；旧 flowParams 的 model_prediction_type 默认 'raw' 会在
+// anima_flow.build_anima_flow_inputs 直接 ValueError（值域 velocity/noise/epsilon/sample）。
 const ANIMA_PARAMS_FIELDS = [
-  ...flowParams({ ts: 'shift', dfs: 3.0, tsExtra: ['logit_normal'] }),
+  ...animaFlowCoreFields(),
   { key: 'qwen3_max_token_length', type: 'number', label: 'Qwen3 最大 token', title: 'qwen3_max_token_length', desc: 'Qwen3 最大 token 长度', defaultValue: 512, min: 1 },
   { key: 't5_max_token_length', type: 'number', label: 'T5 最大 token', title: 't5_max_token_length', desc: 'T5 最大 token 长度', defaultValue: 512, min: 1 },
   { key: 'split_attn', type: 'boolean', label: '拆分 attention', title: 'split_attn', desc: '拆分 attention 以节省显存', defaultValue: false },

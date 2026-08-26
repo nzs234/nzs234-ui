@@ -16,10 +16,14 @@ import {
   netLora,
   rectifiedFlowParams,
   sec,
+  SAMPLE_SAMPLER_OPTIONS,
 } from './schemaCommon.js';
 import {
   S_SAVE,
-  S_CAPTION,
+  S_CAPTION_BASIC,
+  S_CAPTION_DROPOUT,
+  S_CAPTION_VARIANTS,
+  S_CAPTION_STRUCTURED,
   S_LR,
   S_LR_TARGET,
   S_LR_FT,
@@ -28,6 +32,8 @@ import {
   S_QUALITY_EVAL,
   S_STAGED_RESOLUTION,
   S_SPEED_SDXL,
+  S_CACHE_PIPELINE,
+  S_LORA_METHOD_MODIFIERS,
   S_DISTRIBUTED,
   S_LULYNX_SDXL,
   S_ADV,
@@ -36,6 +42,7 @@ import {
   S_VALIDATION,
   S_THERMAL,
   S_PEAK_VRAM,
+  S_LLLITE,
   conceptEditSections,
   finetuneModel,
   cnModel,
@@ -44,6 +51,7 @@ import {
   cnLR,
   tiModel,
   tiParams,
+  excludeKeys,
   S_EXECUTION_BACKEND,
   S_COMPILE_EXPERT,
   S_MODULE_OFFLOAD_EXPERT,
@@ -54,6 +62,21 @@ import {
   S_DIAGNOSTICS_MONITORING, S_AUTO_CONTROLLER, S_TURBOCORE,
   S_WEIGHT_COMPOSER, S_REGION_FOCUS, S_PROGRESSIVE_TRAINING, S_ADAPTIVE_TRAINING,
 } from './schemaFrontierGroups.js';
+
+// SDXL 系排版重排（九组规范示范）：caption 拆四卡、缓存独立成卡。
+const SDXL_CAPTION_SECTIONS = [
+  sec('caption-settings', 'dataset', '基础标注', 'Tag 文件、打乱与触发词注入。', [...S_CAPTION_BASIC]),
+  sec('caption-dropout-settings', 'dataset', '丢弃与保护策略', 'Caption/Tag dropout 与前缀保护边界（after_separator 语义族）。', [...S_CAPTION_DROPOUT]),
+  sec('caption-variants-settings', 'dataset', '多变体与双 Caption', '变体调度、双 Caption 与替换规则之外的变体面。', [...S_CAPTION_VARIANTS]),
+  sec('caption-structured-settings', 'dataset', '结构化稳定性', 'OOM 跳批等结构化 caption 训练稳定性开关。', [...S_CAPTION_STRUCTURED]),
+];
+
+// finetune：train_text_encoder 显式 master（queue_support 以 not train_text_encoder
+// 派生 network_train_unet_only；提交层保持两键一致出站）。
+const FT_TRAIN_FIELDS = [
+  { key: 'train_text_encoder', type: 'boolean', label: '训练文本编码器', title: 'train_text_encoder', desc: '开启时同时微调 CLIP 文本编码器（运行时默认语义）；关闭则仅训练 U-Net', defaultValue: true },
+  ...S_TRAIN(10).filter((f) => !['network_train_unet_only', 'network_train_text_encoder_only'].includes(f.key)),
+];
 
 // ---- SDXL LoRA ----
 export const SDXL_LORA_SECTIONS = [
@@ -66,30 +89,35 @@ export const SDXL_LORA_SECTIONS = [
   ]),
   sec('save-settings', 'model', '保存设置', '输出路径、格式与训练状态。', [...S_SAVE]),
   sec('dataset-settings', 'dataset', '数据集设置', '训练数据、正则图与分桶。', [...ds('1024,1024', 2048, 32), ...S_STAGED_RESOLUTION]),
-  sec('caption-settings', 'dataset', 'Caption 选项', '标签打乱与丢弃策略。', [...S_CAPTION]),
+  ...SDXL_CAPTION_SECTIONS,
+  sec('cache-settings', 'dataset', '缓存管线', 'Latent / 文本编码器输出缓存与盘上格式（数据管线语义）。', [...S_CACHE_PIPELINE]),
   sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
-  sec('network-settings', 'network', '网络设置', 'LoRA / LyCORIS 参数。', netLora('networks.lora', 32, 32, 512, [
+  // dim/alpha 上限对齐后端（sdxl_lora.py:102-111 max=1024）；LoRA+/RS-LoRA 自 optimizer 页迁入。
+  sec('network-settings', 'network', '网络设置', 'LoRA / LyCORIS 参数。', netLora('networks.lora', 32, 32, 1024, [
     { key: 'tlora_min_rank', type: 'number', label: 'T-LoRA 最小 Rank', title: 'tlora_min_rank', desc: 'T-LoRA 最小动态 rank。', defaultValue: 1, min: 1, visibleWhen: when('network_module', 'networks.tlora') },
-    { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: 'T-LoRA 动态 rank 调度策略', defaultValue: 'cosine', options: ['cosine', 'linear'], visibleWhen: when('network_module', 'networks.tlora') },
     { key: 'tlora_orthogonal_init', type: 'boolean', label: 'T-LoRA 正交初始化', title: 'tlora_orthogonal_init', desc: 'T-LoRA 对 lora_down 使用正交初始化（）', defaultValue: false, visibleWhen: when('network_module', 'networks.tlora') },
     { key: 'pissa_init', type: 'boolean', label: '启用 PiSSA 初始化', title: 'pissa_init', desc: '启用 PiSSA 初始化', defaultValue: false, visibleWhen: when('network_module', 'networks.lora') },
     { key: 'pissa_method', type: 'select', label: 'PiSSA 分解方式', title: 'pissa_method', desc: '推荐保持 rSVD 默认值', defaultValue: 'rsvd', options: ['rsvd', 'svd'], visibleWhen: all(when('network_module', 'networks.lora'), pissaInitSelected) },
     { key: 'pissa_niter', type: 'number', label: 'PiSSA 幂迭代次数', title: 'pissa_niter', desc: 'PiSSA rSVD 幂迭代次数（高级参数）', defaultValue: 2, min: 0, step: 1, visibleWhen: all(when('network_module', 'networks.lora'), pissaInitSelected) },
     { key: 'pissa_oversample', type: 'number', label: 'PiSSA 过采样维度', title: 'pissa_oversample', desc: 'PiSSA rSVD 过采样维度（高级参数）', defaultValue: 8, min: 0, step: 1, visibleWhen: all(when('network_module', 'networks.lora'), pissaInitSelected) },
     { key: 'pissa_apply_conv2d', type: 'boolean', label: 'PiSSA 作用于 Conv', title: 'pissa_apply_conv2d', desc: 'PiSSA 额外作用于 1x1 Conv', defaultValue: false, visibleWhen: all(when('network_module', 'networks.lora'), pissaInitSelected) },
-    { key: 'pissa_export_mode', type: 'select', label: 'PiSSA 导出模式', title: 'pissa_export_mode', desc: 'PiSSA 模型保存为标准 LoRA 时的导出方式', defaultValue: 'LoRA无损兼容导出', options: ['LoRA无损兼容导出', 'LoRA快速近似导出'], visibleWhen: all(when('network_module', 'networks.lora'), pissaInitSelected) },
-  ], ['networks.lora_fa', 'networks.vera', 'networks.tlora', 'networks.flexrank_lora', 'networks.oft'])),
-  sec('optimizer-settings', 'optimizer', '学习率与优化器', '学习率、调度器与优化器。', [...S_LR_TARGET]),
-  sec('training-settings', 'training', '训练参数', '训练轮数、批量与梯度。', [...S_TRAIN(10),
-    { key: 'enable_block_weights', type: 'boolean', label: '启用分层学习率', title: 'enable_block_weights', desc: '启用分层学习率训练（只支持网络模块 networks.', defaultValue: false },
-    { key: 'down_lr_weight', type: 'string', label: 'Encoder 分层权重 (12层)', title: 'down_lr_weight', desc: 'U-Net Encoder 各层的学习率权重，逗号分隔共 12', defaultValue: '1,1,1,1,1,1,1,1,1,1,1,1', visibleWhen: when('enable_block_weights', true) },
-    { key: 'mid_lr_weight', type: 'string', label: 'Mid 分层权重 (1层)', title: 'mid_lr_weight', desc: 'U-Net Mid 层的学习率权重，共 1 个值', defaultValue: '1', visibleWhen: when('enable_block_weights', true) },
-    { key: 'up_lr_weight', type: 'string', label: 'Decoder 分层权重 (12层)', title: 'up_lr_weight', desc: 'U-Net Decoder 各层的学习率权重，逗号分隔共 12', defaultValue: '1,1,1,1,1,1,1,1,1,1,1,1', visibleWhen: when('enable_block_weights', true) },
-    { key: 'block_lr_zero_threshold', type: 'number', label: '分层置零阈值', title: 'block_lr_zero_threshold', desc: '低于该阈值的 block 权重按 0 处理', defaultValue: 0, step: 0.01, visibleWhen: when('enable_block_weights', true) },
-  ]),
+    { key: 'pissa_export_mode', type: 'select', label: 'PiSSA 导出模式', title: 'pissa_export_mode', desc: 'PiSSA 模型保存为标准 LoRA 时的导出方式', defaultValue: 'lora_compatible', options: [
+      { value: 'lora_compatible', label: 'lora_compatible（无损兼容）' },
+      { value: 'approximate', label: 'approximate（快速近似）' },
+      { value: 'raw', label: 'raw' },
+      { value: 'auto', label: 'auto' },
+    ], visibleWhen: all(when('network_module', 'networks.lora'), pissaInitSelected) },
+    // T-LoRA rank 调度：后端仅认 constant/linear/geometric（sdxl_lora.py:165-171），
+    // 未知值在 tlora.py 静默退化为 min-rank 恒定。cosine 为非法值，已移除。
+    { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: 'T-LoRA 动态 rank 调度策略（后端支持 constant/linear/geometric）', defaultValue: 'constant', options: ['constant', 'linear', 'geometric'], visibleWhen: when('network_module', 'networks.tlora') },
+    ...S_LORA_METHOD_MODIFIERS,
+  ], ['networks.lora_fa', 'networks.vera', 'networks.tlora', 'networks.flexrank_lora', 'networks.oft'], true, { hideDoraWd: true })),
+  sec('optimizer-settings', 'optimizer', '学习率与优化器', '学习率、调度器与优化器。', excludeKeys(S_LR_TARGET, ['lora_plus_enabled', 'lora_plus_lr_ratio', 'rs_lora_enabled'])),
+  sec('training-settings', 'training', '训练参数', '训练轮数、批量与梯度。', [...S_TRAIN(10)]),
   sec('negative-semantic-regularization', 'frontier', '负面语义正则', '用负面提示词约束 LoRA 在不希望语义上的增量。', [...S_NEGATIVE_SEMANTIC_REGULARIZATION]),
   sec('v-parameterization-settings', 'training', 'V 参数化', 'v-pred 训练目标与相关补偿项。', vParameterizationFields(true)),
-  sec('rf-settings', 'training', 'Rectified Flow', 'RF / Flow Matching 训练目标与时间步策略。', rectifiedFlowParams()),
+  // RF/CFM 是实验目标函数（后端置于 advanced 语义组），从 training 页签移入高级。
+  sec('rf-settings', 'advanced', 'Rectified Flow', 'RF / Flow Matching 训练目标与时间步策略。', rectifiedFlowParams()),
   sec('peak-vram-settings', 'speed', '显存峰值控制', '目标等效 batch、启动峰值保护、micro-batch 拆分与显存诊断。', [...S_PEAK_VRAM]),
   sec('block-swap-settings', 'speed', 'SDXL Block Swap（兜底）', '独立的 SDXL U-Net block swap 兜底开关。主要用于显存吃紧时保命，能正常跑就不要开；若同时开启 ≤6GB 低显存优化，则仍会由低显存预设接管 block swap。', [
     { key: 'sdxl_block_swap_enabled', type: 'boolean', label: '启用 SDXL Block Swap', title: 'sdxl_block_swap_enabled', desc: 'SDXL U-Net block swap 兜底开关。', defaultValue: false },
@@ -122,8 +150,8 @@ export const SDXL_LORA_SECTIONS = [
   sec('progressive-training', 'frontier', '渐进式 / 分阶段训练', '按 optimizer progress 切换阶段；当前首版使用稳定 JSON contract。', [...S_PROGRESSIVE_TRAINING, ...S_ADAPTIVE_TRAINING]),
   sec('preview-settings', 'preview', '预览图设置', '训练中生成预览图。', [...S_PREVIEW, ...S_QUALITY_EVAL]),
   sec('validation-settings', 'preview', '验证设置', '验证集划分与验证频率。', [...S_VALIDATION]),
-  sec('lulynx-settings', 'advanced', 'Lulynx 核心 (SDXL)', 'SafeGuard、EMA、ResourceManager、BlockWeight (SDXL 分层)、SmartRank、AutoController。', S_LULYNX_SDXL),
-  sec('speed-settings', 'speed', '速度优化', '混合精度、缓存与注意力后端。', [...S_SPEED_SDXL]),
+  sec('lulynx-settings', 'advanced', 'Lulynx 核心 (SDXL)', 'SafeGuard、EMA、ResourceManager、BlockWeight 分层学习率（唯一 master）、SmartRank。', S_LULYNX_SDXL),
+  sec('speed-settings', 'speed', '速度优化', '混合精度、注意力后端与显存交换（缓存已拆至数据页）。', [...S_SPEED_SDXL]),
     sec('compile-settings', 'speed', '编译与执行后端',
     'execution_backend / torch.compile / Thunder 与 compile expert 旋钮；从速度页拆出以免与缓存/注意力搅在一起。',
     [...S_EXECUTION_BACKEND, ...S_COMPILE_EXPERT], { expert: true }),
@@ -184,12 +212,14 @@ export const SDXL_FT_SECTIONS = [
   ]),
   sec('save-settings', 'model', '保存设置', '', [...S_SAVE]),
   sec('dataset-settings', 'dataset', '数据集设置', '', ds('1024,1024', 2048, 32)),
-  sec('caption-settings', 'dataset', 'Caption 选项', '', [...S_CAPTION]),
+  ...SDXL_CAPTION_SECTIONS,
+  sec('cache-settings', 'dataset', '缓存管线', 'Latent / 文本编码器输出缓存与盘上格式（数据管线语义）。', [...S_CACHE_PIPELINE]),
   sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
-  sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...S_LR_FT]),
-  sec('training-settings', 'training', '训练参数', '', S_TRAIN(10)),
+  // full_finetune 无 LoRA 注入对象：optimizer 页不含 lora_plus/rs_lora（网络修饰）。
+  sec('optimizer-settings', 'optimizer', '学习率与优化器', '', excludeKeys(S_LR_FT, ['lora_plus_enabled', 'lora_plus_lr_ratio', 'rs_lora_enabled'])),
+  sec('training-settings', 'training', '训练参数', '', FT_TRAIN_FIELDS),
   sec('v-parameterization-settings', 'training', 'V 参数化', 'v-pred 训练目标开关。', vParameterizationFields()),
-  sec('rf-settings', 'training', 'Rectified Flow', 'RF / Flow Matching 训练目标与时间步策略。', rectifiedFlowParams()),
+  sec('rf-settings', 'advanced', 'Rectified Flow', 'RF / Flow Matching 训练目标与时间步策略。', rectifiedFlowParams()),
   sec('preview-settings', 'preview', '预览图设置', '', [...S_PREVIEW, ...S_QUALITY_EVAL]),
   sec('validation-settings', 'preview', '验证设置', '验证集划分与验证频率。', [...S_VALIDATION]),
   sec('speed-settings', 'speed', '速度优化', '', [...S_SPEED_SDXL]),
@@ -203,7 +233,9 @@ export const SDXL_FT_SECTIONS = [
   sec('advanced-settings', 'advanced', '其他设置', '', [...S_ADV]),
   sec('thermal-settings', 'training', '散热与功耗', '训练期间冷却与功率管理。', [...S_THERMAL]),
   sec('distributed-settings', 'advanced', '分布式训练', '多 GPU / 多机分布式训练配置。', [...S_DISTRIBUTED]),
-  sec('lora-variants-ft', 'network', 'LoRA 结构变体', '可选 LoRA 结构变体。', [...S_LORA_VARIANTS], { expert: true }),
+  // lora-variants-ft 整区已删除：full_finetune 不走 LoRA 注入链
+  // （entry_train select_trainer_key → LulynxTrainer full_finetune 分支），
+  // dokr/hydralora 等实体旗标在全参微调下没有注入对象，属于无效旋钮。
   sec('quality-pack-settings', 'frontier', '图像质量增强', '线稿保护、DCT 频域、Gram 纹理、Scale Guidance。', [...S_QUALITY_OPTIMIZATION_PACK]),
   sec('perceptual-anchor-loss', 'frontier', '感知锚/频域纹理损失', 'latent 频域纹理与感知锚，参与 loss 拆分。', [...S_PERCEPTUAL_ANCHOR_LOSS]),
   sec('sampling-optimization-reserve', 'frontier', '采样与优化', 'ANT / BP-low / AnyFlow / DOP / Coreset。', [...S_SAMPLING_OPTIMIZATION_RESERVE], { expert: true }),
@@ -219,7 +251,8 @@ export const SDXL_CN_SECTIONS = [
   sec('model-settings', 'model', '训练用模型', 'SDXL ControlNet。', cnModel('sdxl-controlnet', 'SDXL')),
   sec('save-settings', 'model', '保存设置', '', [...S_SAVE]),
   sec('dataset-settings', 'dataset', '数据集设置', '', cnDataset('1024,1024', 2048, 32)),
-  sec('caption-settings', 'dataset', 'Caption 选项', '', [...S_CAPTION]),
+  ...SDXL_CAPTION_SECTIONS,
+  sec('cache-settings', 'dataset', '缓存管线', 'Latent / 文本编码器输出缓存与盘上格式（数据管线语义）。', [...S_CACHE_PIPELINE]),
   sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
   sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...cnLR]),
   sec('training-settings', 'training', '训练参数', '', [...cnTrainFields]),
@@ -253,7 +286,8 @@ export const SDXL_TI_SECTIONS = [
   sec('ti-params', 'model', 'Textual Inversion 专用', '', [...tiParams]),
   sec('save-settings', 'model', '保存设置', '', S_SAVE.map((f) => f.key === 'save_model_as' ? { ...f, defaultValue: 'pt' } : f.key === 'output_name' ? { ...f, defaultValue: 'embedding' } : f)),
   sec('dataset-settings', 'dataset', '数据集设置', '', ds('1024,1024', 2048, 32)),
-  sec('caption-settings', 'dataset', 'Caption 选项', '', [...S_CAPTION]),
+  ...SDXL_CAPTION_SECTIONS,
+  sec('cache-settings', 'dataset', '缓存管线', 'Latent / 文本编码器输出缓存与盘上格式（数据管线语义）。', [...S_CACHE_PIPELINE]),
   sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
   sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...S_LR]),
   sec('training-settings', 'training', '训练参数', '', S_TRAIN(10)),
@@ -277,5 +311,114 @@ export const SDXL_TI_SECTIONS = [
   sec('experimental-probes', 'frontier', '实验探针', '探针与诊断开关。', [...S_EXPERIMENTAL_PROBES]),
   sec('diagnostics-settings', 'frontier', '诊断与监控', '高级监控、统计、深度诊断与逐层监测。', [...S_DIAGNOSTICS_MONITORING]),
   sec('autocontroller-settings', 'optimizer', 'AutoController', '根据训练状态自动调整学习率、早停等。', [...S_AUTO_CONTROLLER], { expert: true }),
+  sec('turbocore-settings', 'speed', 'TurboCore 内核优化', 'CUDA/Triton 内核自动调优与加速。', [...S_TURBOCORE], { expert: true }),
+];
+
+// ---- SDXL DreamBooth（后端 sd_dreambooth.py:40-141 + 路由 training_route_catalog.py:56）----
+export const SDXL_DB_SECTIONS = [
+  sec('model-settings', 'model', '训练用模型', 'SDXL DreamBooth 主体概念微调。', [
+    ...finetuneModel('sdxl-dreambooth', 'SDXL'),
+    { key: 'base_model_path', type: 'file', pickerType: 'model-file', label: 'Base 模型路径（可选）', title: 'base_model_path', desc: '部分管线需要显式 base；留空跟随底模路径', defaultValue: '' },
+    { key: 'instance_prompt', type: 'string', label: '实例提示词', title: 'instance_prompt', desc: '主体实例提示词（如 sks subject），写入实例图 caption', defaultValue: 'sks subject' },
+    { key: 'class_prompt', type: 'string', label: '类别提示词', title: 'class_prompt', desc: '先验保留用的类别提示词（如 a subject）', defaultValue: 'a subject' },
+    // 后端 sdxl 版 schema 未声明 num_class_images，但 dreambooth_prior_setup.py:42
+    // 运行时读取（默认 100）；随入口一并补暴露。
+    { key: 'num_class_images', type: 'number', label: '类别图像生成数', title: 'num_class_images', desc: '先验保留：为类别提示词生成的图像数量（0=不生成，运行时默认 100）', defaultValue: 100, min: 0, step: 1 },
+  ]),
+  sec('save-settings', 'model', '保存设置', '', [...S_SAVE]),
+  sec('dataset-settings', 'dataset', '数据集设置', '实例图像、正则图与分辨率。', ds('1024,1024', 2048, 32)),
+  ...SDXL_CAPTION_SECTIONS,
+  sec('cache-settings', 'dataset', '缓存管线', 'Latent / 文本编码器输出缓存与盘上格式（数据管线语义）。', [...S_CACHE_PIPELINE]),
+  sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
+  sec('network-settings', 'network', 'LoRA 化训练', 'DreamBooth 可选走 LoRA 路线以省显存。', [
+    { key: 'use_lora', type: 'boolean', label: '启用 LoRA 训练', title: 'use_lora', desc: '开启后按 LoRA 微调（queue_support 会把 lora_rank 重映射为 network_dim）', defaultValue: false },
+    { key: 'network_dim', type: 'number', label: '网络维度', title: 'network_dim', desc: 'LoRA rank（use_lora 时生效）', defaultValue: 32, min: 1, max: 1024, step: 1, visibleWhen: when('use_lora', true) },
+    { key: 'network_alpha', type: 'number', label: '网络 Alpha', title: 'network_alpha', desc: 'LoRA alpha（use_lora 时生效）', defaultValue: 16, min: 1, max: 1024, step: 1, visibleWhen: when('use_lora', true) },
+  ]),
+  sec('optimizer-settings', 'optimizer', '学习率与优化器', '', excludeKeys(S_LR_FT, ['lora_plus_enabled', 'lora_plus_lr_ratio', 'rs_lora_enabled'])),
+  sec('training-settings', 'training', '训练参数', '', FT_TRAIN_FIELDS),
+  sec('preview-settings', 'preview', '预览图设置', '', [...S_PREVIEW, ...S_QUALITY_EVAL]),
+  sec('validation-settings', 'preview', '验证设置', '验证集划分与验证频率。', [...S_VALIDATION]),
+  sec('speed-settings', 'speed', '速度优化', '', [...S_SPEED_SDXL]),
+  sec('compile-settings', 'speed', '编译与执行后端',
+    'execution_backend / torch.compile / Thunder 与 compile expert 旋钮。',
+    [...S_EXECUTION_BACKEND, ...S_COMPILE_EXPERT], { expert: true }),
+  sec('memory-offload-settings', 'speed', '模块 Offload',
+    'module_offload 完整面（CORE+EXPERT）；默认关闭。',
+    [...S_MODULE_OFFLOAD_EXPERT], { expert: true }),
+  sec('noise-settings', 'advanced', '噪声设置', '噪声偏移与多分辨率噪声。', [...S_NOISE]),
+  sec('advanced-settings', 'advanced', '其他设置', '', [...S_ADV]),
+  sec('thermal-settings', 'training', '散热与功耗', '训练期间冷却与功率管理。', [...S_THERMAL]),
+  sec('distributed-settings', 'advanced', '分布式训练', '多 GPU / 多机分布式训练配置。', [...S_DISTRIBUTED]),
+  sec('diagnostics-settings', 'frontier', '诊断与监控', '高级监控、统计与深度诊断。', [...S_DIAGNOSTICS_MONITORING]),
+  sec('turbocore-settings', 'speed', 'TurboCore 内核优化', 'CUDA/Triton 内核自动调优与加速。', [...S_TURBOCORE], { expert: true }),
+];
+
+// ---- SDXL ControlNet-LLLite（后端 controlnet_schemas.py LLLITE_FIELDS + lllite_trainer.py:106-116）----
+// S_LLLITE 孤儿组已与后端逐键一致，直接接线。
+export const SDXL_LLLITE_SECTIONS = [
+  sec('model-settings', 'model', '训练用模型', 'SDXL ControlNet-LLLite（轻量条件适配器）。', cnModel('sdxl-controlnet-lllite', 'SDXL')),
+  sec('lllite-settings', 'network', 'LLLite 适配器参数', 'UNet 条件适配器结构参数（逐键对齐 lllite_trainer 读取）。', [...S_LLLITE]),
+  sec('save-settings', 'model', '保存设置', '', [...S_SAVE]),
+  sec('dataset-settings', 'dataset', '数据集设置', '', cnDataset('1024,1024', 2048, 32)),
+  ...SDXL_CAPTION_SECTIONS,
+  sec('cache-settings', 'dataset', '缓存管线', 'Latent / 文本编码器输出缓存与盘上格式（数据管线语义）。', [...S_CACHE_PIPELINE]),
+  sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
+  sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...cnLR]),
+  sec('training-settings', 'training', '训练参数', '', [...cnTrainFields]),
+  sec('v-parameterization-settings', 'training', 'V 参数化', 'v-pred 训练目标开关。', vParameterizationFields()),
+  sec('preview-settings', 'preview', '预览图设置', '', [...S_PREVIEW, ...S_QUALITY_EVAL]),
+  sec('validation-settings', 'preview', '验证设置', '验证集划分与验证频率。', [...S_VALIDATION]),
+  sec('speed-settings', 'speed', '速度优化', '', [...S_SPEED_SDXL]),
+  sec('compile-settings', 'speed', '编译与执行后端',
+    'execution_backend / torch.compile / Thunder 与 compile expert 旋钮。',
+    [...S_EXECUTION_BACKEND, ...S_COMPILE_EXPERT], { expert: true }),
+  sec('memory-offload-settings', 'speed', '模块 Offload',
+    'module_offload 完整面（CORE+EXPERT）；默认关闭。',
+    [...S_MODULE_OFFLOAD_EXPERT], { expert: true }),
+  sec('noise-settings', 'advanced', '噪声设置', '噪声偏移与多分辨率噪声。', [...S_NOISE]),
+  sec('advanced-settings', 'advanced', '其他设置', '', [...S_ADV]),
+  sec('thermal-settings', 'training', '散热与功耗', '训练期间冷却与功率管理。', [...S_THERMAL]),
+  sec('distributed-settings', 'advanced', '分布式训练', '多 GPU / 多机分布式训练配置。', [...S_DISTRIBUTED]),
+  sec('diagnostics-settings', 'frontier', '诊断与监控', '高级监控、统计与深度诊断。', [...S_DIAGNOSTICS_MONITORING]),
+  sec('turbocore-settings', 'speed', 'TurboCore 内核优化', 'CUDA/Triton 内核自动调优与加速。', [...S_TURBOCORE], { expert: true }),
+];
+
+// ---- SDXL IP-Adapter（后端 ip_adapter_schemas.py：ip_image_encoder_path/ip_num_tokens）----
+// 旧 S_IP_ADAPTER 孤儿组键名（ip_adapter_*）与后端 schema 不一致，此处以后端真值重建；
+// 旧组仍被 anima-lora 挂载，归 ANIMA 站处理，本站不动。
+export const SDXL_IP_ADAPTER_SECTIONS = [
+  sec('model-settings', 'model', '训练用模型', 'SDXL IP-Adapter 图像条件注入训练。', [
+    { key: 'model_train_type', type: 'hidden', defaultValue: 'sdxl-ip-adapter' },
+    { key: 'pretrained_model_name_or_path', type: 'file', pickerType: 'model-file', label: 'SDXL 底模路径', desc: '底模文件路径', defaultValue: '' },
+    { key: 'vae', type: 'file', pickerType: 'model-file', label: 'VAE 路径', title: 'vae', desc: 'VAE 路径', defaultValue: '' },
+    { key: 'resume', type: 'folder', pickerType: 'output-folder', label: '继续训练路径', title: 'resume', desc: '继续训练路径', defaultValue: '' },
+    { key: 'network_weights', type: 'file', pickerType: 'output-model-file', label: '已有 IP-Adapter 权重', title: 'network_weights', desc: '可选：从已有 IP-Adapter 权重文件继续训练', defaultValue: '' },
+  ]),
+  sec('ip-adapter-settings', 'network', 'IP-Adapter 参数', '图像编码器与注入 token 数（后端 ip_adapter_trainer.py:90,110 消费）。', [
+    { key: 'ip_image_encoder_path', type: 'string', label: '图像编码器', title: 'ip_image_encoder_path', desc: 'CLIP 视觉编码器路径或 HF id；留空时后端有兜底但会提示', defaultValue: 'openai/clip-vit-large-patch14' },
+    { key: 'ip_num_tokens', type: 'number', label: '注入 Token 数', title: 'ip_num_tokens', desc: 'IP-Adapter 注入 UNet 的 token 数量（SDXL 默认 16）', defaultValue: 16, min: 1, max: 64, step: 1 },
+  ]),
+  sec('save-settings', 'model', '保存设置', '', [...S_SAVE]),
+  sec('dataset-settings', 'dataset', '数据集设置', '', cnDataset('1024,1024', 2048, 32)),
+  ...SDXL_CAPTION_SECTIONS,
+  sec('cache-settings', 'dataset', '缓存管线', 'Latent / 文本编码器输出缓存与盘上格式（数据管线语义）。', [...S_CACHE_PIPELINE]),
+  sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
+  sec('optimizer-settings', 'optimizer', '学习率与优化器', '', excludeKeys(S_LR, ['lora_plus_enabled', 'lora_plus_lr_ratio', 'rs_lora_enabled'])),
+  sec('training-settings', 'training', '训练参数', '', [...cnTrainFields]),
+  sec('preview-settings', 'preview', '预览图设置', '', [...S_PREVIEW, ...S_QUALITY_EVAL]),
+  sec('validation-settings', 'preview', '验证设置', '验证集划分与验证频率。', [...S_VALIDATION]),
+  sec('speed-settings', 'speed', '速度优化', '', [...S_SPEED_SDXL]),
+  sec('compile-settings', 'speed', '编译与执行后端',
+    'execution_backend / torch.compile / Thunder 与 compile expert 旋钮。',
+    [...S_EXECUTION_BACKEND, ...S_COMPILE_EXPERT], { expert: true }),
+  sec('memory-offload-settings', 'speed', '模块 Offload',
+    'module_offload 完整面（CORE+EXPERT）；默认关闭。',
+    [...S_MODULE_OFFLOAD_EXPERT], { expert: true }),
+  sec('noise-settings', 'advanced', '噪声设置', '噪声偏移与多分辨率噪声。', [...S_NOISE]),
+  sec('advanced-settings', 'advanced', '其他设置', '', [...S_ADV]),
+  sec('thermal-settings', 'training', '散热与功耗', '训练期间冷却与功率管理。', [...S_THERMAL]),
+  sec('distributed-settings', 'advanced', '分布式训练', '多 GPU / 多机分布式训练配置。', [...S_DISTRIBUTED]),
+  sec('diagnostics-settings', 'frontier', '诊断与监控', '高级监控、统计与深度诊断。', [...S_DIAGNOSTICS_MONITORING]),
   sec('turbocore-settings', 'speed', 'TurboCore 内核优化', 'CUDA/Triton 内核自动调优与加速。', [...S_TURBOCORE], { expert: true }),
 ];

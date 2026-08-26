@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
 // schemaFrontierGroups.js — 通用前沿/训练增强字段组（anima / sdxl / newbie 共用）
 // 所有字段均 默认关闭，无 arch 依赖，可在任意训练类型的 training/frontier/expert section 引用。
-import { all, doraEnabled, when } from './schemaCommon.js';
+import { all, doraEnabled, uiGroup, when } from './schemaCommon.js';
 
 // P3 training intent is a suggestion profile only. Selecting an intent never
 // mutates the draft; the preview panel asks the backend for an explicit diff.
@@ -251,6 +251,8 @@ export const S_QUALITY_OPTIMIZATION_PACK = [
 ];
 
 // ── LoRA 结构变体 ─────────────────────────────────────────────────────────────
+// 分组与向导 adapter 步的三层信息架构一致：基础算法在 network-settings 主区，
+// 这里是「实体注入器（硬互斥）」与「叠加增强（DoRA）」两层。
 export const S_LORA_VARIANTS = [
   { key: 'adapter_mask_pruning_enabled', type: 'boolean', label: 'Adapter Mask 剪枝', desc: '训练中按 adapter rank 重要性更新稳定', defaultValue: false },
   { key: 'adapter_mask_pruning_target_ratio', type: 'number', label: 'Mask 剪枝比例', desc: '最终逻辑屏蔽的 rank 比例。0.5 表示约保留一半 rank。', defaultValue: 0.5, min: 0, max: 0.95, step: 0.05, visibleWhen: (c) => c.adapter_mask_pruning_enabled },
@@ -258,6 +260,7 @@ export const S_LORA_VARIANTS = [
   { key: 'adapter_mask_pruning_interval', type: 'number', label: 'Mask 更新间隔', desc: '每隔多少 backward step 更新一次 rank mask。', defaultValue: 100, min: 1, step: 1, visibleWhen: (c) => c.adapter_mask_pruning_enabled },
   { key: 'adapter_mask_pruning_min_rank', type: 'number', label: 'Mask 最小 Rank', desc: '每个 adapter 至少保留的 rank 数。', defaultValue: 1, min: 1, step: 1, visibleWhen: (c) => c.adapter_mask_pruning_enabled },
   { key: 'adapter_mask_pruning_ema_decay', type: 'number', label: 'Mask 重要性 EMA', desc: 'weight*grad 重要性分数的 EMA 衰减。', defaultValue: 0.9, min: 0, max: 0.999, step: 0.01, visibleWhen: (c) => c.adapter_mask_pruning_enabled },
+  uiGroup('实体注入器（硬互斥）', '同一线性层只能注入一种 ΔW 实体：同时开启多个时仅优先级最高者生效，其余自动关闭。DoRA 不在此列——它是叠加增强，见下方独立分组。'),
   { key: 'adalora_enabled', type: 'boolean', label: 'AdaLoRA (SVD 自适应预算)', desc: 'SVD 分解 ΔW=P@Λ@Q，动态分配参数预算到重要层。', defaultValue: false },
   { key: 'adalora_target_rank', type: 'number', label: 'AdaLoRA 目标 rank', desc: '最终目标 rank (0=使用全局 rank)。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.adalora_enabled },
   { key: 'adalora_init_rank', type: 'number', label: 'AdaLoRA 初始 rank', desc: '初始 rank (0=1.5×目标 rank)。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.adalora_enabled },
@@ -280,12 +283,6 @@ export const S_LORA_VARIANTS = [
   // 只剩 reader-free 的兼容别名，所以放在训练页等于让用户调一组无人读取的旋钮。现在归
   // 出图页（pages/generate），键名统一为 regional_lora_*，开关是 regions 本身而非布尔。
   { key: 'delta_lora_enabled', type: 'boolean', label: 'Delta-LoRA (ΔBA 动态缩放)', desc: 'ΔBA 动态缩放 LoRA 更新，提升表达力。', defaultValue: false },
-  { key: 'dora_enabled', type: 'boolean', label: 'DoRA (权重分解)', desc: '分解权重为方向+幅度，比标准 LoRA 表达力强但稍慢。', defaultValue: false },
-  { key: 'dora_mode', type: 'select', label: 'DoRA 模式', desc: '实现模式。full=完整分解', defaultValue: 'full', options: [{ value: 'full', label: 'full' }, { value: 'wd', label: 'wd (legacy/full)' }, { value: 'split', label: 'split' }, { value: 'merged', label: 'merged' }], visibleWhen: (c) => c.dora_enabled },
-  { key: 'dora_variant', type: 'select', label: 'DoRA 方案', desc: 'classic=标准 DoRA；lulynx_stopgrad_dora=前向值相同的 stop-gradient 工程变体。', defaultValue: 'classic', options: [{ value: 'classic', label: '标准 DoRA' }, { value: 'lulynx_stopgrad_dora', label: 'lulynx Stop-Gradient DoRA' }], visibleWhen: doraEnabled },
-  { key: 'dora_init_scale', type: 'number', label: 'DoRA 初始化缩放', desc: 'magnitude 初始化缩放', defaultValue: 1.0, min: 0, step: 0.05, visibleWhen: (c) => c.dora_enabled },
-  { key: 'dora_use_scalar_magnitude', type: 'boolean', label: 'DoRA 标量 magnitude', desc: '用标量 magnitude 代替向量。', defaultValue: false, visibleWhen: (c) => c.dora_enabled },
-  { key: 'dora_normalize_magnitude', type: 'boolean', label: 'DoRA 归一化 magnitude', desc: '对 magnitude 做归一化。', defaultValue: true, visibleWhen: (c) => c.dora_enabled },
   { key: 'hydralora_enabled', type: 'boolean', label: 'HydraLoRA (多分支)', desc: '多分支 LoRA + 分支平衡损失。', defaultValue: false },
   { key: 'hydralora_num_experts', type: 'number', label: 'Hydra 专家数', desc: '多分支专家数量', defaultValue: 4, min: 2, step: 1, visibleWhen: (c) => c.hydralora_enabled },
   { key: 'hydralora_routing', type: 'select', label: 'Hydra 路由', desc: '专家路由策略', defaultValue: 'top_k', options: [{ value: 'top_k', label: 'top_k' }, { value: 'soft', label: 'soft' }], visibleWhen: (c) => c.hydralora_enabled },
@@ -327,7 +324,9 @@ export const S_LORA_VARIANTS = [
   { key: 'lora2_adaptive_r_max', type: 'number', label: 'LoRA2 最大 rank', desc: '最大 rank (实际有效 rank 自动学习)。', defaultValue: 64, min: 4, max: 512, step: 4, visibleWhen: (c) => c.lora2_adaptive_enabled },
   { key: 'lora2_adaptive_nu_init', type: 'number', label: 'LoRA2 nu 初始值', desc: 'nu 初始值 (控制衰减速度，推荐 1.0)。', defaultValue: 1.0, min: 0.1, max: 10.0, step: 0.1, visibleWhen: (c) => c.lora2_adaptive_enabled },
   { key: 'lora2_adaptive_decay_lambda', type: 'number', label: 'LoRA2 衰减系数', desc: '指数衰减系数 λ (推荐 1.0)。', defaultValue: 1.0, min: 0.1, max: 5.0, step: 0.1, visibleWhen: (c) => c.lora2_adaptive_enabled },
-  { key: 'lora2_adaptive_rank_threshold', type: 'number', label: 'LoRA2 有效 rank 阈值', desc: '计算有效 rank 时的权重阈值。', defaultValue: 0.01, min: 0, step: 0.001, visibleWhen: (c) => c.lora2_adaptive_enabled },
+  // 幻影键（2026-08 第 3 站审计 C）：configs_training_methods.py:303 声明后全仓零读者；
+  // 注入器只读 r_max/nu_init/decay_lambda。hidden 保旧草稿回显，提交层剥除。
+  { key: 'lora2_adaptive_rank_threshold', type: 'hidden', defaultValue: 0.01 },
   { key: 'ed_lora_enabled', type: 'boolean', label: 'ED-LoRA (Embedding Decomposed)', desc: 'Text embedding 分解为 V=V_rand+V_class', defaultValue: false },
   { key: 'ed_lora_decomp_dim', type: 'number', label: 'ED-LoRA 分解维度', desc: 'Embedding 分解维度 (推荐 64)。', defaultValue: 64, min: 32, max: 256, step: 8, visibleWhen: (c) => c.ed_lora_enabled },
   { key: 'ed_lora_num_layers', type: 'number', label: 'ED-LoRA 层数', desc: 'Text encoder transformer 层数', defaultValue: 12, min: 6, max: 24, step: 1, visibleWhen: (c) => c.ed_lora_enabled },
@@ -339,11 +338,31 @@ export const S_LORA_VARIANTS = [
   { key: 'ed_lora_fusion_steps', type: 'number', label: '融合步数', desc: '每次 merge 的梯度下降步数。', defaultValue: 30, min: 1, step: 1, visibleWhen: (c) => c.merge_ed_lora_fusion },
   { key: 'ed_lora_fusion_lr', type: 'number', label: '融合学习率', desc: '融合优化器学习率', defaultValue: 0.001, min: 0, step: 0.0001, visibleWhen: (c) => c.merge_ed_lora_fusion },
   { key: 'ed_lora_fusion_rank', type: 'number', label: '融合 Rank', desc: '合并后 adapter rank。', defaultValue: 4, min: 1, step: 1, visibleWhen: (c) => c.merge_ed_lora_fusion },
-  { key: 'ed_lora_fusion_alpha', type: 'number', label: '融合 Alpha', desc: '合并后 adapter alpha（scale=alpha/rank）。', defaultValue: 1.0, min: 0, step: 0.1, visibleWhen: (c) => c.merge_ed_lora_fusion },
+  // 幻影键（2026-08 第 3 站审计 C）：fusion 模块只消费 steps/lr/rank
+  // （ed_lora_gradient_fusion.py:244-247），alpha 无任何读者。hidden + 提交剥除。
+  { key: 'ed_lora_fusion_alpha', type: 'hidden', defaultValue: 1.0 },
   { key: 'vera_enabled', type: 'boolean', label: 'VeRA (向量重参数化)', desc: '共享随机矩阵 + 可学习向量，参数量远小于 LoRA。', defaultValue: false },
   { key: 'vera_d_initial', type: 'number', label: 'VeRA d 初值', desc: '可学习缩放向量 d 的初始化值', defaultValue: 0.1, min: 0, step: 0.01, visibleWhen: (c) => c.vera_enabled },
   { key: 'vera_prng_key', type: 'number', label: 'VeRA PRNG 种子', desc: '共享随机矩阵的 PRNG 种子', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.vera_enabled },
   { key: 'mora_enabled', type: 'boolean', label: 'MoRA（方阵适配器）', desc: '用 r×r 方阵 + 非学习 compress/decompress 替代 BA。参数量 r²；非 A1111 原生 LoRA 格式，导出为 mora_matrix 或 materialize。与 DoRA/AdaLoRA 互斥。', defaultValue: false },
+  uiGroup('DoRA 权重分解（叠加增强）', 'DoRA 不是独立算法：它叠加在原生 networks.lora 路线上，把权重分解为方向与幅度分别训练。LyCORIS 算法与其它实体注入器不支持叠加；向导中由「叠加增强」区的单一开关托管。'),
+  { key: 'dora_enabled', type: 'boolean', label: 'DoRA (权重分解)', desc: '分解权重为方向+幅度，比标准 LoRA 表达力强但稍慢。', defaultValue: false },
+  // dora_mode 真实支持值（后端复核 2026-08）：configs_monitoring.py:100 声明为自由
+  // 字符串；运行时 DoRALinear._normalize_mode（lulynx/dora_layer.py:103-119）接受
+  // full/style/structure，wd 是 full 的别名，split/merged 未知值告警后兜回 full。
+  // 旧别名 wd 保留为 disabled 项以便旧草稿回显。
+  { key: 'dora_mode', type: 'select', label: 'DoRA 模式', desc: '训练门控：full=方向+幅度全训；style=仅幅度；structure=仅方向。', defaultValue: 'full', options: [
+    { value: 'full', label: 'full（方向+幅度）' },
+    { value: 'style', label: 'style（仅幅度）' },
+    { value: 'structure', label: 'structure（仅方向）' },
+    { value: 'wd', label: 'wd（旧版别名，等价 full）', disabled: true, disabledReason: '等价于 full，仅为旧草稿兼容保留。' },
+  ], visibleWhen: (c) => c.dora_enabled },
+  { key: 'dora_variant', type: 'select', label: 'DoRA 方案', desc: 'classic=标准 DoRA；lulynx_stopgrad_dora=前向值相同的 stop-gradient 工程变体。', defaultValue: 'classic', options: [{ value: 'classic', label: '标准 DoRA' }, { value: 'lulynx_stopgrad_dora', label: 'lulynx Stop-Gradient DoRA' }], visibleWhen: doraEnabled },
+  // 幻影三键（2026-08 第 3 站审计 C）：仅声明于 configs_monitoring.py:407-409，
+  // 全仓零读取（DoRA 注入器不消费）。hidden 保旧草稿回显，提交层剥除。
+  { key: 'dora_init_scale', type: 'hidden', defaultValue: 1.0 },
+  { key: 'dora_use_scalar_magnitude', type: 'hidden', defaultValue: false },
+  { key: 'dora_normalize_magnitude', type: 'hidden', defaultValue: true },
 ];
 
 // ── σ 深度调度（步内条件深度，非 LR/数据调度；实验）────────────────────────────
@@ -697,17 +716,20 @@ export const S_AUTO_CONTROLLER = [
   { key: 'ac_enabled', type: 'boolean', label: '启用 AutoController', desc: '根据训练状态自动调整学习率、早停、TE 冻结等。旧配置中的 lulynx_auto_controller_* 仍会被后端识别。', defaultValue: false },
   { key: 'ac_enable_smart_early_stopping', type: 'boolean', label: '智能早停', desc: '损失长期不下降时自动停止训练', defaultValue: false, visibleWhen: when('ac_enabled', true) },
   { key: 'ac_early_stopping_patience', type: 'number', label: '早停耐心值（步数）', desc: '多少步内无改善就触发早停', defaultValue: 5, min: 1, step: 1, visibleWhen: all(when('ac_enabled', true), when('ac_enable_smart_early_stopping', true)) },
-  { key: 'ac_early_stopping_threshold', type: 'number', label: '早停阈值', desc: '损失改善小于此值视为无改善', defaultValue: 0.001, min: 0, step: 0.0001, visibleWhen: all(when('ac_enabled', true), when('ac_enable_smart_early_stopping', true)) },
+  // 幻影四键之一（2026-08 第 3 站审计 C）：AutoController 只消费
+  // trainer_execution_resume_callbacks.py:66-123 所列键；下面四个 ac_* 仅声明于
+  // configs_monitoring.py:459-474，全仓零读者。hidden 保旧草稿回显，提交层剥除。
+  { key: 'ac_early_stopping_threshold', type: 'hidden', defaultValue: 0.001 },
   { key: 'ac_enable_smart_lr_decay', type: 'boolean', label: '智能学习率衰减', desc: '损失平台期自动降低学习率', defaultValue: false, visibleWhen: when('ac_enabled', true) },
   { key: 'ac_lr_decay_factor', type: 'number', label: '学习率衰减系数', desc: '触发衰减时学习率乘以此系数', defaultValue: 0.5, min: 0.1, max: 1, step: 0.05, visibleWhen: all(when('ac_enabled', true), when('ac_enable_smart_lr_decay', true)) },
   { key: 'ac_max_decays', type: 'number', label: '最大衰减次数', desc: '学习率最多衰减多少次', defaultValue: 3, min: 1, step: 1, visibleWhen: all(when('ac_enabled', true), when('ac_enable_smart_lr_decay', true)) },
   { key: 'ac_enable_auto_te_freeze', type: 'boolean', label: '自动冻结文本编码器', desc: '训练到指定步数后自动冻结 TE', defaultValue: false, visibleWhen: when('ac_enabled', true) },
-  { key: 'ac_te_freeze_step', type: 'number', label: 'TE 冻结步数', desc: '在此步数后冻结文本编码器', defaultValue: 0, min: 0, step: 1, visibleWhen: all(when('ac_enabled', true), when('ac_enable_auto_te_freeze', true)) },
+  { key: 'ac_te_freeze_step', type: 'hidden', defaultValue: 0 },
   { key: 'ac_enable_dynamic_loss_scaling', type: 'boolean', label: '动态损失缩放', desc: '根据梯度范数动态调整损失缩放', defaultValue: false, visibleWhen: when('ac_enabled', true) },
   { key: 'ac_enable_auto_lr_adjustment', type: 'boolean', label: '自动学习率调整', desc: '根据目标 GSNR/损失自动调整学习率。', defaultValue: false, visibleWhen: when('ac_enabled', true) },
-  { key: 'ac_auto_lr_scale_factor', type: 'number', label: '自动学习率缩放因子', desc: '自动调整的学习率缩放系数', defaultValue: 1.0, min: 0.1, max: 10, step: 0.1, visibleWhen: all(when('ac_enabled', true), when('ac_enable_auto_lr_adjustment', true)) },
+  { key: 'ac_auto_lr_scale_factor', type: 'hidden', defaultValue: 1.0 },
   { key: 'ac_target_gsnr', type: 'number', label: '目标 GSNR', desc: '目标梯度信噪比', defaultValue: 5.0, min: 0, step: 0.5, visibleWhen: all(when('ac_enabled', true), when('ac_enable_auto_lr_adjustment', true)) },
-  { key: 'ac_target_loss', type: 'number', label: '目标损失', desc: '期望目标损失值（0 不设目标）', defaultValue: 0.0, min: 0, step: 0.01, visibleWhen: all(when('ac_enabled', true), when('ac_enable_auto_lr_adjustment', true)) },
+  { key: 'ac_target_loss', type: 'hidden', defaultValue: 0.0 },
   { key: 'ac_warmup_steps', type: 'number', label: 'AutoController 预热步数', desc: '多少步后开始生效', defaultValue: 100, min: 0, step: 10, visibleWhen: when('ac_enabled', true) },
   { key: 'ac_loss_plateau_window', type: 'number', label: '损失平台窗口', desc: '判断损失平台的滑动窗口大小（步数）。', defaultValue: 50, min: 10, step: 10, visibleWhen: when('ac_enabled', true) },
   { key: 'ac_clip_drift_warning', type: 'number', label: 'CLIP 漂移警告阈值', desc: 'CLIP 漂移超过此值发出警告', defaultValue: 0.03, min: 0, step: 0.001, visibleWhen: when('ac_enabled', true) },

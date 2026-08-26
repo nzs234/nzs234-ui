@@ -39,7 +39,6 @@ export function fieldValueIn(key, values) { return (c) => values.includes(c[key]
 // visibility metadata, not a second injection implementation.
 const FALLBACK_ADAPTER_FAMILIES = Object.freeze({
   lora: { supports_rank: true, supports_alpha: true, supports_dropout: true, supports_dora: true, supports_rslora: true },
-  dora: { supports_rank: true, supports_alpha: true, supports_dropout: true, supports_dora: true, supports_rslora: false },
   'rs-lora': { supports_rank: true, supports_alpha: true, supports_dropout: true, supports_dora: false, supports_rslora: true },
   locon: { supports_rank: true, supports_alpha: true, supports_dropout: true },
   loha: { supports_rank: true, supports_alpha: true, supports_dropout: true },
@@ -97,18 +96,407 @@ export function doraEnabled(config = {}) {
     .some((value) => value === true || value === 1 || String(value ?? '').trim().toLowerCase() === 'true');
 }
 
+// ── DoRA 权重分解叠加规则：按模型家族的能力矩阵（单一事实源）──────────────────
+// 不同模型族的训练代码不同，DoRA 可叠加性必须逐管线实证，不允许跨族推断。
+//
+// SDXL 管线实证结论（backend 源码行号为 2026-08 审计记录）：
+//   - 注入优先级链 trainer_prepare_adapter_inject_mixin.py:198-214 是 else-if：
+//     LyCORIS 分支(:203)先于 use_dora 分派(:211)，注入后无任何二次包装路径；
+//     _inject_lycoris_adapter(trainer_prepare_specialized_adapter_mixin.py:261-332)
+//     只消费显式 LyCORISConfig 字段，而 LyCORISConfig(lycoris_types.py:21-74)
+//     与第一方 LoKrLayer/LoHaLayer(lycoris_lokr.py / lycoris_loha.py) 全无
+//     weight-decompose 代码；triton apply_dora(triton_inject_adapters.py:207)
+//     只加速已存在的 DoRALinear 且当前零调用点。
+//   - 训练环境里虽装有上游 lycoris_lora 3.4.0（其 wrapper.py:76/kohya.py:59 支持
+//     network_args dora_wd → LokrLayer/LoHaLayer 权重分解），但 backend/core 全仓
+//     零 import —— 上游能力未接线，属后端缺口而非可用路径。
+//   - dora_wd 只有作为顶层配置字段才被消费（config_adapter.py:511-517 /
+//     config_adapter_normalizers.py:467-473 / training_route_service.py:334-339：置
+//     use_dora=dora_enabled=True、dora_mode='wd'、强制 bypass_mode=False），语义是
+//     Weight-Decomposed 别名，不是权重衰减（后者是 dora_magnitude_weight_decay）。
+//   - network_args 仅被解析 rs_lora（advanced_optimizer_strategy.py:44-72,132）与
+//     train_llm_adapter 等预览键；dora_wd=/wd_on_output=/algo= 零接收者。
+//   - 原生 networks.lora 路线三个触发键等价：use_dora / dora_enabled / dora_wd
+//     （test_training_route_closure.py:343-360 断言 sdxl+networks.lora+dora_wd 到达
+//     native DoRA injector 旗标）。
+// 结论（sdxl 行）：仅原生 lora family 可叠加；lokr/loha/locon/glora/glokr/
+// ia3/full/diag-oft 一律不可叠加。
+//
+// ANIMA 管线实证结论（2026-08 第 2 站审计，backend 源码行号同期记录）：
+//   - Anima LoRA 与 SDXL 共用同一 LulynxTrainer 注入链（entry_train.py:766-768：
+//     仅 ip_adapter/anima_controlnet/controlnet/lllite/flux_lora 走专属训练器），
+//     else-if 短路与 SDXL 同构：inject mixin:203 LyCORIS 分支先于 :211 use_dora
+//     分派；_inject_lycoris_adapter(trainer_prepare_specialized_adapter_mixin.py:
+//     261-332) 构造的 LyCORISConfig 无任何 DoRA/weight-decompose 字段，且运行时
+//     LyCORISType(lycoris_types.py:9-18) 无 dora → lokr/loha/locon/glora/glokr/
+//     ia3/full/diag-oft 路线上的 dora_wd/use_dora 静默无效。closure 测试已固化该
+//     组合（test_training_route_closure.py:705-768 断言 anima lora_type=lokr+
+//     dora_wd=true 归一为 network_module=lycoris.locon+use_dora=True），证明它
+//     到达 trainer 后被 ：203 短路，而非另有 Anima 专属注入路径。
+//   - lora_type=dora 双旗标映射真实到达 native injector：ConfigAdapter
+//     (config_adapter.py:382-385) → networks.lora+use_dora+dora_enabled →
+//     _inject_dora_adapter(:212) / standard 注入器 enable_dora_layers(:397,:411)
+//     → LoRAInjector(dora_enabled=True)（specialized mixin:445）。dora_wd 顶层
+//     字段由 training_route_service.py:334-339 与 config_adapter.py:511-517 归一
+//     为同一组旗标（Anima 页面别名，非权重衰减）；inject mixin:150-183 的
+//     adapter_type 二次映射是 newbie 专属分支，Anima 无第二运行时映射。
+//   - Anima 产品路径 cache-first 强制（trainer_execution_dataset_setup.py:101-119：
+//     raw online 训练直接 RuntimeError）→ TE 注入恒被跳过（inject mixin:297-299），
+//     DoRA 只落在 DiT 侧。DoRA 前向 magnitude 分支是通用实现（lora_linear.py:210）；
+//     但 opt-in anima_memory_optimizer=true 的 packed 前向把 use_dora 模块列为
+//     不兼容并 fail-closed 报错（anima_native_packed_forward.py:172-209，经
+//     anima_native_dit_executable.py:484 生效）。
+//   - KronA/CDKA 的 krona_weight_decompose/cdka_weight_decompose 是独立于本 rider
+//     的另一条分解入口（specialized mixin:482,488），Anima 页面未暴露（后端
+//     anima_lora.py 全无 krona/cdka 字段），不改变本行结论。
+// 结论（anima 行）：仅原生 lora family 可叠加；LyCORIS 八算法一律不可叠加。
+//
+// NEWBIE 管线实证结论（2026-08 第 3 站审计，backend 源码行号同期记录）：
+//   - Newbie 无专属训练器：entry_train.py:217-241 select_trainer_key 对
+//     newbie-lora 走默认 "lulynx" 分派，与 SDXL/ANIMA 共用同一 LulynxTrainer
+//     注入链。else-if 短路同构：inject mixin:203 LyCORIS 分支先于 :211 use_dora
+//     分派，:205 lora2_adaptive / :208 ed_lora 居中。
+//   - newbie 专属运行时二次映射（inject mixin:150-183）只消费 newbie_adapter_type
+//     （由 adapter_type 经 field_alias_map.py:110-111 + conversion_runtime:130-131
+//     复制而来）：六种 LyCORIS 算法 → is_lycoris=True+lycoris_algo(:156-159)；
+//     lora_fa/vera/hydralora/fera → 同名 *_enabled 旗标(:160-171)；tlora → 改写
+//     network_module(:172-175)；dora → use_dora+dora_enabled(:176-179)；lora_plus
+//     → lora_plus_enabled(:180-182)。转换层等价实现见 config_adapter_conversion_
+//     finalize.py:196-230（model_type=="newbie" 守卫）。该映射不改变 rider 主键
+//     语义：dora_enabled/use_dora/dora_wd 三旗标在 default LoRA 路线上照常生效
+//     （standard 注入器 inject mixin:397 明确 `use_dora or dora_enabled`），仅当
+//     二次映射把输入键变成 LyCORIS/实体赢家时才把 DoRA 挤出注入链。
+//   - LyCORIS 路线与 SDXL/ANIMA 同一无 DoRA 入口：_inject_lycoris_adapter
+//     (specialized mixin:261-332) 构造的 LyCORISConfig 全无 weight-decompose 字段；
+//     统一 LoRAInjector 的 elif materialize 链（lora_injector_inject.py:337-497）
+//     把全部实体（fera/hydra/vera/lora_fa/mora/tlora/flexrank/reslora/lora2/
+//     tensorring/dokr/gdlokr/krona+cdka）排在最终 else 的 LoRALinear(use_dora)
+//     (:498-518) 之前 —— 实体赢家下 dora_enabled 静默失效。
+//   - KronA/CDKA/DoKr/GDLoKr 在 newbie 可用且与 rider 正交：enabled 旗标经
+//     standard 注入器(specialized mixin:448-469)/DoRA 注入器(:477-498) 原样传入，
+//     krona_weight_decompose/cdka_weight_decompose 是独立于本 rider 的另一条分解
+//     入口（inject :492），DoKr/GDLoKr 自带 magnitude。前端互斥已保证这些实体
+//     与 dora_* 互斥（normalizeAdapterEntityMutex）。
+//   - TE 注入按缓存条件跳过（非 Anima 式强制）：inject mixin:300 仅当
+//     _has_newbie_cached_training_data()（cache_policy.py:45-53 校验 *_newbie.npz
+//     缓存契约）时跳过文本编码器侧；dataset_setup:120-124 还要求 use_cache=true。
+//     cache-first 默认开（use_cache/newbie_force_cache_only 默认 true）→ 产品路径
+//     DoRA 通常只落 DiT；raw online 时 TE 侧也会注入。无 Anima packed 前向式的
+//     DoRA fail-closed 拒绝路径（backend 全仓无 newbie packed forward 实现）。
+//   - 已发现并保守处理的幻影选项：adapter_type=glora/glokr 在二次映射两侧均无
+//     分支（conversion_finalize.py:201 与 inject mixin:156 都只收六种算法）→
+//     静默降级为普通 LoRA 训练。newbie 下拉已将两者置 disabled 保旧草稿回显。
+//   - closure 测试对 newbie 覆盖最少（test_training_route_closure.py:1160-1220
+//     仅 lokr/flexrank 别名；无 newbie×dora_wd 用例），矩阵结论以源码为准。
+// 结论（newbie 行）：仅原生 lora family 可叠加；LyCORIS 六算法一律不可叠加；
+// glora/glokr 属幻影选项（后端静默降级），实体注入器走硬互斥不叠 DoRA。
+//
+// FLUX 管线实证结论（2026-08 第 4 站审计，backend 源码行号同期记录）：
+//   - 双路由同构：entry_train.py:217-243 select_trainer_key 对 flux+lora 按
+//     flux_trainer_backend 分派——默认 unified → "lulynx"（与 SDXL/ANIMA/NEWBIE
+//     同一 LulynxTrainer 注入链）；显式 legacy/flux_lora/preview → FluxLoraTrainer
+//     （非 LulynxTrainer 子类，mixins 组装，flux_lora_trainer.py:27-39）。
+//   - 统一路由：inject mixin:108-127 flux 守卫——非 networks.lora 直接
+//     RuntimeError（is_flux_network_module_supported，flux_preflight.py:32-53 白名单
+//     仅 networks.lora/lora_flux 别名），train_text_encoder=true 亦 RuntimeError
+//     （:123-127）；else-if 短路与 SDXL 完全同构（:203 LyCORIS 先于 :211 use_dora），
+//     注入走 :264-272 transformer.* 前缀（与生态 LoRA key 契约一致）。转换层还会把
+//     不支持模块静默改写回 networks.lora（config_adapter_conversion_finalize.py:
+//     106-108），但 :113-117 的 requested 原值仍会被 :118 二次拒绝——LyCORIS 在
+//     flux 上是 fail-closed，不存在静默降级路径。前端已把 tlora_flux/oft_flux/
+//     lycoris.kohya 三个下拉项置 disabled（otherDitSchemas.js:111-115），与后端
+//     _FLUX_UNSUPPORTED_NETWORKS 集合一致。
+//   - legacy 路由独立消费点（flux_trainer_prepare_mixin.py:97-132）：
+//     :102-106 network_module 硬门（仅 networks.lora）；:109-122 直接构造
+//     LoRAInjector，dora_enabled = use_dora OR dora_enabled（:115-116），另有
+//     dora_variant(:117)/adalora_enabled(:118)/rs_lora_enabled(:121)/pissa(:113-114)；
+//     LoRAInjector 构造调用不传 krona/cdka/vera/tlora/lora_fa/hydralora/fera/
+//     flexrank/mora/reslora/lora2/tensorring/dokr/gdlokr 任一实体旗标 → 全部按
+//     构造默认 False 处理，legacy 路由上 KronA/CDKA 与一切实体注入器不可达；
+//     TE 恒冻结（_load_pipeline :71-75 对 vae/text_encoder/text_encoder_2/transformer
+//     全部 eval+requires_grad=False），注入只落 transformer（:123），无 TE 注入点。
+//   - dora_wd 主键消费点（两路由共享）：entry_train.py:622 在训练器分派（:739）
+//     之前无条件执行 ConfigAdapter.from_frontend_dict → finalize_config
+//     (conversion_finalize.py:101) → _normalize_lora_alias_values 内 config_adapter.py:
+//     511-517 把 dora_wd=true 归一为 use_dora=True+dora_enabled=True+dora_mode='wd'
+//     +bypass_mode=False，对所有 model_type 生效（route 层 training_route_service.py:
+//     334-339 的同名归一化才是 anima-only，见 :154-155 守卫，但 flux 不依赖它）。
+//     因此前端 flux-lora 只定义 dora_wd（无 dora_enabled/use_dora 字段）仍可完整
+//     驱动两条路由 —— dora_wd 作为 flux 有意保留的唯一 master 键成立，rider 主键
+//     回退逻辑（masterKey=defined 中首个非 use_dora 键）无需 flux 特判。
+//   - 显存优化路径无 DoRA 拒绝点：flux_shared_runtime.py / model_acceleration_flux.py
+//     全文零 dora 引用；triton fused LoRA/QKV packing 均 fail-soft（prepare mixin
+//     :157-191 吞异常降级）。TE 训练请求在 preflight（flux_preflight.py:126-129
+//     train_text_encoder/train_t5xxl → error，经 training_config_checks.py:834 合入
+//     启动前检查）与 inject mixin:123-127 两处 fail-closed。
+// 结论（flux 行）：仅原生 lora family 可叠加（统一路由 use_dora/dora_enabled/
+// dora_wd 三键等价；legacy 路由消费归一化后的 use_dora/dora_enabled）；
+// LyCORIS/实体注入器不可达（fail-closed 或未传参），KronA/CDKA 无入口。
+//
+// LTX23/LTX25 管线实证结论（2026-08 第 4 站审计，backend 源码行号同期记录）：
+//   - 单一运行时族：contracts/training.py:176-179 把 ltx23-lora/ltx25-lora 都映射为
+//     ("ltx23","lora")；arch_capability_registry.py:59-69,119-129 把 ltx25/ltx2 等
+//     拼写全部归一到 canonical model_arch="ltx23"。select_trainer_key 无 ltx 特判
+//     → 默认 "lulynx"，与 SDXL/ANIMA/NEWBIE 共用同一注入链；method_adapter_
+//     contract.py:40 SUPPORTED_FAMILIES 含 ltx23（:131 处 resolve_adapter_method
+//     仅产出日志摘要，try/except 包裹，不影响注入分派）。
+//   - else-if 短路同构（inject mixin:203/:211）；LyCORISConfig（specialized mixin:
+//     261-332）同样无任何 weight-decompose 字段；materialize elif 链实体赢家先于
+//     LoRALinear(use_dora)（lora_injector_inject.py:498-518 无 model_arch 守卫，
+//     ltx23 与其它族共用同一 else）。_inject_dora_adapter/_inject_standard_lora_
+//     adapter 均 arch 无关并原样透传 krona/cdka/dokr/gdlokr 旗标（specialized mixin:
+//     477-498），但 ltx 页面不暴露任何算法选择键，这些入口仅剩旧草稿/raw JSON 理论
+//     可达且受实体互斥约束。
+//   - TE 结构性不存在：model_family.py:414-428 ltx23 行 text_encoder_target_modules=[]
+//     （Gemma3/Gemma4 冻结、connectors+cached embeds）、has_dual_text_encoders=False；
+//     ltx23_loader.py:529-530 恒以 text_encoder_1=None,text_encoder_2=None 组栈 →
+//     inject mixin:302-303 必然走「no text encoder is loaded」跳过分支。DoRA/LoRA
+//     只落 DiT（unet_target_modules=_LTX23_UNET_TARGETS，model_family.py:188-195）。
+//   - 无 packed 前向 DoRA 拒绝路径：ltx23/ 目录与 training_step_route_ltx23.py 全文
+//     零 use_dora/dora 引用；「packed」仅指 latent token 排布（B,S,C=128），与 Anima
+//     的 packed module forward 不同物。
+//   - 前端 schema（ltx2Schemas.js）adapter 区只有 network_dim/network_alpha/
+//     network_dropout/network_alpha_map_json，后端 ltx23_schemas.py:101 network_module
+//     为 hidden 默认 networks.lora —— 两侧均无算法下拉，无幻影选项面；rider 因类型
+//     schema 未定义任何 DORA_RIDER_KEYS 而 available:false（不渲染），矩阵行翻转仅
+//     影响 validator 文案证据态与文档语义。
+// 结论（ltx23/ltx25 行）：仅原生 lora family 可叠加；LyCORIS 八算法与实体注入器
+// 无 UI 入口（raw JSON 可达但被实体互斥挤出 DoRA）；DoRA 结构性只落 DiT。
+//
+// SD15 管线实证结论（2026-08 第 5 站审计，backend 源码行号同期记录）：
+//   - select_trainer_key（entry_train.py:217-243）对 sd-lora 无特判 → 默认 "lulynx"，
+//     与 SDXL/ANIMA/NEWBIE 共用同一 LulynxTrainer 注入链；else-if 短路同构
+//     （inject mixin:203 LyCORIS 先于 :211 use_dora）。arch_capability_registry.py:
+//     297-306 sd15 行 step_route_mode="generic"，仅训练步路由不同，注入层无差异。
+//   - dora_wd 主键消费点与族无关：config_adapter.py:511-517 的归一化对所有
+//     model_type 生效（closure 测试 test_training_route_closure.py:343-360 断言的
+//     就是这条共享 normalizer），sd15 草稿携带 dora_wd=true 同样到达 native
+//     DoRA injector 旗标。
+//   - v-parameterization 与 DoRA 正交：全仓 v_parameterization 只被 loss/时间步/
+//     噪声侧文件消费（adaptive_loss_weighting / training_step_* / faster_dit_snr），
+//     lora_linear/lora_injector* 零引用 —— v-pred 只改损失目标，不改 LoRA/DoRA
+//     模块前向，对 DoRA 叠加无约束。
+//   - TE 结构性存在且可注入（model_family.py:77-80 _SD15_TE_TARGETS、:247-260
+//     has_dual_text_encoders=False）：请求 train_text_encoder 时 DoRA 同时落在
+//     UNet 与 TE1，属正常路径（非 anima/newbie 式跳过）。
+// 结论（sd15 行）：仅原生 lora family 可叠加；LyCORIS 八算法一律不可叠加。
+//
+// UNIVERSAL-DIT 管线实证结论（2026-08 第 5 站审计；产品面 product_visible=False /
+// launch_ready=False，arch_capability_registry.py:317-327，前端无该训练类型，
+// 仅 raw JSON / 后端路由可达）：
+//   - target discovery 契约只挑 nn.Linear（target_discovery.py:109,150），probe 的
+//     训练冒烟（runtime.py:291-331 finalize_universal_dit_probe → probe_evidence.py:
+//     53-123 run_training_probe）在注入完成之后运行：use_dora=True 时 inject_exact
+//     → _inject_model 最终 else 分支（lora_injector_inject.py:498-518）创建的就是
+//     LoRALinear(use_dora=True)，冒烟逐目标 hook 校验前向有限性 + 梯度存在性 ——
+//     use_dora 模块天然计入验证面，inject mixin:337-343 强制 train_smoke_verified。
+//   - 导出/合并无 DoRA 盲区：adapter_manifest.py:35 显式收录 .dora_scale/.dora_
+//     magnitude 键；merge_export.py:39-117 按DoRALinear._compute_dora_weight 复现
+//     完整合并前向。Route-Aware LoRA v1 明确硬拒 DoRA（trainer_adapter_artifact_
+//     runtime.py:52-56 fail-closed），不构成静默盲区。
+// 结论（universal-dit 行）：仅原生 lora family 可叠加；叠加与否由 probe 契约
+// fail-closed 兜底。
+//
+// KREA2/ZIMAGE/BOOGU/FLUX2/WAN22 管线实证结论（2026-08 第 5 站审计；五族均为
+// arch_capability_registry.py:171-260 step_route_mode="always" + cache-first npz
+// 契约，但注入全部走共享 LulynxTrainer 链——select_trainer_key 无任何特判）：
+//   - 五族 family 目录（krea2/ zimage/ boogu/ wan22/ flux2_*.py）全文零
+//     use_dora/dora 引用；专属训练步（training_step_route_*）同样零引用，前向均经
+//     nn.Module 子模块调用（如 krea2_layers.py:138-140,240 wq/wk/wv/wo），不存在
+//     Anima packed forward 式绕过已包装模块的实现（全仓 packed forward 仅
+//     anima_native_dit_executable.py 一处）。
+//   - 深度扩层（depth expansion）五族一致要求 full_finetune，LoRA 路线直接
+//     ValueError（flux2_depth_expansion_runtime.py:49-50 / krea2 :37-38 / zimage :
+//     46-47 / boogu :29-30 / wan22 :49-50）→ DoRA 关心的 LoRA 路线上扩层不可达；
+//     扩层本体是整 block 克隆 + 恒等初始化，无 module-level forward。
+//   - krea2 block residency 在装载期把冻结 Linear 包成 _Krea2LinearCpuPinnedWrapper
+//     （krea2_block_residency.py:103-114，loader 组件 :181-184 调用，先于注入）；
+//     该 wrapper 是 nn.Linear 子类（:27）→ 注入器 isinstance 判定照常命中
+//     （lora_injector_inject.py:219），DoRA 可正常包装。反向无忧：LoRALinear 基类是
+//     nn.Module 而非 nn.Linear（lora_linear.py:42），residency 不会二次包装适配器。
+//   - TE 结构性惰性：五族 text_encoder_target_modules=[]（model_family.py:294 krea2
+//     / :356 flux2 / :371 boogu / :386 zimage / :401 wan22 umT5 冻结）；loader 虽然
+//     装载 text_encoder_1（krea2_loader.py:259 / zimage_loader.py:122 / boogu_loader
+//     .py:299 / flux2_loader.py:122 / wan22_loader.py:648），但 inject mixin:297-316
+//     走 inject_text_encoder 时目标列表为空 → 匹配零模块。DoRA 结构性只落 DiT。
+//   - wan22 A14B 双塔挂载排除（inject mixin:233-236 `_wan22_secondary`，塔体挂载见
+//     wan22_loader.py:613,625）对 LyCORIS/LoRA/DoRA 注入统一生效 → magnitude 只落
+//     主塔；双塔 depth expansion 被 RuntimeError 拒绝（wan22_depth_expansion_runtime
+//     .py:82-86）。
+//   - 前端 schema：五族 adapter 区只有 network_dim/alpha/dropout + 分层 alpha，无
+//     network_module/lycoris_algo/DORA_RIDER_KEYS 任一键 → rider available:false
+//     不渲染（ltx23/ltx25 第 4 站先例）。矩阵行翻转仅影响 validator 文案证据态与
+//     文档语义；“补暴露 dora_wd”技术上可行（后端通用链支持），留待下一阶段 UI
+//     排版重构统一处理，本站不新增字段面。
+// 结论（krea2/zimage/boogu/flux2/wan22 行）：仅原生 lora family 可叠加（结构性
+// DiT-only）；LyCORIS 无入口；深度扩层/显存优化器均不构成 DoRA 拒绝面。
+//
+// 隐藏类型行实证结论（2026-08 第 5 站审计）：
+//   - lumina / qwen-image / hunyuan-dit（覆盖 hunyuan-image-lora 兼容别名）：后端
+//     launcher/api/services/training_route_catalog.py:82-91 _UNSUPPORTED_SCHEMA_IDS
+//     显式拒绝（lumina-lora/lumina2-lora/lumina-finetune/qwen-image-lora/hunyuan-dit-
+//     lora/hunyuan-image-lora），TrainingRouteService.resolve 直接返回 is_known=False
+//     （training_route_service.py:72-79）→ 训练本身不可启动，DoRA 叠加不可达。
+//     前端 schemaIndex 注册仅为旧草稿兼容，与后端拒绝集合一一对应。
+//   - concept-edit：_SCHEMA_ROUTE_TABLE 无 'concept-edit' 条目（training_route_catalog
+//     .py:21-80 只有 *-ileco/*-addift 旧 id 映射）→ lookup 未命中同样 is_known=False；
+//     注册表亦 hidden+disabled（trainingTypeRegistry.js:32）。
+//   - yolo：后端 schema 为 registered_placeholder（启动 400，trainingTypeRegistry.js:
+//     69-70 注册表注释同证）；前端 YOLO_SECTIONS（otherSchemas.js:200-225）全无适配器
+//     字段，训练进程走 entry_yolo.py / core.scorers 边界（schemaIndex.js:168-176），
+//     不构造 UnifiedTrainingConfig → 不存在 LoRA/DoRA 注入面。
+//   - lab-distiller / aesthetic-scorer：非 LulynxTrainer 进程边界（LabSubprocessRunner
+//     / core.scorers，schemaIndex.js:167-182 注释同证），schema 无任何适配器字段 →
+//     不存在 DoRA 叠加面。
+// 结论（隐藏类型行）：stackable=[] 且 audited=true —— “无可叠加路线”的原因是类型
+// 本身不可启动/无注入面，而非算法层拒绝；doraWdVisible 据此隐藏死 schema 上的
+// DoRA 开关。
+//
+// 未知 family 键仍落入保守默认行（audited:false）作为防御性回退；已知 36 个可见
+// 训练类型 + 全部隐藏类型至此均有显式矩阵行，无 pending 行。
+const DORA_SUPPORT_DEFAULT_ROW = Object.freeze({ stackable: Object.freeze(['lora']), audited: false });
+
+export const DORA_SUPPORT_BY_MODEL_FAMILY = Object.freeze({
+  sdxl: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  // ANIMA 行已实证（第 2 站）：与 SDXL 同一注入链、同一 else-if 短路；差异仅在
+  // TE 恒跳过（cache-first 强制）与 packed 显存优化器拒绝 DoRA（见上方注释）。
+  anima: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  // SD15 行已实证（第 5 站）：与 SDXL 同构的通用链；v-parameterization 与 DoRA
+  // 正交（loss 侧专属），TE 可正常注入（见上方注释）。
+  sd15: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  // NEWBIE 行已实证（第 3 站）：与 SDXL/ANIMA 同一注入链、同一 else-if 短路；
+  // 差异在 adapter_type 二次映射（不改 rider 主键语义）与按缓存条件的 TE 跳过
+  // （非强制，见上方注释）。
+  newbie: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  // KREA2/ZIMAGE/BOOGU/FLUX2/WAN22 行已实证（第 5 站）：共享 LulynxTrainer 注入
+  // 链 + 结构性 DiT-only（TE 目标列表为空）；前端 adapter 区无 DoRA 键，rider 不
+  // 渲染（见上方注释）。
+  krea2: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  zimage: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  boogu: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  flux2: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  wan22: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  // UNIVERSAL-DIT 行已实证（第 5 站）：probe 训练冒烟天然包含 use_dora 模块，
+  // train_smoke_verified 门闸 fail-closed；导出/合并路径有 DoRA 支持证据（见上
+  // 方注释）。产品面未开放，行仅用于 raw JSON 草稿与文档语义。
+  'universal-dit': Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  // minimax_h3/adapter_compat.py:14-34 对 use_dora/dora_enabled 直接 ValueError
+  // （fail-closed），LyCORIS 同样被拒 —— 该族无任何可叠加路线。
+  'minimax-h3': Object.freeze({ stackable: Object.freeze([]), audited: true }),
+  // FLUX 行已实证（第 4 站）：统一/legacy 双路由同构仅 networks.lora；dora_wd 经
+  // ConfigAdapter 归一化驱动两路由，TE 恒冻结（见上方注释）。
+  flux: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  // LTX23/LTX25 行已实证（第 4 站）：同一 canonical ltx23 运行时族、通用注入链；
+  // TE 结构性不存在（loader 恒 text_encoder_1=None），无 packed DoRA 拒绝路径
+  // （见上方注释）。
+  ltx23: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  ltx25: Object.freeze({ stackable: Object.freeze(['lora']), audited: true }),
+  // 隐藏/不可启动类型行（第 5 站）：后端拒绝整个训练路由或无适配器进程边界，
+  // DoRA 叠加不可达（见上方隐藏类型行实证结论）。
+  lumina: Object.freeze({ stackable: Object.freeze([]), audited: true }),
+  'qwen-image': Object.freeze({ stackable: Object.freeze([]), audited: true }),
+  'hunyuan-dit': Object.freeze({ stackable: Object.freeze([]), audited: true }),
+  'concept-edit': Object.freeze({ stackable: Object.freeze([]), audited: true }),
+  'lab-distiller': Object.freeze({ stackable: Object.freeze([]), audited: true }),
+  'aesthetic-scorer': Object.freeze({ stackable: Object.freeze([]), audited: true }),
+  yolo: Object.freeze({ stackable: Object.freeze([]), audited: true }),
+});
+
+// typeId 前缀 → 能力矩阵行键。顺序敏感：长前缀必须排在短前缀之前。
+const DORA_MODEL_FAMILY_PREFIX_RULES = Object.freeze([
+  ['minimax-h3', 'minimax-h3'],
+  ['universal-dit', 'universal-dit'],
+  ['universal_dit', 'universal-dit'],
+  ['flux2', 'flux2'],
+  ['wan22', 'wan22'],
+  ['ltx23', 'ltx23'],
+  ['ltx25', 'ltx25'],
+  ['krea2', 'krea2'],
+  ['zimage', 'zimage'],
+  ['boogu', 'boogu'],
+  ['anima', 'anima'],
+  ['newbie', 'newbie'],
+  ['sdxl', 'sdxl'],
+  ['sd', 'sd15'],
+  ['flux', 'flux'],
+  ['lumina', 'lumina'],
+  ['qwen-image', 'qwen-image'],
+  ['hunyuan', 'hunyuan-dit'],
+]);
+
+/** 训练类型 id → 模型家族键（能力矩阵行）。 */
+export function doraModelFamilyKey(typeId) {
+  const raw = String(typeId || '').trim().toLowerCase();
+  if (!raw) return '';
+  for (const [prefix, key] of DORA_MODEL_FAMILY_PREFIX_RULES) {
+    if (raw.startsWith(prefix)) return key;
+  }
+  return raw;
+}
+
+function doraSupportRowForType(typeId) {
+  const row = DORA_SUPPORT_BY_MODEL_FAMILY[doraModelFamilyKey(typeId)];
+  return row || DORA_SUPPORT_DEFAULT_ROW;
+}
+
+/** 该训练类型下可叠加 DoRA 的基础算法 family 列表（副本）。 */
+export function doraStackableFamiliesForType(typeId) {
+  const stackable = doraSupportRowForType(typeId).stackable;
+  return Array.isArray(stackable) ? [...stackable] : [];
+}
+
+/** 该训练类型的 DoRA 叠加结论是否已经过后端管线实证（false = pending 保守值）。 */
+export function doraSupportAuditedForType(typeId) {
+  return Boolean(doraSupportRowForType(typeId).audited);
+}
+
+/** 当前配置选中的基础算法 family（用于判断 DoRA 能否叠加）。 */
+export function baseAlgoFamilyForDora(config = {}) {
+  return resolveAdapterFamily(config);
+}
+
+/**
+ * DoRA 权重分解开关在当前配置下是否可见。
+ * LyCORIS/networks.oft 模块路线在任何模型族都不可叠加（注入链短路），直接隐藏；
+ * 其余按类型对应矩阵行判定（草稿缺 model_train_type 时落入保守默认行）。
+ */
+export function doraWdVisible(config = {}) {
+  if (!nonLycorisNetworkSelected(config)) return false;
+  const typeId = String(config.model_train_type || '').trim();
+  if (!typeId) return true;
+  return doraStackableFamiliesForType(typeId).length > 0;
+}
+
+const OFT_MODULE_SPELLINGS = new Set([
+  'networks.oft', 'networks.oft_flux', 'networks.oft-flux', 'oft', 'diag-oft', 'diag_oft',
+]);
+
+// ── 家族解析单一实现 ─────────────────────────────────────────────────────────
+// 以基础算法为准：DoRA 是叠加增强而非独立 family（后端 NetworkType.DORA 只是
+// networks.lora 的枚举别名，configs_enums.py:35-42），dora-enabled 草稿一律解析
+// 到它的宿主 family。向导选中态（adapterModel.winnerFamily）与 expert 字段能力
+// 显隐（adapterFamilySupports）共用本函数，杜绝两套语义并存。
 export function resolveAdapterFamily(config = {}) {
-  const network = String(config.network_module || '').trim().toLowerCase();
-  const algo = String(config.lycoris_algo || '').trim().toLowerCase().replaceAll('_', '-');
-  if (network === 'networks.oft' || network === 'networks.oft_flux' || network === 'networks.oft-flux' || network === 'oft' || network === 'diag-oft' || network === 'diag_oft') return 'diag-oft';
-  if (network === 'networks.lora_fa' || network === 'networks.lora-fa' || network === 'lora_fa' || network === 'lora-fa') return 'lora-fa';
-  if (network === 'networks.vera' || network === 'vera') return 'vera';
-  if (network === 'networks.tlora' || network === 'networks.tlora_flux' || network === 'networks.tlora-flux' || network === 'tlora') return 'tlora';
-  if (network === 'networks.flexrank_lora' || network === 'networks.flexrank-lora' || network === 'flexrank_lora' || network === 'flexrank-lora' || network === 'flexrank') return 'flexrank';
-  if (network.includes('lycoris')) return normalizeAdapterFamily(algo || 'loha');
-  if (doraEnabled(config)) return 'dora';
+  const networkModule = String(config.network_module || '').trim().toLowerCase();
+  const winner = resolveWinningAdapterEntity(config);
+  if (winner.id === 'lycoris') {
+    let algo;
+    if (OFT_MODULE_SPELLINGS.has(networkModule)) {
+      algo = 'diag-oft';
+    } else if (networkModule.includes('lycoris')) {
+      algo = config.lycoris_algo || 'loha';
+    } else {
+      // lora_type 驱动的 LyCORIS（Anima/Newbie 选择器）；残留的旧 module 不作数。
+      algo = getAdapterTypeKey(config) || config.lycoris_algo || 'loha';
+    }
+    return normalizeAdapterFamily(algo);
+  }
+  if (winner.id !== 'lora') return normalizeAdapterFamily(winner.id);
+  const loraType = getAdapterTypeKey(config);
   if (config.rs_lora_enabled === true || config.rs_lora === true || config.use_rslora === true) return 'rs-lora';
-  return 'lora';
+  if (config.lora_plus_enabled === true || loraType === 'lora_plus') return 'lora-plus';
+  // Legacy drafts may persist lora_type='dora'; the rider flags are what matter.
+  return loraType === 'dora' ? 'lora' : normalizeAdapterFamily(loraType || 'lora');
 }
 
 export function applyAdapterFamilyCapabilities(payload = {}) {
@@ -159,14 +547,57 @@ export function adapterFamilySupports(feature, fallback = true) {
       : fallback;
   };
 }
-export const flowEnabled = when('flow_model', true);
 export const LOSS_AWARE_SCHEDULERS = ['loss_gated_cosine', 'loss_weighted_annealed_cosine'];
 export const lossAwareScheduler = oneOf('lr_scheduler', LOSS_AWARE_SCHEDULERS);
 export const lossWeightedScheduler = when('lr_scheduler', 'loss_weighted_annealed_cosine');
 
 // ---- 选项数组 ----
+// ================================================================
+// 字段分组规范（全参数修正系列 A1，SDXL 桶先行，后续桶照此归位）：
+// 按后端语义九组归位 section.tab / 卡片：
+//   1 网络结构(network)     network_module/dim/alpha/算法与实体注入器
+//   2 优化器(optimizer)     optimizer_type/backend/opt_* 参数面板/AutoController
+//   3 学习率调度(optimizer) lr_scheduler/warmup/num_cycles/Loss 门控族
+//   4 精度与显存(speed)     mixed_precision/full_fp16/offload/swap/block-swap
+//   5 缓存(dataset)         cache_latents/cache_text_encoder_outputs 及盘上格式
+//   6 数据集(dataset)       分桶/resolution/reg_data_dir/caption 全族
+//   7 采样预览(preview)     sample_*/quality_evaluation/validation
+//   8 保存(model)           save_*/log_*（save-settings 归 model 页签为历史布局）
+//   9 高级专家(advanced)    noise/seed/distributed/rf 等实验目标函数
+// 新字段先问"后端在哪个 mixin 消费"，再按上表选 tab；不要按 UI 顺手程度放置。
+// ================================================================
+export const FIELD_GROUP_SPEC = Object.freeze([
+  'network-structure', 'optimizer', 'lr-schedule', 'precision-vram',
+  'cache', 'dataset', 'sampling-preview', 'save', 'advanced-expert',
+]);
+
+// 预览采样器：以 launcher schema(training_field_optimization_fragments.py:220-224)
+// 的 canonical 七值为准；kohya 风格旧名经 sampler_capabilities.py 别名表仍可解析，
+// 保 disabled 项供旧草稿回显（值原样透传）。
+export const SAMPLE_SAMPLER_OPTIONS = [
+  { value: 'euler_a', label: 'euler_a' },
+  { value: 'euler', label: 'euler' },
+  { value: 'ddim', label: 'ddim' },
+  { value: 'dpm++_2m', label: 'dpm++_2m' },
+  { value: 'dpm++_2m_sde', label: 'dpm++_2m_sde' },
+  { value: 'dpm++_sde', label: 'dpm++_sde' },
+  { value: 'uni_pc', label: 'uni_pc' },
+  { value: 'pndm', label: 'pndm（旧名，运行时别名解析）', disabled: true, disabledReason: '已改用 canonical 命名；旧草稿兼容保留。' },
+  { value: 'lms', label: 'lms（旧名，运行时别名解析）', disabled: true, disabledReason: '已改用 canonical 命名；旧草稿兼容保留。' },
+  { value: 'heun', label: 'heun（旧名，运行时别名解析）', disabled: true, disabledReason: '已改用 canonical 命名；旧草稿兼容保留。' },
+  { value: 'dpm_2', label: 'dpm_2（旧名，运行时别名解析）', disabled: true, disabledReason: '已改用 canonical 命名；旧草稿兼容保留。' },
+  { value: 'dpm_2_a', label: 'dpm_2_a（旧名，运行时别名解析）', disabled: true, disabledReason: '已改用 canonical 命名；旧草稿兼容保留。' },
+  { value: 'dpmsolver', label: 'dpmsolver（= dpm++_2m 别名）', disabled: true, disabledReason: '请改用 dpm++_2m。' },
+  { value: 'dpmsolver++', label: 'dpmsolver++（= dpm++_2m 别名）', disabled: true, disabledReason: '请改用 dpm++_2m。' },
+];
+
 export const DIT_BLOCK_RESIDENCY_OPTIONS = [
   { value: 'resident', label: '常驻 GPU' },
+  // 2026-08 第 3 站审计（B4/E2）：streaming_offload 是后端合法驻留档
+  // （config_adapter_conversion_runtime.py:343-344 / newbie_block_residency.py:29 /
+  // anima_block_residency.py:36 三处口径一致），且 prefetch/sparse_swap 只在该档
+  // 生效。原先 UI 缺该档导致 prefetch 组在 block_cpu_pinned 下可见却恒空转。
+  { value: 'streaming_offload', label: 'Streaming Offload（平衡档：冷块按需流式换入）' },
   { value: 'block_cpu_pinned', label: 'Block CPU pinned（牺牲速度换更少显存使用量）' },
 ];
 
@@ -575,6 +1006,12 @@ export function normalizeAdapterEntityMutex(payload = {}) {
     for (const k of DEFAULT_LORA_ONLY_KEYS) {
       if (payload[k]) payload[k] = false;
     }
+    // DoRA 子旋钮残值：dora_mode 是 dora_enabled 的从属 select，离开 default
+    // LoRA 路线后一并清掉（delete 而非写 false，避免给下拉塞越界布尔值）；
+    // bypass_mode 残值同理归零（后端在 dora_wd 路线上本就强制 False，
+    // config_adapter.py:517）。
+    if ('dora_mode' in payload) delete payload.dora_mode;
+    if (_truthy(payload.bypass_mode)) payload.bypass_mode = false;
   }
 
   // 块跳过：固定 BlockSkip 与 Adaptive Caching 原理上双重跳过 → 固定优先
@@ -738,6 +1175,23 @@ export const vParameterizationFields = (includeVPredOptions = false) => {
   return fields;
 };
 
+// bucket_selection_mode 选项卫生：后端 BucketManager（dataset_bucketing.py:114-120,140-141）
+// 把十个历史取值归为四个行为等价组——aspect / {area,pixel,pixels} /
+// {larger,ceil,no_downscale} / {smaller,floor,no_upscale}。下拉只保留每组规范名，
+// 同义别名标 disabled 保旧草稿回显与提交兼容（值原样透传，后端按同组处理）。
+export const BUCKET_SELECTION_MODE_OPTIONS = [
+  { value: 'aspect', label: 'aspect（宽高比匹配，默认）' },
+  { value: 'area', label: 'area（面积匹配）' },
+  { value: 'pixel', label: 'pixel（= area 别名）', disabled: true, disabledReason: '与 area 行为完全一致，请改用 area。' },
+  { value: 'pixels', label: 'pixels（= area 别名）', disabled: true, disabledReason: '与 area 行为完全一致，请改用 area。' },
+  { value: 'no_downscale', label: 'no_downscale（桶不小于原图）' },
+  { value: 'larger', label: 'larger（= no_downscale 别名）', disabled: true, disabledReason: '与 no_downscale 行为完全一致，请改用 no_downscale。' },
+  { value: 'ceil', label: 'ceil（= no_downscale 别名）', disabled: true, disabledReason: '与 no_downscale 行为完全一致，请改用 no_downscale。' },
+  { value: 'no_upscale', label: 'no_upscale（桶不大于原图）' },
+  { value: 'smaller', label: 'smaller（= no_upscale 别名）', disabled: true, disabledReason: '与 no_upscale 行为完全一致，请改用 no_upscale。' },
+  { value: 'floor', label: 'floor（= no_upscale 别名）', disabled: true, disabledReason: '与 no_upscale 行为完全一致，请改用 no_upscale。' },
+];
+
 // ---- 数据集字段构造器 ----
 export const ds = (reso, bucketMax = 2048, bucketStep = 64, extra = []) => [
   { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '训练数据集路径', title: 'train_data_dir', desc: '训练数据集路径', defaultValue: './output/lulynx' },
@@ -749,7 +1203,7 @@ export const ds = (reso, bucketMax = 2048, bucketStep = 64, extra = []) => [
   { key: 'max_bucket_reso', type: 'number', label: '桶最大分辨率', title: 'max_bucket_reso', desc: 'arb 桶最大边。cache-first 回放通常沿用构建时分辨率。', defaultValue: bucketMax },
   { key: 'bucket_reso_steps', type: 'number', label: '桶划分单位', title: 'bucket_reso_steps', desc: '桶分辨率步进。UNet 全支持；DiT 见 enable_bucket 说明。', defaultValue: bucketStep },
   { key: 'bucket_no_upscale', type: 'boolean', label: '桶不放大图片', title: 'bucket_no_upscale', desc: 'arb 桶不放大图片', defaultValue: false },
-  { key: 'bucket_selection_mode', type: 'select', label: '分桶策略', title: 'bucket_selection_mode', desc: 'aspect 默认宽高比匹配；area/pixel 面积匹配；larger/ceil 不缩小；smaller/floor 不放大', defaultValue: 'aspect', options: ['aspect', 'area', 'pixel', 'pixels', 'larger', 'ceil', 'no_downscale', 'smaller', 'floor', 'no_upscale'] },
+  { key: 'bucket_selection_mode', type: 'select', label: '分桶策略', title: 'bucket_selection_mode', desc: 'aspect 默认宽高比匹配；area 面积匹配；no_downscale 桶不小于原图；no_upscale 桶不大于原图。灰色项为旧行为别名，行为与规范名完全一致。', defaultValue: 'aspect', options: BUCKET_SELECTION_MODE_OPTIONS },
   // 与 bucket_selection_mode 无关：后端 dataset_bucketing.py 只要这里解析出非空桶表就
   // 优先采用。原先锚在幽灵值 'custom_only' 上（options 里没有），字段永久不可见。
   { key: 'bucket_custom_resos', type: 'textarea', label: '自定义桶列表', title: 'bucket_custom_resos', desc: '一行一个，支持 1024x1024。留空则按上面的分桶策略自动生成；一旦填了内容，后端会优先使用这里的桶表，「分桶策略」将不再生效。', defaultValue: '', visibleWhen: when('enable_bucket', true) },
@@ -770,7 +1224,15 @@ export const uiGroup = (title, desc = '', visibleWhen = null) => ({
 });
 
 // ---- LoRA / LyCORIS 网络字段构造器 ----
-export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], extraModules = [], includeLycoris = true) => [
+// opts.hideDoraWd：该类型已通过 S_LORA_VARIANTS.dora_enabled 提供 DoRA master 时，
+// 把本区的 dora_wd 降级为 hidden 兼容别名（Anima 先例：animaSchema.js:455-457）。
+// 只定义 dora_wd 的类型（sd/flux 等）不传该选项，dora_wd 仍是有意保留的唯一 master
+// ——此时文案必须按 master 语义描述（第 4 站 FLUX 审计核实：flux 页无「LoRA 结构
+// 变体」区，旧别名文案与事实矛盾；后端 config_adapter.py:511-517 会把 dora_wd
+// 归一为 use_dora/dora_enabled 路由旗标）。
+const DORA_WD_DESC_MASTER = '叠加在标准 LoRA 路线上的权重分解增强（方向+幅度），比标准 LoRA 表达力强但稍慢。本类型的 DoRA 主入口就是这个开关（向导中的「叠加 DoRA」开关读写它），后端会将其归一为 use_dora/dora_enabled 训练旗标。';
+const DORA_WD_DESC_ALIAS = '叠加在标准 LoRA 路线上的权重分解增强（方向+幅度），比标准 LoRA 表达力强但稍慢。本类型的 DoRA 主入口在「LoRA 结构变体」区的 dora_enabled，此处仅为旧草稿兼容别名。';
+export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], extraModules = [], includeLycoris = true, opts = {}) => [
   { key: 'network_module', type: 'select', label: '训练网络模块', title: 'network_module', desc: '训练网络模块', defaultValue: mod, options: [mod, ...extraModules, ...(includeLycoris && !mod.includes('lycoris') ? ['lycoris.kohya'] : [])] },
   { key: 'network_dim', type: 'slider', label: '网络维度', title: 'network_dim', desc: '网络维度', defaultValue: dim, min: 1, max: maxDim, step: 1, visibleWhen: adapterFamilySupports('supports_rank') },
   { key: 'network_alpha', type: 'slider', label: '网络 Alpha', title: 'network_alpha', desc: '网络 Alpha', defaultValue: alpha, min: 1, max: maxDim, step: 1, visibleWhen: adapterFamilySupports('supports_alpha') },
@@ -778,27 +1240,38 @@ export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], ext
   { key: 'flexrank_lora_rank_range_min', type: 'number', label: 'FlexRank 最小 Rank', title: 'flexrank_lora_rank_range_min', desc: 'FlexRank 每步随机采样激活 rank 的下界', defaultValue: 1, min: 1, step: 1, visibleWhen: when('network_module', 'networks.flexrank_lora') },
   { key: 'dim_from_weights', type: 'boolean', label: '从权重推断 Dim', title: 'dim_from_weights', desc: '从已有 network_weights 自动推断 rank / dim', defaultValue: false, visibleWhen: adapterFamilySupports('supports_rank') },
   { key: 'scale_weight_norms', type: 'number', label: '最大范数正则化', title: 'scale_weight_norms', desc: '最大范数正则化。如果使用，推荐为 1', defaultValue: '', min: 0, step: 0.01 },
-  uiGroup('LyCORIS 基础结构', '这里放算法类型、卷积维度、preset 这类决定网络骨架的参数。普通 LoRA 路线可直接忽略。', lycorisNetworkSelected),
-  { key: 'lycoris_algo', type: 'select', label: 'LyCORIS 算法', title: 'lycoris_algo', desc: '后端原生支持：LoCon / LoHa / LoKr / IA3 /', defaultValue: 'locon', options: SUPPORTED_LYCORIS_ALGOS, visibleWhen: lycorisNetworkSelected },
-  { key: 'conv_dim', type: 'number', label: '卷积维度', title: 'conv_dim', desc: '卷积维度', defaultValue: 4, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
-  { key: 'conv_alpha', type: 'number', label: '卷积 Alpha', title: 'conv_alpha', desc: '卷积 Alpha', defaultValue: 1, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
-  { key: 'lycoris_preset', type: 'string', label: 'LyCORIS Preset', title: 'lycoris_preset', desc: '传给 LyCORIS 库的 preset。', defaultValue: '', visibleWhen: lycorisNetworkSelected },
-  uiGroup('正则化与稳定性', 'LyCORIS 专用 dropout / 正则项。大多数训练保持默认即可。', lycorisNetworkSelected),
-  { key: 'dropout', type: 'number', label: 'LyCORIS Dropout', desc: 'LyCORIS 主 dropout 概率。', defaultValue: 0, min: 0, max: 1, step: 0.01, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_DELTA_ALGOS.includes(c.lycoris_algo) },
-  { key: 'rank_dropout', type: 'number', label: 'LoKr Rank Dropout', title: 'rank_dropout', desc: 'LoKr 专用：按 rank/输出维度随机丢弃的概率。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-  { key: 'module_dropout', type: 'number', label: 'LoKr Module Dropout', title: 'module_dropout', desc: 'LoKr 专用：按整个模块随机丢弃的概率。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-  { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '额外训练归一化层（LayerNorm/RMSNorm 等）的可学习缩放/偏置', defaultValue: false, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && c.lycoris_algo !== 'ia3' },
-  uiGroup('DoRA 与兼容选项', 'DoRA 当前接在原生 LoRA 路线；LyCORIS 结构请直接选择上方算法。', when('network_module', 'networks.lora')),
-  { key: 'dora_wd', type: 'boolean', label: '启用 DoRA', title: 'dora_wd', desc: '在原生 LoRA 路线下启用 DoRA。', defaultValue: false, visibleWhen: when('network_module', 'networks.lora') },
+  // includeLycoris=false 的族（flux-lora：后端白名单只接 networks.lora，
+  // flux_preflight + inject mixin 双重 RuntimeError）不再携带 LyCORIS 死结构：
+  // 这些字段的 visibleWhen 锚在 lycorisNetworkSelected 上永不可见，纯属死 schema
+  // 重量（2026-08 第 3 站审计 F 项）。
+  ...(includeLycoris ? [
+    uiGroup('LyCORIS 基础结构', '这里放算法类型、卷积维度、preset 这类决定网络骨架的参数。普通 LoRA 路线可直接忽略。', lycorisNetworkSelected),
+    { key: 'lycoris_algo', type: 'select', label: 'LyCORIS 算法', title: 'lycoris_algo', desc: '后端原生支持：LoCon / LoHa / LoKr / IA3 /', defaultValue: 'locon', options: SUPPORTED_LYCORIS_ALGOS, visibleWhen: lycorisNetworkSelected },
+    { key: 'conv_dim', type: 'number', label: '卷积维度', title: 'conv_dim', desc: '卷积维度', defaultValue: 4, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
+    { key: 'conv_alpha', type: 'number', label: '卷积 Alpha', title: 'conv_alpha', desc: '卷积 Alpha', defaultValue: 1, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
+    { key: 'lycoris_preset', type: 'string', label: 'LyCORIS Preset', title: 'lycoris_preset', desc: '传给 LyCORIS 库的 preset。', defaultValue: '', visibleWhen: lycorisNetworkSelected },
+    uiGroup('正则化与稳定性', 'LyCORIS 专用 dropout / 正则项。大多数训练保持默认即可。', lycorisNetworkSelected),
+    { key: 'dropout', type: 'number', label: 'LyCORIS Dropout', desc: 'LyCORIS 主 dropout 概率。', defaultValue: 0, min: 0, max: 1, step: 0.01, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_DELTA_ALGOS.includes(c.lycoris_algo) },
+    { key: 'rank_dropout', type: 'number', label: 'LoKr Rank Dropout', title: 'rank_dropout', desc: 'LoKr 专用：按 rank/输出维度随机丢弃的概率。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'module_dropout', type: 'number', label: 'LoKr Module Dropout', title: 'module_dropout', desc: 'LoKr 专用：按整个模块随机丢弃的概率。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '额外训练归一化层（LayerNorm/RMSNorm 等）的可学习缩放/偏置', defaultValue: false, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && c.lycoris_algo !== 'ia3' },
+  ] : []),
+  uiGroup('DoRA 权重分解（叠加增强）', 'DoRA 不是独立算法，而是叠加在标准 LoRA 路线上的增强：把权重分解为方向与幅度分别训练。后端注入链中 LyCORIS 分支先于 DoRA 分派，因此 LyCORIS 算法路线上的叠加开关不会生效。', doraWdVisible),
+  { key: 'dora_wd', type: opts.hideDoraWd ? 'hidden' : 'boolean', label: '启用 DoRA 权重分解', title: 'dora_wd', desc: opts.hideDoraWd ? DORA_WD_DESC_ALIAS : DORA_WD_DESC_MASTER, defaultValue: false, visibleWhen: opts.hideDoraWd ? undefined : doraWdVisible },
   { key: 'adapter_init_strategy', type: 'select', label: 'LoRA 初始化策略', title: 'adapter_init_strategy', desc: '统一初始化入口：默认 LoRA / PiSSA /', defaultValue: 'default', options: ADAPTER_INIT_STRATEGY_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), (c) => !doraEnabled(c)) },
   { key: 'adapter_init_export_mode', type: 'select', label: '初始化导出模式', title: 'adapter_init_export_mode', desc: 'auto 会在最终保存时导出成可加载到原始底模的 LoRA', defaultValue: 'auto', options: ADAPTER_INIT_EXPORT_MODE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), nativeLoraInitSelected) },
   { key: 'loftq_bits', type: 'number', label: 'LoftQ 量化位宽', title: 'loftq_bits', desc: 'LoftQ 首版使用 fake-quant/dequant 权重残差初始化', defaultValue: 4, min: 2, max: 8, step: 1, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
   { key: 'loftq_quant_type', type: 'select', label: 'LoftQ 量化粒度', title: 'loftq_quant_type', desc: 'rowwise 按输出通道量化，tensorwise 按整层张量量化。', defaultValue: 'rowwise', options: LOFTQ_QUANT_TYPE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
-  uiGroup('LoKr 专属参数', '这组只会在 LoKr 下出现，包含 Kronecker 分解方式、双侧分解和 full matrix 等更重口味的结构控制。', all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'))),
-  { key: 'lokr_factor', type: 'number', label: 'LoKr 系数', title: 'lokr_factor', desc: '常用 4~无穷（填写 -1 为无穷）', defaultValue: -1, min: -1, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-  { key: 'decompose_both', type: 'boolean', label: 'LoKr 双侧分解', title: 'decompose_both', desc: 'LoKr 额外分解较小那一侧矩阵。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-  { key: 'full_matrix', type: 'boolean', label: 'LoKr Full Matrix', title: 'full_matrix', desc: 'LoKr 强制走 full matrix 路线', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-  { key: 'unbalanced_factorization', type: 'boolean', label: 'LoKr 非均衡分解', title: 'unbalanced_factorization', desc: 'LoKr 在分解维度时交换较大的那一侧，改变', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+  ...(includeLycoris ? [
+    uiGroup('LoKr 专属参数', '这组只会在 LoKr 下出现，包含 Kronecker 分解方式、双侧分解和 full matrix 等更重口味的结构控制。', all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'))),
+    { key: 'lokr_factor', type: 'number', label: 'LoKr 系数', title: 'lokr_factor', desc: '常用 4~无穷（填写 -1 为无穷）', defaultValue: -1, min: -1, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'decompose_both', type: 'boolean', label: 'LoKr 双侧分解', title: 'decompose_both', desc: 'LoKr 额外分解较小那一侧矩阵。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'full_matrix', type: 'boolean', label: 'LoKr Full Matrix', title: 'full_matrix', desc: 'LoKr 强制走 full matrix 路线', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'unbalanced_factorization', type: 'boolean', label: 'LoKr 非均衡分解', title: 'unbalanced_factorization', desc: 'LoKr 在分解维度时交换较大的那一侧，改变', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    // 后端 sdxl_lora.py:192-211 声明、config_adapter 归一层消费；仅 lycoris.kohya+lokr 生效。
+    { key: 'lokr_no_materialize_forward', type: 'boolean', label: 'LoKr 免实体化前向', title: 'lokr_no_materialize_forward', desc: '实验：前向直接用 Kronecker 因子计算，不实体化完整权重。省显存但可能更慢', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'lokr_no_materialize_strategy', type: 'select', label: '免实体化前向实现', title: 'lokr_no_materialize_strategy', desc: 'auto 按当前基准启发式选择路径；legacy 为旧实现', defaultValue: 'legacy', options: ['auto', 'legacy', 'matmul'], visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'), when('lokr_no_materialize_forward', true)) },
+  ] : []),
   { key: 'enable_base_weight', type: 'boolean', label: '启用基础权重', title: 'enable_base_weight', desc: '启用基础权重（差异炼丹）', defaultValue: false },
   { key: 'base_weights', type: 'textarea', label: '基础权重路径', title: 'base_weights', desc: '合并入底模的 LoRA 路径，一行一个路径', defaultValue: '', visibleWhen: when('enable_base_weight', true) },
   { key: 'base_weights_multiplier', type: 'textarea', label: '基础权重比例', title: 'base_weights_multiplier', desc: '合并入底模的 LoRA 权重，一行一个数字', defaultValue: '', visibleWhen: when('enable_base_weight', true) },
@@ -817,13 +1290,16 @@ export const flowParams = (defaults = {}) => [
   ] : []),
   { key: 'sigmoid_scale', type: 'number', label: 'sigmoid 缩放', title: 'sigmoid_scale', desc: 'sigmoid 缩放系数', defaultValue: defaults.ss || 1.0, step: 0.001 },
   { key: 'model_prediction_type', type: 'select', label: '模型预测类型', title: 'model_prediction_type', desc: '模型预测类型', defaultValue: defaults.mp || 'raw', options: ['raw', 'additive', 'sigma_scaled'] },
-  { key: 'sdxl_model_prediction_type', type: 'select', label: 'Flow 预测目标', title: 'sdxl_model_prediction_type', desc: 'SDXL/SD1.5 Flow 路径的模型预测目标。', defaultValue: 'epsilon', options: ['epsilon', 'velocity', 'sample'], visibleWhen: flowEnabled },
-  { key: 'sdxl_flow_weighting_scheme', type: 'select', label: 'Flow Loss 权重', title: 'sdxl_flow_weighting_scheme', desc: 'Flow loss 的 sigma 权重策略。', defaultValue: 'none', options: ['none', 'sigma_sqrt', 'cosmap', 'logit_normal'], visibleWhen: flowEnabled },
-  { key: 'sdxl_flow_shift', type: 'number', label: 'Flow 离散偏移', title: 'sdxl_flow_shift', desc: '离散 flow shift，1.0 表示不偏移。', defaultValue: 1.0, min: 0.001, step: 0.01, visibleWhen: flowEnabled },
-  { key: 'sdxl_sigmoid_scale', type: 'number', label: 'Flow Sigmoid Scale', title: 'sdxl_sigmoid_scale', desc: 'sigmoid 时间步采样缩放', defaultValue: 1.0, min: 0.001, step: 0.01, visibleWhen: all(flowEnabled, when('timestep_sampling', 'sigmoid')) },
+  // 2026-08 ANIMA 桶：原先这里的四个 sdxl_flow_* 死重量已拆出。它们锚在
+  // flow_model 上，而所有挂载 flowParams 的族（anima/newbie/krea/zimage/boogu/
+  // 概念编辑）都没有 flow_model 键 → 恒隐藏、永不收集，只是每个 DiT 族白背四键。
   { key: 'discrete_flow_shift', type: 'number', label: '离散流位移', title: 'discrete_flow_shift', desc: '离散流位移值', defaultValue: defaults.dfs || 1.0, step: 0.001 },
   { key: 'guidance_scale', type: 'number', label: 'CFG 引导缩放', title: 'guidance_scale', desc: 'CFG 引导缩放', defaultValue: defaults.gs || 1.0, step: 0.01 },
-  { key: 'weighting_scheme', type: 'select', label: '权重策略', title: 'weighting_scheme', desc: '损失加权策略', defaultValue: defaults.ws || 'none', options: ['sigma_sqrt', 'logit_normal', 'mode', 'cosmap', 'none'] },
+  // 2026-08 第 3 站审计（B1）：sigma_sqrt 在 FLUX unified 运行时会直接
+  // ValueError（flux_lora_utils.py:220-223 合法集 none/uniform/logit_normal/
+  // mode/cosine/cosmap），cosine 缺失；anima 已改用自有 anima_weighting_scheme
+  // （anima_flow.py:266-277 的 sigma_sqrt 与本组无关），故共享组对齐 runtime 集。
+  { key: 'weighting_scheme', type: 'select', label: '权重策略', title: 'weighting_scheme', desc: '损失加权策略', defaultValue: defaults.ws || 'none', options: ['logit_normal', 'mode', 'cosine', 'cosmap', 'none'] },
   { key: 'mode_scale', type: 'number', label: 'mode 权重缩放', title: 'mode_scale', desc: 'mode 权重策略的缩放系数', defaultValue: '', step: 0.01 },
   { key: 'loss_type', type: 'select', label: '损失函数类型', title: 'loss_type', desc: '损失函数类型', defaultValue: defaults.lt || 'l2', options: ['l1', 'l2', 'huber', 'smooth_l1'] },
 ];
@@ -842,4 +1318,12 @@ export const rectifiedFlowParams = () => [
 ];
 
 // ---- section 工厂 ----
-export const sec = (id, tab, title, desc, fields, opts = {}) => ({ id, tab, title, description: desc, fields, expert: !!opts.expert });
+// opts.hidden（第 6 站桶）：整节下架开关。语义 = 「数据定义保留、运行面摘除」：
+// schemaIndex.getSectionsForType 会过滤 hidden 节，字段不渲染、不进默认值、
+// 不进 payload；比逐字段 type:'hidden' 干净（后者仍会照常提交值），比直接删除
+// 利于后端接通采样管线后一键恢复。用于七族 preview/quality 永久 no-op 组。
+export const sec = (id, tab, title, desc, fields, opts = {}) => ({
+  id, tab, title, description: desc, fields,
+  expert: !!opts.expert,
+  ...(opts.hidden ? { hidden: true } : {}),
+});

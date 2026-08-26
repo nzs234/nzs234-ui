@@ -36,8 +36,30 @@ export const BASE_OPTIMIZERS = [
   'pytorch_optimizer.CAME',
   'pytorch_optimizer.StableAdamW',
   'pytorch_optimizer.SCION',
-  'KL-Shampoo',
-  'Gluon',
+];
+
+// 2026-08 第 3 站审计（B3）：KL-Shampoo / Gluon 曾以裸 optimizer_type 暴露，但后端
+// OptimizerType 枚举（configs_enums.py:69-111）无此二值、configs_validators.py:83-190
+// 无映射无兜底（else 直通 UnifiedTrainingConfig → ValidationError 启动失败）。两者的
+// 唯一实现入口是 frontier provider 的 GenericOptimizer name= 选择器
+// （frontier_optimizer_provider.py:176-195），且标记 default_product_exposed=False。
+// 以 disabled 项保留回显与出处说明，禁止新选。
+const UNMAPPED_FRONTIER_OPTIMIZER_OPTIONS = [
+  {
+    value: 'KL-Shampoo',
+    label: 'KL-Shampoo（未接入：仅 lab 通道）',
+    disabled: true,
+    disabledReason: '裸 optimizer_type 会被后端枚举校验拒绝；该优化器尚未开放 GenericOptimizer 产品入口。',
+    // 可见 disabled 项的 EN 理由通道：渲染层经 resolveDisabledReason 按语言取用。
+    disabledReason_en: 'A bare optimizer_type fails backend enum validation; this optimizer has no GenericOptimizer product entry yet.',
+  },
+  {
+    value: 'Gluon',
+    label: 'Gluon（未接入：仅 lab 通道）',
+    disabled: true,
+    disabledReason: '裸 optimizer_type 会被后端枚举校验拒绝；Lulynx Orthogonal Momentum 尚未开放产品入口。',
+    disabledReason_en: 'A bare optimizer_type fails backend enum validation; Lulynx Orthogonal Momentum has no product entry yet.',
+  },
 ];
 
 export const CURATED_PYTORCH_OPTIMIZER_NAMES = [
@@ -229,7 +251,7 @@ export const ALL_OPTIMIZERS = dedupeKeepOrder([
   ...PYTORCH_OPTIMIZER_NAMES
     .filter((name) => !BASE_OPTIMIZER_BASE_NAMES.has(name.toLowerCase()))
     .map((name) => `pytorch_optimizer.${name}`),
-]);
+]).concat(UNMAPPED_FRONTIER_OPTIMIZER_OPTIONS);
 
 const TARGET_LORA_OPTIMIZERS_BASE = dedupeKeepOrder([
   ...ALL_OPTIMIZERS,
@@ -271,6 +293,11 @@ export const BUILTIN_SCHEDULERS = [
   'inverse_sqrt',
   // 每一项都必须在后端 configs_enums.py 的 SchedulerType 里存在，否则选中即
   // ValidationError（reduce_lr_on_plateau / cosine_warmup_with_min_lr 曾是这样的死值）。
+  // 2026-08 SDXL 桶审计：补齐 SchedulerType(configs_enums.py:112-131) 剩余四值。
+  'one_cycle',
+  'restart_linear',
+  'lulynx_exponential_warmup',
+  'plugin',
   'cosine_with_min_lr',
   'loss_gated_cosine',
   'loss_weighted_annealed_cosine',
@@ -287,6 +314,10 @@ export const SCHEDULER_LABELS = Object.freeze({
   constant_with_warmup: '预热后恒定',
   adafactor: 'Adafactor 内置调度',
   inverse_sqrt: '反平方根衰减',
+  one_cycle: 'One-Cycle 单周期',
+  restart_linear: '线性重启',
+  lulynx_exponential_warmup: '指数预热（REX）',
+  plugin: '插件调度器',
   cosine_with_min_lr: '带最小值余弦',
   loss_gated_cosine: 'Loss 门控余弦',
   loss_weighted_annealed_cosine: 'Loss 加权退火余弦',

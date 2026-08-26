@@ -109,6 +109,15 @@ describe('configStore: draft creation', () => {
     expect(useTrainConfigStore.getState().drafts['anima-lora'].quant_train_mode).toBe(true)
   })
 
+  test('legacy Chinese-label pissa_export_mode values migrate to backend enums at the draft layer', () => {
+    // sdxl schema 曾把中文 label 当 value；枚举化后旧草稿在加载时迁移，
+    // 提交层不再保留第二份映射。sdxl-lora 的 schema 定义了 pissa_export_mode。
+    const migrated = normalizeDraftForType('sdxl-lora', { pissa_export_mode: 'LoRA无损兼容导出' })
+    expect(migrated.draft.pissa_export_mode).toBe('lora_compatible')
+    expect(normalizeDraftForType('sdxl-lora', { pissa_export_mode: 'LoRA快速近似导出' }).draft.pissa_export_mode).toBe('approximate')
+    expect(normalizeDraftForType('sdxl-lora', { pissa_export_mode: 'raw' }).draft.pissa_export_mode).toBe('raw')
+  })
+
   test('setType ignores an empty type id', () => {
     useTrainConfigStore.getState().setType('')
     expect(useTrainConfigStore.getState().typeId).toBe('anima-lora')

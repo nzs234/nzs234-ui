@@ -105,16 +105,15 @@ describe('runConfigBuilder: payload collection', () => {
   })
 
   test('learning-rate keys are numeric even when the draft holds scientific-notation strings', () => {
+    // control_net_lr 已按幻影键治理从 payload 剥除（后端零读者），不再参与本断言。
     const payload = build(
-      { learning_rate: '1e-4', unet_lr: '5e-5', text_encoder_lr: '0', control_net_lr: 'not-a-number' },
+      { learning_rate: '1e-4', unet_lr: '5e-5', text_encoder_lr: '0' },
       'x',
-      [['learning_rate', 'string'], ['unet_lr', 'string'], ['text_encoder_lr', 'string'], ['control_net_lr', 'string']],
+      [['learning_rate', 'string'], ['unet_lr', 'string'], ['text_encoder_lr', 'string']],
     )
     expect(payload.learning_rate).toBe(0.0001)
     expect(payload.unet_lr).toBe(0.00005)
     expect(payload.text_encoder_lr).toBe(0)
-    // 解析失败时保留原文，让后端报出可读错误而不是收到 NaN。
-    expect(payload.control_net_lr).toBe('not-a-number')
   })
 
   test('empty strings and null are dropped for non-numeric fields', () => {
@@ -375,8 +374,8 @@ describe('runConfigBuilder: LyCORIS network args', () => {
       'sdxl-lora',
       lycoFields,
     )
-    // bypass_mode=False 恒在尾部:它是 boolean schema 字段,collectVisiblePayload 会把
-    // 未设置的值坍缩成 false,而 normalizeLycorisNetworkArgs 对 != null 一律显式下发。
+    // train_norm=False 恒在尾部：它是 boolean schema 字段,collectVisiblePayload 会把
+    // 未设置的值坍缩成 false,normalizeLycorisNetworkArgs 对 != null 一律显式下发。
     expect(payload.network_args).toEqual([
       'algo=locon',
       'conv_dim=8',
@@ -386,7 +385,6 @@ describe('runConfigBuilder: LyCORIS network args', () => {
       'rank_dropout=0.2',
       'module_dropout=0.3',
       'train_norm=True',
-      'bypass_mode=False',
     ])
     expect(pick(payload, ['lycoris_conv_dim', 'lycoris_conv_alpha', 'network_dropout', 'lokr_rank_dropout', 'lokr_module_dropout', 'lycoris_train_norm']))
       .toEqual({
@@ -433,31 +431,45 @@ describe('runConfigBuilder: LyCORIS network args', () => {
     }
   })
 
-  test('dora_wd forces bypass_mode=False and only pairs wd_on_output with delta algos', () => {
-    const locon = build(
+  test('dora_wd/wd_on_output/bypass_mode are dropped on the LyCORIS route (backend ignores them there)', () => {
+    // 后端注入链 LyCORIS 分支先于 use_dora 分派，network_args 又只解析
+    // rs_lora/train_llm_adapter —— 这些键在 LyCORIS 路线是零接收者的惰性输出。
+    const payload = build(
       { network_module: 'lycoris.kohya', lycoris_algo: 'locon', dora_wd: true, wd_on_output: true, bypass_mode: true },
       'sdxl-lora',
       lycoFields,
     )
-    expect(locon.network_args).toEqual(expect.arrayContaining(['dora_wd=True', 'wd_on_output=True']))
-    // DoRA weight-decomposition 与 bypass 互斥；bypass 必须被强制关掉。
-    expect(locon.network_args).toContain('bypass_mode=False')
-    expect(locon.network_args).not.toContain('bypass_mode=True')
+    const args = payload.network_args as string[]
+    for (const forbidden of ['dora_wd=True', 'wd_on_output=True', 'bypass_mode=False', 'bypass_mode=True']) {
+      expect(args, forbidden).not.toContain(forbidden)
+    }
+    for (const key of ['dora_wd', 'wd_on_output', 'bypass_mode']) {
+      expect(payload, key).not.toHaveProperty(key)
+    }
 
     const ia3 = build(
       { network_module: 'lycoris.kohya', lycoris_algo: 'ia3', dora_wd: true, wd_on_output: true },
       'sdxl-lora',
       lycoFields,
     )
-    expect(ia3.network_args).toContain('dora_wd=True')
-    expect(ia3.network_args).not.toContain('wd_on_output=True')
+    expect((ia3.network_args as string[]).join(',')).not.toContain('dora_wd')
+    expect(ia3).not.toHaveProperty('dora_wd')
   })
 
-  test('bypass_mode is forwarded verbatim when dora_wd is off', () => {
+  test('native LoRA route keeps dora flags for the backend DoRA injector', () => {
+    const payload = build({ network_module: 'networks.lora', dora_enabled: true }, 'x', [
+      ['network_module', 'string'],
+      ['dora_enabled', 'boolean'],
+    ])
+    expect(payload.dora_enabled).toBe(true)
+    expect(payload.network_args).toBeUndefined()
+  })
+
+  test('bypass_mode is not synthesized into network_args at all', () => {
     const on = build({ network_module: 'lycoris.kohya', lycoris_algo: 'locon', bypass_mode: true }, 'sdxl-lora', lycoFields)
-    expect(on.network_args).toContain('bypass_mode=True')
+    expect(on.network_args).not.toContain('bypass_mode=True')
     const off = build({ network_module: 'lycoris.kohya', lycoris_algo: 'locon', bypass_mode: false }, 'sdxl-lora', lycoFields)
-    expect(off.network_args).toContain('bypass_mode=False')
+    expect(off.network_args).not.toContain('bypass_mode=False')
   })
 
   test('zero-valued dropouts and block_size are omitted from network_args', () => {
@@ -470,8 +482,9 @@ describe('runConfigBuilder: LyCORIS network args', () => {
     for (const forbidden of ['dropout=0', 'rank_dropout=0', 'module_dropout=0', 'block_size=0']) {
       expect(args, forbidden).not.toContain(forbidden)
     }
-    // train_norm / bypass_mode 是 boolean schema 字段,恒被显式下发(见上一用例注释)。
-    expect(args).toEqual(['algo=locon', 'train_norm=False', 'bypass_mode=False'])
+    // train_norm 是 boolean schema 字段,恒被显式下发(见上一用例注释);
+    // bypass_mode/dora_wd 等惰性键不再合成进 network_args。
+    expect(args).toEqual(['algo=locon', 'train_norm=False'])
   })
 
   test('every LyCORIS UI-only key is purged after being folded into network_args', () => {
@@ -893,7 +906,7 @@ describe('runConfigBuilder: adapter init strategy purge', () => {
 
   test('pissa strategy sets the master flags and maps legacy UI keys to backend keys', () => {
     const payload = build(
-      { adapter_init_strategy: 'pissa', pissa_method: 'rsvd', pissa_niter: 4, pissa_export_mode: 'LoRA无损兼容导出' },
+      { adapter_init_strategy: 'pissa', pissa_method: 'rsvd', pissa_niter: 4, pissa_export_mode: 'lora_compatible' },
       'sdxl-lora',
       initFields,
     )
@@ -913,10 +926,11 @@ describe('runConfigBuilder: adapter init strategy purge', () => {
     expect(build({ pissa_enabled: true }, 'sdxl-lora', initFields).adapter_init_strategy).toBe('pissa')
   })
 
-  test('the localized pissa export labels are normalized to backend enums', () => {
-    expect(build({ adapter_init_strategy: 'pissa', pissa_export_mode: 'LoRA快速近似导出' }, 'sdxl-lora', initFields).pissa_export_mode)
+  test('pissa export mode passes through as-is; Chinese-label mapping lives at the draft layer now', () => {
+    // schema 选项已枚举化（anima/sdxl 一致），提交层不再保留第二份中文 label 映射；
+    // 旧草稿值由 configStore.LEGACY_VALUE_MIGRATIONS 在草稿加载时迁移。
+    expect(build({ adapter_init_strategy: 'pissa', pissa_export_mode: 'approximate' }, 'sdxl-lora', initFields).pissa_export_mode)
       .toBe('approximate')
-    // 已经是后端枚举时保持原样。
     expect(build({ adapter_init_strategy: 'pissa', pissa_export_mode: 'raw' }, 'sdxl-lora', initFields).pissa_export_mode).toBe('raw')
   })
 
@@ -965,6 +979,14 @@ describe('runConfigBuilder: theory variant aliases', () => {
     const fields: FieldSpec[] = [['dp_dmd_variant', 'string']]
     expect(build({ dp_dmd_variant: 'Standard' }, 'sdxl-lora', fields).dp_dmd_variant).toBe('standard')
     expect(build({ dp_dmd_variant: 'anything-else' }, 'sdxl-lora', fields).dp_dmd_variant).toBe('lulynx_optimized')
+  })
+
+  test.each([
+    ['full', 'full'], ['style', 'style'], ['structure', 'structure'],
+    ['wd', 'full'], ['weight_decomposed', 'full'], ['split', 'full'], ['merged', 'full'],
+    ['garbage', 'full'], ['STRUCTURE', 'structure'],
+  ])('dora_mode %s -> %s (runtime domain from lulynx/dora_layer.py:103-119)', (raw, expected) => {
+    expect(build({ dora_mode: raw }, 'sdxl-lora', [['dora_mode', 'string']]).dora_mode).toBe(expected)
   })
 
   test('legacy svd_grad_proj_* keys migrate to lulynx_svd_gradient_filter_* and are removed', () => {
@@ -1130,6 +1152,31 @@ describe('runConfigBuilder: adapter entity mutex', () => {
     expect(payload.use_dora).toBe(false)
   })
 
+  test('DoRA sub-knob residue is purged when the winner leaves the default LoRA route', () => {
+    // dora_mode='wd' / bypass_mode=false 是 dora_wd 路线的从属键；切到实体赢家后
+    // 必须一并清零，不能以残值形式留在 payload 里。
+    const payload = build(
+      { lora_type: 'lora', dora_wd: true, dora_enabled: true, use_dora: true, dora_mode: 'wd', bypass_mode: false, vera_enabled: true },
+      'sdxl-lora',
+      mutexFields,
+    )
+    expect(winners(payload)).toEqual(['vera_enabled'])
+    expect(payload).not.toHaveProperty('dora_mode')
+    expect(payload.bypass_mode).toBe(false)
+  })
+
+  test('stale dora_mode residue from a restored draft is dropped on an entity route', () => {
+    const payload = build({ dora_mode: 'wd', vera_enabled: true }, 'anima-lora', mutexFields)
+    expect(payload).not.toHaveProperty('dora_mode')
+  })
+
+  test('DoRA stays intact while it remains the rider on default LoRA; legacy wd alias collapses to full', () => {
+    // wd 与 full 在运行时（lulynx/dora_layer.py:104）完全同义，统一到规范名；
+    // 只有 dora_wd 路线才会按后端 setdefault 语义重新写回 dora_mode='wd'。
+    const payload = build({ dora_enabled: true, dora_mode: 'wd', bypass_mode: false }, 'sdxl-lora', mutexFields)
+    expect(pick(payload, ['dora_enabled', 'dora_mode'])).toEqual({ dora_enabled: true, dora_mode: 'full' })
+  })
+
   test('legacy string "true" values count as enabled', () => {
     expect(winners(build({ vera_enabled: 'true' }, 'sdxl-lora', mutexFields))).toEqual(['vera_enabled'])
   })
@@ -1230,6 +1277,70 @@ describe('runConfigBuilder: semantic passthrough and universal DiT route', () =>
   })
 })
 
+// ─── krea2 vram preset × explicitKeys ────────────────────────────────────────
+
+describe('runConfigBuilder: normalizeKrea2VramPreset respects touched keys', () => {
+  const KREA2_FIELDS: FieldSpec[] = [
+    ['krea2_vram_preset', 'select'],
+    ['krea2_block_offload_gpu_slots', 'number'],
+    ['krea2_block_offload_prefetch_depth', 'number'],
+    ['krea2_block_offload_pin_memory', 'boolean'],
+  ]
+
+  function buildKrea2(config: Cfg, explicitKeys?: ReadonlySet<string>): Cfg {
+    return buildRunConfigFromSections(config, 'krea2-lora', {
+      getSectionsForType: () => [{
+        id: 'synthetic',
+        tab: 'synthetic',
+        title: 'synthetic',
+        fields: KREA2_FIELDS.map(([key, type]) => ({ key, type })),
+      }],
+      isFieldVisible: () => true,
+      ...(explicitKeys ? { explicitKeys } : {}),
+    }) as unknown as Cfg
+  }
+
+  test('untouched standard-tier defaults are stripped so the aggressive preset applies', () => {
+    // boolean 字段恒出站（collectVisiblePayload 语义），合成草稿需先注入
+    // standard 档默认值，模拟「createDefaultConfig 注入且未触碰」的形态。
+    const payload = buildKrea2({
+      krea2_vram_preset: 'aggressive',
+      krea2_block_offload_gpu_slots: 4,
+      krea2_block_offload_prefetch_depth: 2,
+      krea2_block_offload_pin_memory: true,
+    })
+    expect(payload).not.toHaveProperty('krea2_block_offload_gpu_slots')
+    expect(payload).not.toHaveProperty('krea2_block_offload_prefetch_depth')
+    expect(payload).not.toHaveProperty('krea2_block_offload_pin_memory')
+  })
+
+  test('explicitly set standard-tier values survive when marked as user-touched', () => {
+    // 表达力契约：aggressive 档下用户显式要 standard 值必须原样出站——
+    // 否则后端 model_fields_set 判定会让预设覆写掉用户手填的 4/2/true。
+    const touched = new Set(['krea2_block_offload_gpu_slots'])
+    const payload = buildKrea2(
+      {
+        krea2_vram_preset: 'aggressive',
+        krea2_block_offload_gpu_slots: 4,
+        krea2_block_offload_prefetch_depth: 2,
+        krea2_block_offload_pin_memory: true,
+      },
+      touched,
+    )
+    expect(payload.krea2_block_offload_gpu_slots).toBe(4)
+    expect(payload).not.toHaveProperty('krea2_block_offload_prefetch_depth')
+    expect(payload).not.toHaveProperty('krea2_block_offload_pin_memory')
+  })
+
+  test('non-aggressive presets ignore the strip rule entirely', () => {
+    const payload = buildKrea2(
+      { krea2_vram_preset: 'standard', krea2_block_offload_gpu_slots: 4 },
+      new Set(['krea2_block_offload_gpu_slots']),
+    )
+    expect(payload.krea2_block_offload_gpu_slots).toBe(4)
+  })
+})
+
 // ─── real schema smoke ───────────────────────────────────────────────────────
 
 describe('runConfigBuilder: real schema behaviour', () => {
@@ -1257,6 +1368,31 @@ describe('runConfigBuilder: real schema behaviour', () => {
       expect(draft, key).toHaveProperty(key)
       expect(payload, key).not.toHaveProperty(key)
     }
+  })
+
+  test('universal-dit-lora registers with a closed surface and pinned universal_dit route', () => {
+    const typeId = 'universal-dit-lora'
+    const draft = createDefaultConfig(typeId) as Cfg
+    const payload = buildRunConfig(draft, typeId) as Cfg
+    expect(payload.model_train_type, typeId).toBe(typeId)
+    // 专用类型本身就是 universal-dit 路线：开关按后端形态收成 hidden+true，
+    // 提交层 normalizeUniversalDitRoute 据此写 model_type（entry_train 显式优先）。
+    expect(draft.universal_dit_enabled).toBe(true)
+    expect(payload.model_type).toBe('universal_dit')
+    expect(payload.network_module).toBe('networks.lora')
+    // 契约 JSON 键按探测模式门控：默认 auto 不执行前向 → 不进 payload。
+    expect(payload).not.toHaveProperty('universal_dit_forward_mapping_json')
+    expect(payload).not.toHaveProperty('universal_dit_output_selector_json')
+    expect(payload).not.toHaveProperty('universal_dit_target_modules_json')
+    // 实际执行前向的探测模式下，两 JSON 键随草稿进入 payload。
+    const probing = buildRunConfig({
+      ...draft,
+      universal_dit_probe_mode: 'forward',
+      universal_dit_forward_mapping_json: '{"cache_key":"forward_kwarg"}',
+      universal_dit_output_selector_json: '{"index":0}',
+    }, typeId) as Cfg
+    expect(probing.universal_dit_forward_mapping_json).toBe('{"cache_key":"forward_kwarg"}')
+    expect(probing.universal_dit_output_selector_json).toBe('{"index":0}')
   })
 
   test('a real LyCORIS lokr draft produces a coherent network_args list', () => {

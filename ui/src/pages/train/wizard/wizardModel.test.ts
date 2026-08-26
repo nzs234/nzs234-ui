@@ -4,8 +4,6 @@ import {
   ALL_TRAINING_TYPES,
   TRAINING_TYPES,
   createDefaultConfig,
-  getFieldDefinition,
-  getSectionsForType,
 } from '@/schema/schemaIndex.js'
 import {
   WIZARD_CATEGORY_LABELS,
@@ -32,12 +30,6 @@ function stepIds(projection: WizardProjection): string[] {
   return projection.steps.map((step) => step.id)
 }
 
-function canonicalSectionFor(typeId: string, key: string): string | undefined {
-  const definition = getFieldDefinition(key, typeId)
-  if (!definition) return undefined
-  return getSectionsForType(typeId).find((section) => (section.fields || []).some((field) => field === definition))?.id
-}
-
 describe('wizardModel coverage', () => {
   test('exposes every visible registry type exactly once through wizard categories', () => {
     const visibleIds = TRAINING_TYPES
@@ -47,7 +39,13 @@ describe('wizardModel coverage', () => {
       visibleTypesForCategory(category).map((type) => type.id),
     )
 
-    expect(visibleIds).toHaveLength(38)
+    // anima-edit-model（后端无 schema）与 yolo（registered_placeholder）已隐藏。
+    // 2026-08 SDXL 桶补注册 sdxl-dreambooth / lllite / ip-adapter → 39。
+    // 第 6 站桶：krea2/flux2/zimage/boogu/wan22 共 12 型因后端 schema 注册缺失
+    // （get_all_schemas 无条目，启动必报 Unknown training schema）hidden+disabled
+    // → 39 - 12 = 27；后端补注册后恢复。
+    // 收官审计补注册 universal-dit-lora（后端已独立注册该 schema）→ 28。
+    expect(visibleIds).toHaveLength(28)
     expect(new Set(categorizedIds).size).toBe(categorizedIds.length)
     expect(new Set(categorizedIds)).toEqual(new Set(visibleIds))
     expect(wizardCategories().every((category) => WIZARD_CATEGORY_LABELS[category])).toBe(true)
@@ -85,6 +83,8 @@ describe('wizardModel coverage', () => {
     expect(categoryForTrainingType('sdxl-controlnet')).toBe('controlnet')
     expect(categoryForTrainingType('sdxl-textual-inversion')).toBe('textual_inversion')
     expect(categoryForTrainingType('lab-distiller')).toBe('specialized')
+    // 实验训练组（universal-dit-lora）与专项流程同属 specialized，不混入新手 LoRA 卡列表。
+    expect(categoryForTrainingType('universal-dit-lora')).toBe('specialized')
     expect(categoryForTrainingType('yolo')).toBe('other')
   })
 
@@ -205,8 +205,8 @@ describe('wizardModel ownership overrides', () => {
   test('sdxl-controlnet: controlnet-owning keys land in the controlnet step', () => {
     const projection = buildWizardProjection('sdxl-controlnet', createDefaultConfig('sdxl-controlnet'))
     expect(projection.category).toBe('controlnet')
-    // control_net_lr matches the controlnet token and category -> controlnet bucket.
-    expect(stepForField(projection, 'control_net_lr')?.id).toBe('controlnet')
+    // control_net_lr 已按幻影键治理隐藏（后端零读者），不再进入向导投影。
+    expect(stepForField(projection, 'control_net_lr')).toBeUndefined()
     // conditioning data is still a dataset concern, not swallowed by the controlnet fallback.
     expect(stepForField(projection, 'conditioning_data_dir')?.id).toBe('dataset')
   })
@@ -218,6 +218,44 @@ describe('wizardModel conditional steps', () => {
     const step = projection.steps.find((item) => item.id === 'controlnet')
     expect(step).toBeTruthy()
     expect(step!.visible).toBe(true)
+  })
+
+  test('universal-dit-lora: usable projection without empty adapter step (closing audit registration)', () => {
+    const meta = ALL_TRAINING_TYPES.find((type) => type.id === 'universal-dit-lora')
+    expect(meta).toBeTruthy()
+    // registry note 标注实验属性；入口可见（hidden/disabled 均未设置）。
+    expect(meta!.hidden).toBeFalsy()
+    expect(meta!.disabled).toBeFalsy()
+    expect(String((meta as typeof meta & { note?: string })?.note || '')).toContain('实验')
+
+    const config = createDefaultConfig('universal-dit-lora')
+    const projection = buildWizardProjection('universal-dit-lora', config)
+    expect(projection.category).toBe('specialized')
+
+    // 无空步：除 type/model/review 外每个可见步都必须携带字段。
+    for (const step of projection.steps) {
+      if (['type', 'model', 'review'].includes(step.id)) continue
+      expect(step.fields.length, `step ${step.id} must not be empty`).toBeGreaterThan(0)
+    }
+
+    // network_module 恒为隐藏 networks.lora，无算法卡可选面 → 不渲染 adapter 步；
+    // rank/alpha/dropout 钉进 core，与学习率同屏。
+    expect(stepIds(projection)).not.toContain('adapter')
+    expect(stepForField(projection, 'network_dim')?.id).toBe('core')
+
+    // 契约段落在向导可见面（other-settings），不是被 advanced/frontier 页签藏掉。
+    expect(stepForField(projection, 'universal_dit_probe_mode')?.id).toBe('other-settings')
+    // forward/output 两 JSON 键仅在实际执行前向的探测模式下可见（默认 auto 不出现）。
+    expect(stepForField(projection, 'universal_dit_forward_mapping_json')).toBeUndefined()
+    const forwardConfig = { ...config, universal_dit_probe_mode: 'forward' }
+    expect(stepForField(buildWizardProjection('universal-dit-lora', forwardConfig), 'universal_dit_forward_mapping_json')?.id)
+      .toBe('other-settings')
+
+    // 必填输入组：files=模型目录 / dataset=预计算张量目录 / output=output_dir。
+    const inputs = resolveTrainingInputs('universal-dit-lora', config)
+    expect(inputs.model[0]?.keys).toContain('pretrained_model_name_or_path')
+    expect(inputs.dataset[0]?.keys).toContain('train_data_dir')
+    expect(inputs.output[0]?.keys).toContain('output_dir')
   })
 
   test('sdxl-lora does NOT include a controlnet step', () => {
@@ -285,16 +323,12 @@ describe('wizardModel validateWizardStep anyOf', () => {
 })
 
 describe('wizardModel duplicate conflict winner', () => {
-  test('anima-lora conflict winner matches the actually-chosen (canonical) field section', () => {
+  test('anima-lora has zero in-type duplicate keys after ANIMA bucket single-sourcing', () => {
+    // 2026-08 ANIMA 桶把 timestep_sampling / discrete_flow_shift / flow_logit_* /
+    // mode_scale / anima_train_llm_adapter / data_backend 等双份挂载收敛为单一入口，
+    // 向导投影不再出现「后渲染 section 静默覆盖前渲染 section」的冲突。
     const projection = buildWizardProjection('anima-lora', createDefaultConfig('anima-lora'))
-    expect(projection.duplicateFieldConflicts.length).toBeGreaterThan(0)
-    for (const conflict of projection.duplicateFieldConflicts) {
-      expect(conflict.sectionIds).toContain(conflict.winnerSectionId)
-      const derived = canonicalSectionFor('anima-lora', conflict.key)
-      if (derived && conflict.sectionIds.includes(derived)) {
-        expect(conflict.winnerSectionId, `winner for ${conflict.key} should be the canonical section`).toBe(derived)
-      }
-    }
+    expect(projection.duplicateFieldConflicts.map((conflict) => `${conflict.key}@${conflict.sectionIds.join('+')}`)).toEqual([])
   })
 
   test('conflict winners are always one of the candidate sections across representative types', () => {

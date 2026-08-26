@@ -11,6 +11,7 @@ import { buildRunConfigFromSections } from './runConfigBuilder.js';
 import {
   SDXL_LORA_SECTIONS, SDXL_ILECO_SECTIONS, SDXL_ADDIFT_SECTIONS, SDXL_MULTI_ADDIFT_SECTIONS,
   SDXL_FT_SECTIONS, SDXL_CN_SECTIONS, SDXL_TI_SECTIONS,
+  SDXL_DB_SECTIONS, SDXL_LLLITE_SECTIONS, SDXL_IP_ADAPTER_SECTIONS,
 } from './sdxlSchema.js';
 import {
   ANIMA_LORA_SECTIONS, ANIMA_EDIT_MODEL_SECTIONS, ANIMA_ILECO_SECTIONS, ANIMA_ADDIFT_SECTIONS,
@@ -39,7 +40,7 @@ import {
   getAdapterFamilyCapabilities,
   getBackendAdapterFamilyCapabilities,
 } from './schemaCommon.js';
-import { S_UNIVERSAL_DIT } from './universalDitFields.js';
+import { S_UNIVERSAL_DIT, UNIVERSAL_DIT_LORA_SECTIONS } from './universalDitFields.js';
 import { MINIMAX_H3_LORA_SECTIONS, MINIMAX_H3_FT_SECTIONS } from './minimaxH3Schema.js';
 
 export { ALL_TRAINING_TYPES, UI_TABS };
@@ -85,8 +86,13 @@ const SECTIONS_MAP = {
   'sdxl-turbo-lora':        SDXL_TURBO_LORA_SECTIONS,
   'anima-few-step-lora':    ANIMA_FEW_STEP_LORA_SECTIONS,
   'newbie-few-step-lora':   NEWBIE_FEW_STEP_LORA_SECTIONS,
+  // 后端独立注册的实验类型（universal_dit_schema.py）；字段面见 universalDitFields。
+  'universal-dit-lora':     UNIVERSAL_DIT_LORA_SECTIONS,
   'concept-edit':           CONCEPT_EDIT_UNIFIED_SECTIONS,
   'sd-dreambooth':          DB_SECTIONS,
+  'sdxl-dreambooth':        SDXL_DB_SECTIONS,
+  'sdxl-controlnet-lllite': SDXL_LLLITE_SECTIONS,
+  'sdxl-ip-adapter':        SDXL_IP_ADAPTER_SECTIONS,
   'sdxl-finetune':          SDXL_FT_SECTIONS,
   'flux-finetune':          FLUX_FT_SECTIONS,
   'lumina-finetune':        LUMINA_FT_SECTIONS,
@@ -134,8 +140,9 @@ const TRAINING_INTENT_SUPPORTED_TYPES = new Set([
 const UNIVERSAL_DIT_SECTION = {
   id: 'universal-dit-settings',
   tab: 'advanced',
-  title: 'Universal DiT LoRA fallback',
-  description: '对未被专用族路由识别的 DiT/Transformer 提供的探测与基础 LoRA 接入。',
+  // E3（第 6 站桶）：这不是 fallback——开启即架构级硬覆盖（model_type=universal_dit）。
+  title: 'Universal DiT（架构级覆盖）',
+  description: '把本次训练整体切换到 Universal DiT 预计算张量路线：AutoModel 裸加载 + 探测 + 基础 LoRA。仅对无专用族路由的未知 DiT 使用。',
   fields: S_UNIVERSAL_DIT,
 };
 const TRAINING_INTENT_PROFILE_SECTION = {
@@ -215,7 +222,10 @@ export function getSectionsForType(typeId) {
   const source = SECTIONS_MAP[resolvedTypeId];
   if (!source) return [];
   if (!_profiledSectionsCache[resolvedTypeId]) {
-    const base = withTurboCore(withDatasetIntelligence(source), resolvedTypeId);
+    // hidden 节（sec(..., { hidden: true })）整节下架：数据定义保留在 schema 文件，
+    // 不渲染、不进默认值、不进 payload（第 6 站桶 preview-settings 先例）。
+    const base = withTurboCore(withDatasetIntelligence(source), resolvedTypeId)
+      .filter((section) => !section.hidden);
     _profiledSectionsCache[resolvedTypeId] = TRAINING_INTENT_SUPPORTED_TYPES.has(resolvedTypeId)
       ? [TRAINING_INTENT_PROFILE_SECTION, UNIVERSAL_DIT_SECTION, ...base]
       : base;
@@ -291,8 +301,8 @@ export function getSectionsForTab(tabKey, typeId) {
     if (tabKey === 'dataset') return s.tab === 'dataset' || s.id === 'noise-settings';
     if (tabKey === 'advanced') return s.tab === 'advanced' && s.id !== 'noise-settings';
     if (tabKey === 'frontier') return s.tab === 'frontier';
-    if (tabKey === 'model') return (s.tab === 'model' && s.id !== 'save-settings') || s.id === 'v-parameterization-settings' || s.id === 'rf-settings';
-    if (tabKey === 'training') return (s.tab === 'training' || s.id === 'save-settings') && s.id !== 'v-parameterization-settings' && s.id !== 'rf-settings';
+    if (tabKey === 'model') return (s.tab === 'model' && s.id !== 'save-settings') || s.id === 'v-parameterization-settings';
+    if (tabKey === 'training') return (s.tab === 'training' || s.id === 'save-settings') && s.id !== 'v-parameterization-settings';
     return s.tab === tabKey;
   });
 
@@ -317,17 +327,13 @@ export function getSectionsForTab(tabKey, typeId) {
   if (tabKey === 'model') {
     const modelIndex = filtered.findIndex((s) => s.id === 'model-settings');
     const vParamIndex = filtered.findIndex((s) => s.id === 'v-parameterization-settings');
-    const rfIndex = filtered.findIndex((s) => s.id === 'rf-settings');
-    const moved = [];
     if (vParamIndex !== -1) {
-      moved.push(filtered.splice(vParamIndex, 1)[0]);
-    }
-    const rfCurrentIndex = filtered.findIndex((s) => s.id === 'rf-settings');
-    if (rfCurrentIndex !== -1) {
-      moved.push(filtered.splice(rfCurrentIndex, 1)[0]);
-    }
-    if (modelIndex !== -1 && moved.length) {
-      filtered.splice(modelIndex + 1, 0, ...moved);
+      const [vParamSection] = filtered.splice(vParamIndex, 1);
+      if (modelIndex !== -1) {
+        filtered.splice(modelIndex + 1, 0, vParamSection);
+      } else {
+        filtered.unshift(vParamSection);
+      }
     }
   }
 
@@ -378,6 +384,12 @@ export function normalizeDraftValue(field, rawValue) {
   return rawValue;
 }
 
-export function buildRunConfig(config, typeId) {
-  return buildRunConfigFromSections(config, typeId, { getSectionsForType, isFieldVisible });
+export function buildRunConfig(config, typeId, opts) {
+  return buildRunConfigFromSections(config, typeId, {
+    getSectionsForType,
+    isFieldVisible,
+    // explicitKeys：调用方的「用户显式编辑过」键集（markExplicit 通道），
+    // 供提交层区分注入默认与手填值（见 normalizeKrea2VramPreset）。可省略。
+    ...(opts && opts.explicitKeys ? { explicitKeys: opts.explicitKeys } : {}),
+  });
 }

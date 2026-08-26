@@ -1,6 +1,7 @@
 {
   "model": "Model",
   "dataset": "Dataset",
+  "contract": "Contract",
   "training": "Training",
   "network": "Network",
   "optimizer": "Optimizer",

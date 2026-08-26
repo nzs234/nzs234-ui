@@ -7,25 +7,36 @@
 // start.  Do not reorder those blocks.
 
 import {
+  ALL_TRAINING_TYPES,
+  TRAINING_TYPES,
   applyBackendConfigOptions,
   getAdapterFamilyCapabilities,
   getBackendAdapterFamilyCapabilities,
   getFieldDefinition,
 } from '@/schema/schemaIndex.js'
 import {
+  doraModelFamilyKey,
+  doraStackableFamiliesForType,
+  doraSupportAuditedForType,
   normalizeAdapterEntityMutex,
   normalizeAdapterFamily as schemaNormalizeAdapterFamily,
+  resolveAdapterFamily,
   resolveWinningAdapterEntity,
 } from '@/schema/schemaCommon.js'
 import {
   adapterCategoryForFamily,
   adapterOptions,
+  adapterRestrictionNoticeKey,
+  adapterTierForFamily,
+  buildAdapterDeselection,
   buildAdapterSelection,
+  doraToggleState,
   groupAdapterOptionsByCategory,
   normalizeAdapterFamily,
   type AdapterCategoryKey,
   type AdapterOption,
 } from './adapterModel'
+import { useLocaleStore } from '@/stores/localeStore'
 
 function findCard(cards: AdapterOption[], family: string): AdapterOption {
   const found = cards.find((card) => card.family === family)
@@ -225,7 +236,6 @@ describe('adapterModel entity flag cards', () => {
     const cards = adapterOptions({}, 'sdxl-lora')
     const families = new Set(cards.map((c) => c.family))
     for (const expected of [
-      'dora',
       'hydralora',
       'fera',
       'flexrank',
@@ -251,14 +261,15 @@ describe('adapterModel entity flag cards', () => {
     expect(vera.clears).not.toContain('vera_enabled')
   })
 
-  test('DoRA card claims the legacy dora_wd alias so the wizard renders one control', () => {
-    // dora_wd is the network_args DoRA entry; the backend normalizer maps it onto
-    // dora_enabled/use_dora, so both must not appear as separate wizard inputs.
+  test('DoRA is not a method card; its alias keys belong to the dora rider', () => {
+    // DoRA is a weight-decomposition rider on the chosen algorithm, not a
+    // competing family: no card offers it and none claims its aliases.
     const cards = adapterOptions({}, 'sdxl-lora')
-    const dora = findCard(cards, 'dora')
-    expect(dora.enables).toEqual(['dora_enabled'])
-    expect(dora.hides).toContain('dora_wd')
-    expect(dora.hides).not.toContain('dora_enabled')
+    expect(cards.some((card) => card.family === 'dora')).toBe(false)
+    for (const card of cards) {
+      expect(card.hides).not.toContain('dora_wd')
+      expect(card.hides).not.toContain('use_dora')
+    }
   })
 
   test('hides only lists alias keys the type schema actually defines', () => {
@@ -296,6 +307,25 @@ describe('adapterModel disabled schema options', () => {
     expect(diagOft.compatibility).toBe('unsupported')
     expect(diagOft.disabledReason).toMatch(/FLUX OFT/)
   })
+
+  test('disabled option reasons follow UI language via the disabledReason_en channel', () => {
+    // 评审修复：可见的 disabled 选项在 EN 下不再裸露中文理由。
+    const original = useLocaleStore.getState().language
+    try {
+      useLocaleStore.getState().setLanguage('zh')
+      const zhCard = findCard(adapterOptions({}, 'flux-lora'), 'diag-oft')
+      expect(zhCard.disabledReason).toContain('暂未接入')
+      expect(zhCard.description).toContain('暂未接入')
+
+      useLocaleStore.getState().setLanguage('en')
+      const enCards = adapterOptions({}, 'flux-lora')
+      const enDiagOft = findCard(enCards, 'diag-oft')
+      expect(enDiagOft.disabledReason).toBe('FLUX OFT is not wired into the backend trainer yet')
+      expect(enDiagOft.description).toBe(enDiagOft.disabledReason)
+    } finally {
+      useLocaleStore.getState().setLanguage(original)
+    }
+  })
 })
 
 describe('adapterModel types without adapter fields', () => {
@@ -314,16 +344,27 @@ describe('adapterModel selected state (winner-id based)', () => {
     expect(findCard(cards, 'lora').selected).toBe(false)
   })
 
-  test('dora flag selects the dora card', () => {
-    const cards = adapterOptions({ lora_type: 'lora', dora_enabled: true }, 'anima-lora')
-    expect(findCard(cards, 'dora').selected).toBe(true)
-    expect(findCard(cards, 'lora').selected).toBe(false)
+  test('dora flag keeps the standard LoRA card selected and reports an enabled rider', () => {
+    const config = { lora_type: 'lora', dora_enabled: true }
+    const cards = adapterOptions(config, 'anima-lora')
+    expect(findCard(cards, 'lora').selected).toBe(true)
+    const rider = doraToggleState(config, 'anima-lora')
+    expect(rider.available).toBe(true)
+    expect(rider.supported).toBe(true)
+    expect(rider.enabled).toBe(true)
+    expect(rider.masterKey).toBe('dora_enabled')
   })
 
-  test('legacy string DoRA flags select the same canonical card', () => {
-    const cards = adapterOptions({ lora_type: 'lora', use_dora: 'true' }, 'anima-lora')
-    expect(findCard(cards, 'dora').selected).toBe(true)
-    expect(findCard(cards, 'lora').selected).toBe(false)
+  test('legacy string DoRA flags resolve to the same enabled rider on the LoRA card', () => {
+    const config = { lora_type: 'lora', use_dora: 'true' }
+    const cards = adapterOptions(config, 'anima-lora')
+    expect(findCard(cards, 'lora').selected).toBe(true)
+    const rider = doraToggleState(config, 'anima-lora')
+    expect(rider.enabled).toBe(true)
+    expect(rider.supported).toBe(true)
+    // legacy lora_type='dora' drafts resolve back to the standard LoRA card
+    const legacyCards = adapterOptions({ lora_type: 'dora', dora_enabled: true }, 'anima-lora')
+    expect(findCard(legacyCards, 'lora').selected).toBe(true)
   })
 
   test('network_module-only configs resolve to their corresponding entity family and selected card', () => {
@@ -431,8 +472,7 @@ describe('adapterModel backend-present', () => {
     const cards = adapterOptions({}, 'sdxl-lora')
     expect(findCard(cards, 'lora').compatibility).toBe('available')
     expect(findCard(cards, 'locon').compatibility).toBe('available')
-    // dora is in the local fallback but omitted by the backend -> authoritative unsupported.
-    expect(findCard(cards, 'dora').compatibility).toBe('unsupported')
+    expect(cards.some((card) => card.family === 'dora')).toBe(false)
     expect(findCard(cards, 'vera').compatibility).toBe('unsupported')
     expect(findCard(cards, 'reslora').compatibility).toBe('unsupported')
   })
@@ -480,5 +520,371 @@ describe('adapterModel field presence gating', () => {
     expect(getFieldDefinition('reslora_enabled', 'concept-edit')).toBeUndefined()
     expect(families.has('reslora')).toBe(false)
     expect(families.has('dokr')).toBe(false)
+  })
+})
+
+describe('adapterModel three-tier information architecture', () => {
+  test('every card is classified as base, enhance, or entity', () => {
+    for (const typeId of ['sdxl-lora', 'anima-lora', 'flux-lora']) {
+      for (const card of adapterOptions({}, typeId)) {
+        expect(['base', 'enhance', 'entity']).toContain(card.tier)
+        expect(card.tier).toBe(adapterTierForFamily(card.family))
+      }
+    }
+  })
+
+  test('card labels/descriptions resolve per UI language (zh default, en via FAMILY_* bilingual maps)', () => {
+    const original = useLocaleStore.getState().language
+    try {
+      useLocaleStore.getState().setLanguage('en')
+      const lora = findCard(adapterOptions({}, 'anima-lora'), 'lora')
+      expect(lora.label).toBe('Standard LoRA')
+      expect(lora.description).toBe('Best compatibility; fits most base training.')
+      // anima lora_type 的 gdlokr option 走 schemaFieldOptionsEn pack。
+      const gdlokr = findCard(adapterOptions({}, 'anima-lora'), 'gdlokr')
+      expect(gdlokr.label).toBe('GDLoKr (injected via the gdlokr_enabled entity flag)')
+
+      useLocaleStore.getState().setLanguage('zh')
+      const zhLora = findCard(adapterOptions({}, 'anima-lora'), 'lora')
+      expect(zhLora.label).toBe('标准 LoRA')
+      expect(zhLora.description).toBe('兼容性最好，适合大多数基础训练。')
+    } finally {
+      useLocaleStore.getState().setLanguage(original)
+    }
+  })
+
+  test('rsLoRA / LoRA+ are enhancements; the 14 hard-mutex entities are injectors; base algos stay base', () => {
+    expect(adapterTierForFamily('rs-lora')).toBe('enhance')
+    expect(adapterTierForFamily('lora-plus')).toBe('enhance')
+    for (const family of ['vera', 'tlora', 'flexrank', 'hydralora', 'fera', 'lora-fa', 'reslora', 'lora2', 'tensorring', 'dokr', 'gdlokr', 'cdka', 'krona', 'lora2-adaptive']) {
+      expect(adapterTierForFamily(family), family).toBe('entity')
+    }
+    for (const family of ['lora', 'locon', 'loha', 'lokr', 'glora', 'glokr', 'ia3', 'full', 'diag-oft']) {
+      expect(adapterTierForFamily(family), family).toBe('base')
+    }
+  })
+
+  test('the method select only offers base-tier cards; entities and enhancers live in their own tiers', () => {
+    const cards = adapterOptions({}, 'anima-lora')
+    const baseFamilies = new Set(cards.filter((c) => c.tier === 'base').map((c) => c.family))
+    expect(baseFamilies.has('lora')).toBe(true)
+    expect(baseFamilies.has('locon')).toBe(true)
+    // VeRA 等实体注入器不再作为基础算法方法出现
+    expect(baseFamilies.has('vera')).toBe(false)
+    expect(cards.find((c) => c.family === 'vera')?.tier).toBe('entity')
+    expect(cards.find((c) => c.family === 'rs-lora')?.tier).toBe('enhance')
+  })
+
+  test('switching an entity toggle off falls back to the standard LoRA identity and clears the flag', () => {
+    const config = { network_module: 'networks.vera', vera_enabled: true, dora_mode: 'wd' }
+    const vera = findCard(adapterOptions(config, 'sdxl-lora'), 'vera')
+    const values = buildAdapterDeselection('sdxl-lora', vera)
+    const next = normalizeAdapterEntityMutex({ ...config, ...values }) as Record<string, unknown>
+    expect(next.vera_enabled).toBe(false)
+    expect(next.network_module).toBe('networks.lora')
+    expect(resolveWinningAdapterEntity(next).id).toBe('lora')
+  })
+
+  test('base cards have no deselection path (they are chosen, not toggled)', () => {
+    const lora = findCard(adapterOptions({}, 'sdxl-lora'), 'lora')
+    expect(buildAdapterDeselection('sdxl-lora', lora)).toEqual({})
+  })
+
+  test('type-specific backend restrictions surface an explicit notice key', () => {
+    expect(adapterRestrictionNoticeKey('flux-lora')).toBe('wizard.adapter.restrict.flux_native_lora')
+    expect(adapterRestrictionNoticeKey('flux2-lora')).toBe('wizard.adapter.restrict.flux_native_lora')
+    expect(adapterRestrictionNoticeKey('minimax-h3-lora')).toBe('wizard.adapter.restrict.minimax_native_only')
+    expect(adapterRestrictionNoticeKey('minimax-h3-finetune')).toBe('wizard.adapter.restrict.minimax_native_only')
+    expect(adapterRestrictionNoticeKey('anima-lora')).toBe('wizard.adapter.restrict.anima_alias_selector')
+    expect(adapterRestrictionNoticeKey('sdxl-lora')).toBeNull()
+    expect(adapterRestrictionNoticeKey('yolo')).toBeNull()
+  })
+})
+
+describe('adapterModel unified family resolution (base-algorithm semantics)', () => {
+  test('a DoRA-enabled draft resolves to its host family, never a standalone dora family', () => {
+    // 后端 NetworkType.DORA 只是 networks.lora 的枚举别名（configs_enums.py:35-42）；
+    // UI 家族语义必须与向导选中态一致：DoRA 归入宿主基础算法。
+    expect(resolveAdapterFamily({ dora_enabled: true })).toBe('lora')
+    expect(resolveAdapterFamily({ use_dora: true })).toBe('lora')
+    expect(resolveAdapterFamily({ dora_wd: true })).toBe('lora')
+    expect(resolveAdapterFamily({ rs_lora_enabled: true, dora_enabled: true })).toBe('rs-lora')
+  })
+
+  test('expert capability predicates share the same resolution as the wizard winner', () => {
+    // anima 通过 lora_type 选择 LyCORIS：能力显隐此前解析成 lora（错误），
+    // 统一后按基础算法 ia3 解析——ia3 不支持 rank/alpha。
+    const config = { lora_type: 'ia3' }
+    expect(resolveAdapterFamily(config)).toBe('ia3')
+    const caps = getAdapterFamilyCapabilities().ia3
+    expect(caps.supports_rank).toBe(false)
+  })
+
+  test('module-driven entities resolve through the same path as winnerFamily consumers', () => {
+    expect(resolveAdapterFamily({ network_module: 'networks.vera' })).toBe('vera')
+    expect(resolveAdapterFamily({ network_module: 'networks.lora_fa' })).toBe('lora-fa')
+    expect(resolveAdapterFamily({ network_module: 'lycoris.kohya', lycoris_algo: 'glokr' })).toBe('glokr')
+    expect(resolveAdapterFamily({ network_module: 'networks.oft' })).toBe('diag-oft')
+    expect(resolveAdapterFamily({})).toBe('lora')
+  })
+})
+
+describe('adapterModel doraToggleState (weight-decomposition rider)', () => {
+  test('native networks.lora route rides via dora_enabled and is stackable', () => {
+    const rider = doraToggleState({ network_module: 'networks.lora' }, 'sdxl-lora')
+    expect(rider.available).toBe(true)
+    expect(rider.supported).toBe(true)
+    expect(rider.enabled).toBe(false)
+    // sdxl 行是能力矩阵中已实证的行（SDXL 管线排查站结论）。
+    expect(rider.audited).toBe(true)
+    expect(rider.masterKey).toBe('dora_enabled')
+    expect(rider.managedKeys).toEqual(expect.arrayContaining(['dora_enabled', 'dora_wd']))
+  })
+
+  test('module-driven LyCORIS algos cannot stack DoRA (backend ignores use_dora there)', () => {
+    // 后端注入链 LyCORIS 分支先于 use_dora 分派；LyCORIS 注入器无任何 DoRA 入口。
+    for (const algo of ['lokr', 'loha', 'locon', 'glora', 'ia3']) {
+      const rider = doraToggleState({ network_module: 'lycoris.kohya', lycoris_algo: algo }, 'sdxl-lora')
+      expect(rider.available, algo).toBe(true)
+      expect(rider.supported, algo).toBe(false)
+      expect(rider.audited, algo).toBe(true)
+    }
+  })
+
+  test('sd15 row is audited (station 5): same generic chain as SDXL, v-parameterization orthogonal', () => {
+    // SD15 站结论：select_trainer_key（entry_train.py:217-243）无特判 → 默认
+    // lulynx 注入链；dora_wd 归一化对所有 model_type 生效
+    // （config_adapter.py:511-517，closure 测试 :343-360 断言的共享 normalizer）。
+    // v_parameterization 只被 loss/时间步侧文件消费，与 DoRA 模块前向正交；
+    // sd15 TE 目标真实存在，请求训练文本编码器时 DoRA 同时落 UNet+TE1。
+    const native = doraToggleState({ network_module: 'networks.lora' }, 'sd-lora')
+    expect(native.available).toBe(true)
+    expect(native.supported).toBe(true)
+    expect(native.audited).toBe(true)
+    // sd-lora 页面与 flux 同款：只定义 dora_wd（netLora 默认，无 hideDoraWd、无
+    // LoRA 结构变体区）→ master 回退到 dora_wd。
+    expect(native.masterKey).toBe('dora_wd')
+    expect(native.managedKeys).toEqual(['dora_wd'])
+    expect(native.familyNoteI18nKey).toBeNull()
+    const lokr = doraToggleState({ network_module: 'lycoris.kohya', lycoris_algo: 'lokr' }, 'sd-lora')
+    expect(lokr.supported).toBe(false)
+    expect(lokr.audited).toBe(true)
+  })
+
+  test('station-5 cached-DiT families are audited native-only; rider stays unrendered without dora keys', () => {
+    // 第 5 站结论：krea2/zimage/boogu/flux2/wan22 共享 LulynxTrainer 注入链，
+    // TE 目标列表恒为空 → DoRA 结构性只落 DiT；深度扩层仅限 full_finetune；
+    // wan22 A14B 双塔注入排除 `_wan22_secondary`。
+    // 第 6 站桶 D 项：zimage / wan22-ti2v(5B) / boogu-Base 在 adapter 区补了单一
+    // dora_enabled rider（矩阵行本就是 stackable ['lora']）→ available=true；
+    // krea2（待 frozen_delta×DoRA 冒烟）/ boogu-edit（ref-latents 双路待冒烟）/
+    // flux2（klein σ 直通幅度量纲待签）/ wan22-t2v-a14b（单塔显存基线刚绿）暂缓，
+    // adapter 区仍无 DoRA 键 → available=false；矩阵行转正只影响 validator 文案证据态。
+    for (const typeId of ['zimage-lora', 'wan22-ti2v-lora', 'boogu-lora']) {
+      const rider = doraToggleState({}, typeId)
+      expect(rider.available, typeId).toBe(true)
+      expect(rider.supported, typeId).toBe(true)
+      expect(rider.audited, typeId).toBe(true)
+      expect(rider.masterKey, typeId).toBe('dora_enabled')
+      expect(rider.managedKeys, typeId).toEqual(['dora_enabled'])
+      expect(rider.familyNoteI18nKey, typeId).toBe('wizard.adapter.dora_toggle_family_cached_dit')
+    }
+    for (const typeId of ['krea2-lora', 'boogu-edit-lora', 'flux2-lora', 'wan22-t2v-a14b-lora']) {
+      const rider = doraToggleState({}, typeId)
+      expect(rider.available, typeId).toBe(false)
+      expect(doraSupportAuditedForType(typeId), typeId).toBe(true)
+      expect(doraStackableFamiliesForType(typeId), typeId).toEqual(['lora'])
+      // 家族提示已就位：未来补暴露 dora_wd 时 rider 直接带边界说明。
+      expect(doraModelFamilyKey(typeId), typeId).not.toBe('')
+    }
+    // finetune 变体同样命中正确矩阵行（无适配器面，rider 不渲染）。
+    for (const typeId of ['krea2-finetune', 'zimage-finetune', 'boogu-finetune', 'flux2-finetune', 'wan22-finetune']) {
+      expect(doraSupportAuditedForType(typeId), typeId).toBe(true)
+    }
+  })
+
+  test('universal-dit row is audited (station 5): probe smoke includes use_dora modules', () => {
+    // universal-dit 无前端训练类型；行仅用于 raw JSON 草稿。probe 训练冒烟在
+    // inject_exact 之后运行（inject mixin:317-345 强制 train_smoke_verified），
+    // use_dora=True 时 injected_layers 里就是 LoRALinear(use_dora=True) —— 验证面
+    // 天然覆盖 DoRA；导出/合并路径显式处理 .dora_scale/.dora_magnitude。
+    expect(doraModelFamilyKey('universal-dit-lora')).toBe('universal-dit')
+    expect(doraModelFamilyKey('universal_dit_lora')).toBe('universal-dit')
+    expect(doraSupportAuditedForType('universal-dit-lora')).toBe(true)
+    expect(doraStackableFamiliesForType('universal-dit-lora')).toEqual(['lora'])
+  })
+
+  test('hidden/unlaunchable types carry explicit empty-stackable rows (station 5)', () => {
+    // lumina/qwen-image/hunyuan-dit 在后端 _UNSUPPORTED_SCHEMA_IDS 中
+    // （training_route_catalog.py:82-91），concept-edit 无路由条目 → is_known=False，
+    // 训练本身不可启动；lab-distiller/aesthetic-scorer 非 LulynxTrainer 进程边界且
+    // schema 无适配器字段。stackable=[] 让 doraWdVisible 隐藏死 schema 上的开关。
+    for (const typeId of ['lumina-lora', 'lumina-finetune', 'qwen-image-lora', 'hunyuan-dit-lora', 'hunyuan-image-lora', 'concept-edit']) {
+      expect(doraSupportAuditedForType(typeId), typeId).toBe(true)
+      expect(doraStackableFamiliesForType(typeId), typeId).toEqual([])
+    }
+    expect(doraModelFamilyKey('lumina-lora')).toBe('lumina')
+    expect(doraModelFamilyKey('hunyuan-image-lora')).toBe('hunyuan-dit')
+    expect(doraModelFamilyKey('lumina-finetune')).toBe('lumina')
+    expect(doraModelFamilyKey('concept-edit')).toBe('concept-edit')
+    expect(doraModelFamilyKey('concept-edit')).toBe('concept-edit')
+    // 无适配器进程边界的两个可见类型同样有显式行。
+    expect(doraSupportAuditedForType('lab-distiller')).toBe(true)
+    expect(doraStackableFamiliesForType('lab-distiller')).toEqual([])
+    expect(doraSupportAuditedForType('aesthetic-scorer')).toBe(true)
+    expect(doraStackableFamiliesForType('aesthetic-scorer')).toEqual([])
+  })
+
+  test('newbie row is audited (station 3): adapter_type remap keeps rider semantics native-only', () => {
+    // NEWBIE 站结论：无专属训练器（entry_train.py select_trainer_key 走默认
+    // lulynx 分派），与 SDXL/ANIMA 同一注入链；adapter_type 二次映射
+    // （inject mixin:150-183）不改变 dora_enabled/use_dora/dora_wd 的主键语义，
+    // 仅当映射把输入变成 LyCORIS/实体赢家时 DoRA 才被短路。TE 注入按缓存条件
+    // 跳过（inject mixin:300，非 Anima 式强制）→ 家族边界通过 familyNote 暴露。
+    const native = doraToggleState({ adapter_type: 'lora', dora_enabled: true }, 'newbie-lora')
+    expect(native.available).toBe(true)
+    expect(native.supported).toBe(true)
+    expect(native.enabled).toBe(true)
+    expect(native.audited).toBe(true)
+    expect(native.masterKey).toBe('dora_enabled')
+    expect(native.familyNoteI18nKey).toBe('wizard.adapter.dora_toggle_family_newbie')
+    // LyCORIS 六算法（newbie 二次映射实际接收的集合）不可叠加。
+    for (const algo of ['lokr', 'loha', 'locon', 'ia3', 'full', 'diag-oft']) {
+      const rider = doraToggleState({ adapter_type: algo }, 'newbie-lora')
+      expect(rider.supported, algo).toBe(false)
+      expect(rider.audited, algo).toBe(true)
+    }
+    // glora/glokr 在 newbie 下拉中已禁用（后端静默降级为普通 LoRA）；
+    // 旧草稿回显时同样不得给出可叠加承诺。
+    for (const algo of ['glora', 'glokr']) {
+      const rider = doraToggleState({ adapter_type: algo }, 'newbie-lora')
+      expect(rider.supported, algo).toBe(false)
+      expect(rider.audited, algo).toBe(true)
+    }
+    // 实体注入器赢家（如 vera_enabled）同样不可叠加。
+    const vera = doraToggleState({ vera_enabled: true }, 'newbie-lora')
+    expect(vera.supported).toBe(false)
+    // few-step 契约页没有 DoRA 键 → 不渲染 rider。
+    const fewStep = doraToggleState({}, 'newbie-few-step-lora')
+    expect(fewStep.available).toBe(false)
+  })
+
+  test('anima row is audited (station 2): native-only stacking with pipeline-specific caveats', () => {
+    // ANIMA 站结论：与 SDXL 共用 LulynxTrainer 注入链，LyCORIS 分支先于
+    // use_dora 分派；cache-first 强制使 TE 恒无 DoRA，packed 显存优化器拒绝
+    // DoRA 模块 —— 家族边界通过 familyNoteI18nKey 暴露。
+    const native = doraToggleState({ lora_type: 'lora', dora_enabled: true }, 'anima-lora')
+    expect(native.available).toBe(true)
+    expect(native.supported).toBe(true)
+    expect(native.enabled).toBe(true)
+    expect(native.audited).toBe(true)
+    expect(native.masterKey).toBe('dora_enabled')
+    expect(native.familyNoteI18nKey).toBe('wizard.adapter.dora_toggle_family_anima')
+    for (const algo of ['lokr', 'loha', 'locon', 'glora', 'glokr', 'ia3', 'full', 'diag-oft']) {
+      const rider = doraToggleState({ lora_type: algo }, 'anima-lora')
+      expect(rider.supported, algo).toBe(false)
+      expect(rider.audited, algo).toBe(true)
+    }
+    // module 驱动的 LyCORIS 同样不可叠加（与 SDXL 相同的短路）。
+    const moduleRider = doraToggleState({ network_module: 'lycoris.kohya', lycoris_algo: 'lokr' }, 'anima-lora')
+    expect(moduleRider.supported).toBe(false)
+    const finetune = doraToggleState({}, 'anima-finetune')
+    expect(finetune.available).toBe(false)
+  })
+
+  test('unsupported algorithms disable the rider', () => {
+    const cases: Array<[Record<string, unknown>, string]> = [
+      [{ lora_type: 'lokr' }, 'type-driven LyCORIS (anima-style)'],
+      [{ vera_enabled: true }, 'entity winner'],
+      [{ network_module: 'networks.oft' }, 'diag-oft module'],
+    ]
+    for (const [config, label] of cases) {
+      const rider = doraToggleState(config, 'sdxl-lora')
+      expect(rider.available, label).toBe(true)
+      expect(rider.supported, label).toBe(false)
+    }
+  })
+
+  test('types without any dora key render no rider at all', () => {
+    const rider = doraToggleState({}, 'yolo')
+    expect(rider.available).toBe(false)
+    expect(rider.masterKey).toBeNull()
+  })
+
+  test('unavailable riders never report managed keys (defensive branch contract)', () => {
+    // 评审修复：available:false 与非空 managedKeys 是误导组合——不渲染的开关
+    // 不托管任何键。对所有注册类型（含仅定义 use_dora 的假想形态）统一成立。
+    for (const type of ALL_TRAINING_TYPES) {
+      const rider = doraToggleState({}, String(type.id))
+      if (!rider.available) {
+        expect(rider.managedKeys, String(type.id)).toEqual([])
+      }
+    }
+  })
+
+  test('flux-lora (dora_wd-only schema) still offers the native-LoRA rider', () => {
+    const rider = doraToggleState({ network_module: 'networks.lora_flux' }, 'flux-lora')
+    expect(rider.available).toBe(true)
+    expect(rider.supported).toBe(true)
+    // FLUX 站（第 4 站）实证：统一路由（默认）与 legacy FluxLoraTrainer 都只接受
+    // networks.lora；dora_wd 经 ConfigAdapter 归一化（config_adapter.py:511-517）
+    // 驱动两条路由，TE 恒冻结 → 行转正 audited:true 并带家族提示。
+    expect(rider.audited).toBe(true)
+    expect(rider.masterKey).toBe('dora_wd')
+    expect(rider.managedKeys).toEqual(['dora_wd'])
+    expect(rider.familyNoteI18nKey).toBe('wizard.adapter.dora_toggle_family_flux')
+    // LyCORIS 在 flux 上是 fail-closed（inject mixin:118 RuntimeError），不是静默降级。
+    const lycoris = doraToggleState({ network_module: 'lycoris.kohya', lycoris_algo: 'lokr' }, 'flux-lora')
+    expect(lycoris.supported).toBe(false)
+    expect(lycoris.audited).toBe(true)
+  })
+
+  test('ltx23/ltx25 rows are audited (station 4); no rider renders without dora keys', () => {
+    // LTX 站结论：两类型共用 canonical ltx23 运行时族（contracts/training.py:176-179
+    // 把 ltx25-lora 也映射为 ("ltx23","lora")），走通用注入链；TE 结构性不存在
+    // （ltx23_loader.py 恒 text_encoder_1=None）。前端 adapter 区无任何 DoRA 键 →
+    // rider 不渲染；矩阵行翻转只改变 validator 文案证据态。
+    for (const typeId of ['ltx23-lora', 'ltx25-lora']) {
+      const rider = doraToggleState({}, typeId)
+      expect(rider.available, typeId).toBe(false)
+      expect(rider.familyNoteI18nKey, typeId).toBeNull()
+      expect(doraSupportAuditedForType(typeId), typeId).toBe(true)
+      expect(doraStackableFamiliesForType(typeId), typeId).toEqual(['lora'])
+    }
+  })
+
+  test('backend marking the host family supports_dora:false disables the rider', () => {
+    applyBackendConfigOptions({
+      adapter_families: {
+        lora: { supports_rank: true, supports_alpha: true, supports_dora: false },
+      },
+    })
+    const rider = doraToggleState({ network_module: 'networks.lora' }, 'sdxl-lora')
+    expect(rider.available).toBe(true)
+    expect(rider.supported).toBe(false)
+  })
+
+  test('matrix closure (station 5): every visible training type hits an explicit audited row', () => {
+    // 五站收官全局一致性：可见训练类型经 doraModelFamilyKey 全部命中显式
+    // 矩阵行（audited=true，无 pending 回退）。stackable 形态只有两种：['lora']
+    // （仅原生 LoRA 可叠加）与 []（minimax-h3 硬拒 / 隐藏不可启动 / 无注入面进程
+    // 边界）；未知键才落 DORA_SUPPORT_DEFAULT_ROW 防御行。
+    // ALL_TRAINING_TYPES 是注册全表（含隐藏 legacy），可见面断言用 TRAINING_TYPES。
+    // 2026-08 SDXL 桶补注册 sdxl-dreambooth/lllite/ip-adapter（均 sdxl 行）→ 39。
+    // 第 6 站桶：krea2/flux2/zimage/boogu/wan22 共 12 型后端 schema 注册缺失，
+    // hidden+disabled（数据定义保留）→ 39 - 12 = 27。
+    // 收官审计补注册 universal-dit-lora（universal-dit 行，stackable=['lora']）→ 28。
+    expect(TRAINING_TYPES).toHaveLength(28)
+    for (const type of ALL_TRAINING_TYPES) {
+      const typeId = String(type.id)
+      expect(doraSupportAuditedForType(typeId), typeId).toBe(true)
+      const stackable = doraStackableFamiliesForType(typeId)
+      expect(
+        [JSON.stringify(['lora']), JSON.stringify([])].includes(JSON.stringify(stackable)),
+        `${typeId} → ${doraModelFamilyKey(typeId)} stackable=${JSON.stringify(stackable)}`,
+      ).toBe(true)
+      // 矩阵行存在性：family 键必须能查到行而不是落入默认 pending 行。
+      expect(doraModelFamilyKey(typeId), typeId).not.toBe('')
+    }
   })
 })

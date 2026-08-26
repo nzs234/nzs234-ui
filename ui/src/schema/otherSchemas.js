@@ -16,6 +16,7 @@ import {
   S_CAPTION,
   S_LR,
   S_TRAIN,
+  expandTrainLengthFields,
   S_PREVIEW,
   S_QUALITY_EVAL,
   S_DISTRIBUTED,
@@ -44,6 +45,19 @@ import {
 } from './schemaFrontierGroups.js';
 
 // ---- SD 1.5 LoRA ----
+// E1（2026-08 第 3 站审计，跨桶 #1）：S_TRAIN 的 network_train_text_encoder_only 被
+// 队列无条件 pop、network_train_unet_only 被 shim 默认 train_text_encoder=True 反转
+// 覆盖（training_queue_support.py:252-253）——「仅训 U-Net」勾选实际不生效（SD LoRA
+// 的 TE 恒参训）。按后端真实行为改用显式 train_text_encoder master（SDXL finetune
+// FT_TRAIN_FIELDS 三键一致先例）：worker 运行时以 config.train_text_encoder 为准
+// （trainer_prepare_adapter_inject_mixin.py:46-52,297-316），builder 提交层保证三键
+// 一致出站（runConfigBuilder removeUiOnlyFields）。train_length_mode 同步展开为
+// 轮数/步数常显（幻影治理 C）。
+const SD_LORA_TRAIN_FIELDS = [
+  { key: 'train_text_encoder', type: 'boolean', label: '训练文本编码器', title: 'train_text_encoder', desc: '开启时为 CLIP 文本编码器注入 LoRA（默认，与后端 shim 行为一致）；关闭则仅训练 U-Net。', defaultValue: true },
+  ...expandTrainLengthFields(S_TRAIN(10), { dropFakeTeSwitches: true }),
+];
+
 export const SD15_LORA_SECTIONS = [
   sec('model-settings', 'model', '训练用模型', 'SD1.5 底模与恢复训练。', [
     { key: 'model_train_type', type: 'hidden', defaultValue: 'sd-lora' },
@@ -59,7 +73,7 @@ export const SD15_LORA_SECTIONS = [
   sec('data-aug-settings', 'dataset', '数据增强', '颜色、翻转与裁剪增强。', [...S_DATA_AUG]),
   sec('network-settings', 'network', '网络设置', '', netLora('networks.lora', 32, 32, 256, [], ['networks.flexrank_lora'])),
   sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...S_LR]),
-  sec('training-settings', 'training', '训练参数', '', S_TRAIN(10)),
+  sec('training-settings', 'training', '训练参数', '', SD_LORA_TRAIN_FIELDS),
   sec('negative-semantic-regularization', 'frontier', '负面语义正则', '用负面提示词约束 LoRA 在不希望语义上的增量。', [...S_NEGATIVE_SEMANTIC_REGULARIZATION]),
   sec('v-parameterization-settings', 'training', 'V 参数化', 'v-pred 训练目标开关。', vParameterizationFields()),
   sec('rf-settings', 'training', 'Rectified Flow', 'RF / Flow Matching 训练目标与时间步策略。', rectifiedFlowParams()),
