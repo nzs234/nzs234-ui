@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
 // 第 6 站桶（收官站，2026-08）全参数修正行为门禁：LTX23/LTX25、universal-dit、
 // krea2、zimage、boogu、flux2、wan22。
-//   A. P0：12 型后端 schema 注册缺失 → hidden+disabled+原因文案；数据定义保留可恢复
+//   A. P0 已解除：12 型后端已注册（webui_owned identity-only 薄壳）→ 入口可见，
+//      数据定义保留不变
 //   B. 幻影治理：boogu 三键 hidden+剥除 / wan22·flux2 bucket 键不暴露 /
 //      krea2 aggressive 预设不再被 always-submit 默认值短路
 //   C. 补暴露：wan22 视频 3 键、universal_dit forward/output JSON、zimage use_cache 转正
@@ -20,7 +21,7 @@ import {
 } from '@/schema/schemaIndex.js'
 import { validateConfig } from '@/utils/configValidator'
 
-const HIDDEN_12 = [
+const WEBUI_OWNED_12 = [
   'krea2-lora', 'flux2-lora', 'zimage-lora', 'wan22-ti2v-lora', 'wan22-t2v-a14b-lora',
   'boogu-lora', 'boogu-edit-lora', 'krea2-finetune', 'boogu-finetune', 'flux2-finetune',
   'zimage-finetune', 'wan22-finetune',
@@ -46,20 +47,20 @@ function build(typeId: string, patch: Record<string, unknown> = {}, explicitKeys
   return buildRunConfig({ ...createDefaultConfig(typeId), ...patch }, typeId, explicitKeys ? { explicitKeys } : undefined)
 }
 
-describe('A/P0: 12 unregistered types are hidden+disabled but keep full data definitions', () => {
-  it('hides all 12 types with a reason that names the missing backend schema registration', () => {
-    expect(TRAINING_TYPES.filter((t) => (HIDDEN_12 as readonly string[]).includes(t.id))).toHaveLength(0)
-    for (const typeId of HIDDEN_12) {
+describe('A/P0 resolved: 12 webui-owned types are visible and keep full data definitions', () => {
+  it('exposes all 12 types with no hidden/disabled gating (backend registered identity-only schemas)', () => {
+    expect(TRAINING_TYPES.filter((t) => (WEBUI_OWNED_12 as readonly string[]).includes(t.id))).toHaveLength(12)
+    for (const typeId of WEBUI_OWNED_12) {
       const entry = ALL_TRAINING_TYPES.find((t) => t.id === typeId)!
       expect(entry, typeId).toBeTruthy()
-      expect(entry.hidden, typeId).toBe(true)
-      expect(entry.disabled, typeId).toBe(true)
-      expect(String(entry.disabledReason), typeId).toContain('schema')
+      expect(entry.hidden, typeId).toBeFalsy()
+      expect(entry.disabled, typeId).toBeFalsy()
+      expect(entry.disabledReason, typeId).toBeUndefined()
     }
   })
 
-  it('keeps their schema data intact so a backend registration flips visibility back on', () => {
-    for (const typeId of HIDDEN_12) {
+  it('keeps their schema data intact so the payload surface is unchanged', () => {
+    for (const typeId of WEBUI_OWNED_12) {
       const sections = getSectionsForType(typeId)
       expect(sections.length, typeId).toBeGreaterThan(3)
       expect(fieldOf(typeId, 'model_train_type')?.defaultValue, typeId).toBe(typeId)

@@ -871,10 +871,10 @@ describe('adapterModel doraToggleState (weight-decomposition rider)', () => {
     // 边界）；未知键才落 DORA_SUPPORT_DEFAULT_ROW 防御行。
     // ALL_TRAINING_TYPES 是注册全表（含隐藏 legacy），可见面断言用 TRAINING_TYPES。
     // 2026-08 SDXL 桶补注册 sdxl-dreambooth/lllite/ip-adapter（均 sdxl 行）→ 39。
-    // 第 6 站桶：krea2/flux2/zimage/boogu/wan22 共 12 型后端 schema 注册缺失，
-    // hidden+disabled（数据定义保留）→ 39 - 12 = 27。
     // 收官审计补注册 universal-dit-lora（universal-dit 行，stackable=['lora']）→ 28。
-    expect(TRAINING_TYPES).toHaveLength(28)
+    // webui-owned 解除隐藏：krea2/flux2/zimage/boogu/wan22 共 12 型后端已在
+    // webui_owned_schemas.py 补注册 → 28 + 12 = 40。
+    expect(TRAINING_TYPES).toHaveLength(40)
     for (const type of ALL_TRAINING_TYPES) {
       const typeId = String(type.id)
       expect(doraSupportAuditedForType(typeId), typeId).toBe(true)

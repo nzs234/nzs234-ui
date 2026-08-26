@@ -20,7 +20,7 @@ import {
   isFieldVisible,
 } from '../src/schema/schemaIndex.js'
 
-const EXPECTED_VISIBLE_TYPE_COUNT = 28
+const EXPECTED_VISIBLE_TYPE_COUNT = 40
 
 const MODEL_KEYS = new Set([
   'pretrained_model_name_or_path',

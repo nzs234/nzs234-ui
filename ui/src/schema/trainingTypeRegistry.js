@@ -19,23 +19,20 @@ export const TRAINING_TYPES = [
   { id: 'sdxl-lora', group: 'LoRA', label: 'SDXL' },
   { id: 'anima-lora', group: 'LoRA', label: 'Anima' },
   { id: 'newbie-lora', group: 'LoRA', label: 'Newbie' },
-  // ── 第 6 站桶（2026-08）P0：以下 krea2/flux2/zimage/boogu/wan22 共 12 型在
-  // 后端 schema 注册表（launcher/api/domain/schemas/__init__.py get_all_schemas）
-  // 中无条目：/api/run → training_request_adapter.py:494-496 直接抛
-  // "Unknown training schema"（已执行探针实证），preflight / VRAM profile 托管 /
-  // saved-config 恢复同链路失败。按先例（anima-edit-model/yolo/multi-addift）
-  // hidden+disabled 保旧草稿识别，数据定义完整保留在 SECTIONS_MAP，后端补注册后
-  // 去掉这三处标记即可一键恢复可见。
-  { id: 'krea2-lora', group: 'LoRA', label: 'Krea-2', hidden: true, disabled: true, disabledReason: '后端未注册 Krea-2 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  // ── 第 6 站桶（krea2/flux2/zimage/boogu/wan22 共 12 型）：后端已在
+  // launcher/api/domain/schemas/webui_owned_schemas.py 以 identity-only 薄壳
+  // （field_authority=webui，字段权威在 UI 侧）补齐注册，路由表
+  // training_route_catalog.py 与 arch_capability_registry 均就绪 → 入口可见。
+  { id: 'krea2-lora', group: 'LoRA', label: 'Krea-2' },
   { id: 'minimax-h3-lora', group: 'LoRA', label: 'MiniMax H3' },
-  { id: 'flux2-lora', group: 'LoRA', label: 'FLUX.2 Klein', hidden: true, disabled: true, disabledReason: '后端未注册 FLUX.2 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
-  { id: 'zimage-lora', group: 'LoRA', label: 'Z-Image', hidden: true, disabled: true, disabledReason: '后端未注册 Z-Image 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
-  { id: 'wan22-ti2v-lora', group: 'LoRA', label: 'Wan2.2 TI2V-5B', hidden: true, disabled: true, disabledReason: '后端未注册 Wan2.2 TI2V 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
-  { id: 'wan22-t2v-a14b-lora', group: 'LoRA', label: 'Wan2.2 T2V-A14B', hidden: true, disabled: true, disabledReason: '后端未注册 Wan2.2 T2V-A14B 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'flux2-lora', group: 'LoRA', label: 'FLUX.2 Klein' },
+  { id: 'zimage-lora', group: 'LoRA', label: 'Z-Image' },
+  { id: 'wan22-ti2v-lora', group: 'LoRA', label: 'Wan2.2 TI2V-5B' },
+  { id: 'wan22-t2v-a14b-lora', group: 'LoRA', label: 'Wan2.2 T2V-A14B' },
   { id: 'ltx23-lora', group: 'LoRA', label: 'LTX-2.3' },
   { id: 'ltx25-lora', group: 'LoRA', label: 'LTX-2.5' },
-  { id: 'boogu-lora', group: 'LoRA', label: 'Boogu-Image', hidden: true, disabled: true, disabledReason: '后端未注册 Boogu-Image 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
-  { id: 'boogu-edit-lora', group: 'Edit 模型', label: 'Boogu-Image Edit', hidden: true, disabled: true, disabledReason: '后端未注册 Boogu-Image Edit 训练 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'boogu-lora', group: 'LoRA', label: 'Boogu-Image' },
+  { id: 'boogu-edit-lora', group: 'Edit 模型', label: 'Boogu-Image Edit' },
   // 后端无 anima-edit-model schema/路由（get_training_schema 会 404）；
   // 保留数据定义以兼容已存草稿，入口隐藏。
   { id: 'anima-edit-model', group: 'Edit 模型', label: 'Anima', hidden: true },
@@ -71,14 +68,13 @@ export const TRAINING_TYPES = [
   { id: 'sd-multi-addift', group: 'LoRA 概念编辑', label: 'SD 1.5 Multi-ADDifT', hidden: true },
   { id: 'sdxl-finetune', group: 'Finetune', label: 'SDXL' },
   { id: 'anima-finetune', group: 'Finetune', label: 'Anima' },
-  // 第 6 站桶 P0：同上，后端 schema 注册缺失（见 LoRA 组注释）。
-  { id: 'krea2-finetune', group: 'Finetune', label: 'Krea-2', hidden: true, disabled: true, disabledReason: '后端未注册 Krea-2 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
-  { id: 'boogu-finetune', group: 'Finetune', label: 'Boogu-Image', hidden: true, disabled: true, disabledReason: '后端未注册 Boogu-Image 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'krea2-finetune', group: 'Finetune', label: 'Krea-2' },
+  { id: 'boogu-finetune', group: 'Finetune', label: 'Boogu-Image' },
   { id: 'ltx23-finetune', group: 'Finetune', label: 'LTX-2.3' },
   { id: 'ltx25-finetune', group: 'Finetune', label: 'LTX-2.5' },
-  { id: 'flux2-finetune', group: 'Finetune', label: 'FLUX.2 Klein', hidden: true, disabled: true, disabledReason: '后端未注册 FLUX.2 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
-  { id: 'zimage-finetune', group: 'Finetune', label: 'Z-Image', hidden: true, disabled: true, disabledReason: '后端未注册 Z-Image 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
-  { id: 'wan22-finetune', group: 'Finetune', label: 'Wan2.2 TI2V-5B', hidden: true, disabled: true, disabledReason: '后端未注册 Wan2.2 微调 schema，启动必报 Unknown training schema；待后端补注册后恢复。' },
+  { id: 'flux2-finetune', group: 'Finetune', label: 'FLUX.2 Klein' },
+  { id: 'zimage-finetune', group: 'Finetune', label: 'Z-Image' },
+  { id: 'wan22-finetune', group: 'Finetune', label: 'Wan2.2 TI2V-5B' },
   { id: 'minimax-h3-finetune', group: 'Finetune', label: 'MiniMax H3' },
   { id: 'lumina-finetune', group: 'Finetune', label: 'Lumina', hidden: true },
   { id: 'sd-dreambooth', group: 'Finetune', label: 'SD DreamBooth' },

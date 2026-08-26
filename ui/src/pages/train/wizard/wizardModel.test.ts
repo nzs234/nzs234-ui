@@ -41,11 +41,10 @@ describe('wizardModel coverage', () => {
 
     // anima-edit-model（后端无 schema）与 yolo（registered_placeholder）已隐藏。
     // 2026-08 SDXL 桶补注册 sdxl-dreambooth / lllite / ip-adapter → 39。
-    // 第 6 站桶：krea2/flux2/zimage/boogu/wan22 共 12 型因后端 schema 注册缺失
-    // （get_all_schemas 无条目，启动必报 Unknown training schema）hidden+disabled
-    // → 39 - 12 = 27；后端补注册后恢复。
     // 收官审计补注册 universal-dit-lora（后端已独立注册该 schema）→ 28。
-    expect(visibleIds).toHaveLength(28)
+    // webui-owned 解除隐藏：krea2/flux2/zimage/boogu/wan22 共 12 型后端已在
+    // webui_owned_schemas.py 以 identity-only 薄壳补注册 → 28 + 12 = 40。
+    expect(visibleIds).toHaveLength(40)
     expect(new Set(categorizedIds).size).toBe(categorizedIds.length)
     expect(new Set(categorizedIds)).toEqual(new Set(visibleIds))
     expect(wizardCategories().every((category) => WIZARD_CATEGORY_LABELS[category])).toBe(true)
@@ -63,7 +62,7 @@ describe('wizardModel coverage', () => {
     }
   })
 
-  test('builds a non-throwing projection for all 38 visible types', () => {
+  test('builds a non-throwing projection for all 40 visible types', () => {
     for (const type of TRAINING_TYPES) {
       const projection = buildWizardProjection(type.id, createDefaultConfig(type.id))
       const visibleKeys = projection.visibleFields.map((field) => field.key)

@@ -353,7 +353,7 @@ export function doraEnabled(config = {}) {
 // DoRA 开关。
 //
 // 未知 family 键仍落入保守默认行（audited:false）作为防御性回退；可见训练类型全集
-// （VISIBLE_TRAINING_TYPES，当前 28 型）+ 全部隐藏类型至此均有显式矩阵行，无 pending 行。
+// （VISIBLE_TRAINING_TYPES，当前 40 型）+ 全部隐藏类型至此均有显式矩阵行，无 pending 行。
 const DORA_SUPPORT_DEFAULT_ROW = Object.freeze({ stackable: Object.freeze(['lora']), audited: false });
 
 export const DORA_SUPPORT_BY_MODEL_FAMILY = Object.freeze({
