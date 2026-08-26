@@ -8,5 +8,15 @@
   "Finetune": "Finetune",
   "ControlNet": "ControlNet",
   "Textual Inversion": "Textual Inversion",
-  "专项训练": "Specialized"
+  "专项训练": "Specialized",
+  "UNet 输入": "UNet input",
+  "教师输入": "Teacher input",
+  "基础模型": "Base model",
+  "模型输入": "Model input",
+  "教师模型": "Teacher model",
+  "标注文件": "Annotation file",
+  "图像目录": "Image directory",
+  "训练数据": "Training data",
+  "YOLO 数据配置": "YOLO data config",
+  "输出位置": "Output location"
 }

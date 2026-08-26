@@ -260,7 +260,7 @@ export const S_LORA_VARIANTS = [
   { key: 'adapter_mask_pruning_interval', type: 'number', label: 'Mask 更新间隔', desc: '每隔多少 backward step 更新一次 mask。推荐范围： 100（默认）附近。', defaultValue: 100, min: 1, step: 1, visibleWhen: (c) => c.adapter_mask_pruning_enabled },
   { key: 'adapter_mask_pruning_min_rank', type: 'number', label: 'Mask 最小 Rank', desc: '每个 adapter 至少保留的 rank 数。推荐范围： 1–4。', defaultValue: 1, min: 1, step: 1, visibleWhen: (c) => c.adapter_mask_pruning_enabled },
   { key: 'adapter_mask_pruning_ema_decay', type: 'number', label: 'Mask 重要性 EMA', desc: 'weight×grad 重要性分数的 EMA 衰减。推荐范围： 0.9（默认）。', defaultValue: 0.9, min: 0, max: 0.999, step: 0.01, visibleWhen: (c) => c.adapter_mask_pruning_enabled },
-  uiGroup('实体注入器（硬互斥）', '同一线性层只能注入一种 ΔW 实体：同时开启多个时仅优先级最高者生效，其余自动关闭。DoRA 不在此列——它是叠加增强，见下方独立分组。'),
+  uiGroup('entity_injectors', '实体注入器（硬互斥）', '同一线性层只能注入一种 ΔW 实体：同时开启多个时仅优先级最高者生效，其余自动关闭。DoRA 不在此列——它是叠加增强，见下方独立分组。'),
   { key: 'adalora_enabled', type: 'boolean', label: 'AdaLoRA (SVD 自适应预算)', desc: 'AdaLoRA 按 SVD 敏感度动态分配各层 rank 预算。适合异构层重要性差异大的任务；训练稍慢。', defaultValue: false },
   { key: 'adalora_target_rank', type: 'number', label: 'AdaLoRA 目标 rank', desc: 'AdaLoRA 最终目标 rank；0 沿用全局 network_dim。推荐范围： 0 保持一致。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.adalora_enabled },
   { key: 'adalora_init_rank', type: 'number', label: 'AdaLoRA 初始 rank', desc: 'AdaLoRA 初始 rank，0 = 1.5× 目标 rank。推荐范围： 0 让其自动。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.adalora_enabled },
@@ -345,7 +345,7 @@ export const S_LORA_VARIANTS = [
   { key: 'vera_d_initial', type: 'number', label: 'VeRA d 初值', desc: 'VeRA 可学习缩放向量初值。推荐范围：保持 0.1。', defaultValue: 0.1, min: 0, step: 0.01, visibleWhen: (c) => c.vera_enabled },
   { key: 'vera_prng_key', type: 'number', label: 'VeRA PRNG 种子', desc: 'VeRA 共享随机矩阵的种子；同 seed 才能复现/加载。推荐范围：保持 0 不动。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.vera_enabled },
   { key: 'mora_enabled', type: 'boolean', label: 'MoRA（方阵适配器）', desc: 'MoRA 用 r×r 方阵替代 BA 分解，参数 r²。非 A1111 原生格式，导出为专用矩阵。建议实验性使用。', defaultValue: false },
-  uiGroup('DoRA 权重分解（叠加增强）', 'DoRA 不是独立算法：它叠加在原生 networks.lora 路线上，把权重分解为方向与幅度分别训练。LyCORIS 算法与其它实体注入器不支持叠加；向导中由「叠加增强」区的单一开关托管。'),
+  uiGroup('dora_variant_frontier', 'DoRA 权重分解（叠加增强）', 'DoRA 不是独立算法：它叠加在原生 networks.lora 路线上，把权重分解为方向与幅度分别训练。LyCORIS 算法与其它实体注入器不支持叠加；向导中由「叠加增强」区的单一开关托管。'),
   { key: 'dora_enabled', type: 'boolean', label: 'DoRA (权重分解)', desc: 'DoRA 把权重分解为方向+幅度联合训练，表达力强于同 rank LoRA 但稍慢。建议在原生 LoRA 基础上叠加使用；与 LyCORIS 族互斥（注入链短路）。', defaultValue: false },
   // dora_mode 真实支持值（后端复核 2026-08）：configs_monitoring.py:100 声明为自由
   // 字符串；运行时 DoRALinear._normalize_mode（lulynx/dora_layer.py:103-119）接受
@@ -436,6 +436,14 @@ export const S_SAMPLING_OPTIMIZATION_RESERVE = [
     { value: 'epsilon', label: 'epsilon' },
     { value: 'sample', label: 'sample' },
   ], visibleWhen: (c) => c.distillation_enabled },
+  // 内部两步轨迹研究模式（configs_training_methods.py:247-266）：激活复用
+  // distillation_enabled ∧ mode=dp_dmd_turbo，没有第二特性开关。
+  { key: 'trajectory_variant', type: 'select', label: '轨迹目标变体', desc: '两步轨迹研究目标的形状：two_step 一次跳跃+直通连接器拼接（2 次前向，默认）；sparse 沿模型自身轨迹走 K 个 detached Euler 点、无连接器（K 次前向+K 份激活），监督更密但不是省钱档。建议保持 two_step；想加稠密同轨迹监督时选 sparse 并把 sparse_steps 调到 4–8。', defaultValue: 'two_step', options: [
+    { value: 'two_step', label: 'two_step（默认）' },
+    { value: 'sparse', label: 'sparse（K 点稠密监督）' },
+  ], visibleWhen: (c) => c.distillation_enabled && String(c.distillation_mode || 'dp_dmd_turbo') === 'dp_dmd_turbo' },
+  { key: 'trajectory_sparse_steps', type: 'number', label: 'Sparse 轨迹点数', desc: 'trajectory_variant=sparse 时沿轨迹走的欧拉步点数 K（决定前向次数与显存占用）。推荐范围：4（默认）–8；下限 2。', defaultValue: 4, min: 2, step: 1, visibleWhen: (c) => c.distillation_enabled && c.trajectory_variant === 'sparse' },
+  { key: 'trajectory_mix_ratio', type: 'slider', label: '轨迹目标混合比', desc: 'micro-batch 中走轨迹目标的比例，其余走标准蒸馏目标。0.0 是有意义设置（纯标准：轨迹通路仍被解析校验但不参与）；与「未设置」在后端 resolver 里是两回事，0 会原样透传。推荐范围：1.0（全量，默认）–0.5 对照实验。', defaultValue: 1.0, min: 0, max: 1, step: 0.05, visibleWhen: (c) => c.distillation_enabled && String(c.distillation_mode || 'dp_dmd_turbo') === 'dp_dmd_turbo' },
   { key: 'distillation_diversity_anchor_weight', type: 'number', label: '蒸馏多样性锚权重', desc: '多样性锚损失权重防模式坍缩；0 关闭。推荐范围： 0 起步，坍缩迹象再加 0.01 级。', defaultValue: 0.0, min: 0, step: 0.01, visibleWhen: (c) => c.distillation_enabled },
   { key: 'distillation_fake_critic_weight', type: 'number', label: '蒸馏假 critic 权重', desc: 'fake critic 对抗项权重；0 关闭。推荐范围： 0 保持稳定。', defaultValue: 0.0, min: 0, step: 0.01, visibleWhen: (c) => c.distillation_enabled },
   { key: 'distillation_fake_critic_margin', type: 'number', label: '蒸馏假 critic margin', desc: 'fake critic 的 margin 间隔。推荐范围： 0.05（默认）。', defaultValue: 0.05, min: 0, step: 0.01, visibleWhen: (c) => c.distillation_enabled && Number(c.distillation_fake_critic_weight || 0) > 0 },

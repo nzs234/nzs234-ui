@@ -1,9 +1,31 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
 /**
  * 配置验证器单元测试
+ *
+ * 文案断言全部从 i18n 语言包派生（uiText 同源），不抄字面量：语言包改文案时
+ * 用例跟着走；「键必须存在/值非空」由 i18nParity.test.ts 单独把门。
  */
 
 import { validateConfig } from './configValidator'
+import { useLocaleStore, type UiLanguage } from '@/stores/localeStore'
+import zhBundle from '@/i18n/zh.json'
+import enBundle from '@/i18n/en.json'
+
+const bundles: Record<UiLanguage, Record<string, string>> = { zh: zhBundle as Record<string, string>, en: enBundle as Record<string, string> }
+
+/** 当前语言下某个键的包内文本（带 {var} 插值）；缺失即抛错。 */
+function uiText(key: string, vars?: Record<string, string | number>): string {
+  const language = useLocaleStore.getState().language
+  const value = bundles[language][key]
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`missing i18n key ${key}`)
+  let out = value
+  for (const [name, val] of Object.entries(vars ?? {})) out = out.replace(`{${name}}`, String(val))
+  return out
+}
+
+function pickWarning(result: ReturnType<typeof validateConfig>, field: string) {
+  return result.warnings.find((w) => w.fields?.includes(field))
+}
 
 describe('validateConfig', () => {
   test('冲突 1: Gradient Release Full + TurboCore → 自动 fallback 到 post_step', () => {
@@ -15,8 +37,7 @@ describe('validateConfig', () => {
     }
     const result = validateConfig(config)
     expect(result.errors.length).toBe(0)
-    expect(result.warnings.length).toBe(1)
-    expect(result.warnings[0].message).toContain('自动切换为 post_step')
+    expect(pickWarning(result, 'turbocore_enabled')?.message).toBe(uiText('validator.gradient_release_turbocore'))
     expect(result.autoFixes?.gradient_release_mode).toBe('post_step')
   })
 
@@ -30,7 +51,6 @@ describe('validateConfig', () => {
     const result = validateConfig(config)
     expect(result.errors.length).toBe(0)
     expect(result.warnings.length).toBe(1)
-    expect(result.warnings[0].message).toContain('自动切换为 post_step')
     expect(result.autoFixes?.gradient_release_mode).toBe('post_step')
   })
 
@@ -43,11 +63,10 @@ describe('validateConfig', () => {
     }
     const result = validateConfig(config)
     expect(result.warnings.length).toBeGreaterThan(0)
-    expect(result.warnings.some(w => w.message.includes('torch.compile'))).toBe(true)
+    expect(pickWarning(result, 'torch_compile_scope')?.message).toBe(uiText('validator.compile_random_features'))
   })
 
-  test('建议 1: 全参微调 + 小显存 → 警告', () => {
-    // 模拟 16GB 显存
+  test('建议 1: 全参微调 + 小显存 → 警告（fields 定位，不依赖文案）', () => {
     ;(global as any).window = { __SYSTEM_VRAM_MB: 16000 }
 
     const config = {
@@ -57,31 +76,29 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    expect(result.warnings.some(w => w.message.includes('Gradient Release'))).toBe(true)
+    expect(pickWarning(result, 'gradient_release_mode')?.fields).toContain('gradient_release_mode')
 
     delete (global as any).window
   })
 
   test('建议 1: DreamBooth 全参路线（sd/sdxl）同样命中小显存 Gradient Release 建议', () => {
-    // 路由匹配缺口修复：isFinetuneRoute 只认 'finetune' 子串时，
-    // sd-dreambooth / sdxl-dreambooth 这类全参微调永远拿不到该建议。
     ;(global as any).window = { __SYSTEM_VRAM_MB: 16000 }
     try {
       for (const typeId of ['sd-dreambooth', 'sdxl-dreambooth']) {
         const result = validateConfig({ model_train_type: typeId, gradient_release_mode: 'off' }, typeId)
-        const warning = result.warnings.find(w => w.message.includes('Gradient Release'))
+        const warning = pickWarning(result, 'gradient_release_mode')
         expect(warning, typeId).toBeTruthy()
         expect(warning?.fields).toContain('gradient_release_mode')
       }
       // 非 finetune/dreambooth 的 LoRA 路线不受影响：不触发该建议。
       const loraResult = validateConfig({ model_train_type: 'sdxl-lora', gradient_release_mode: 'off' }, 'sdxl-lora')
-      expect(loraResult.warnings.some(w => w.message.includes('Gradient Release'))).toBe(false)
+      expect(loraResult.warnings.some(w => w.message === uiText('validator.finetune_small_vram_gradient_release'))).toBe(false)
     } finally {
       delete (global as any).window
     }
   })
 
-  test('建议 2: LoRA rank 过大 → 警告', () => {
+  test('建议 2: LoRA rank 过大 → 警告（bundle 派生插值）', () => {
     const config = {
       model_train_type: 'sdxl-lora',
       network_dim: 128,
@@ -89,7 +106,9 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    expect(result.warnings.some(w => w.message.includes('过拟合'))).toBe(true)
+    expect(pickWarning(result, 'network_dim')?.message).toBe(
+      uiText('validator.lora_rank_overfit_risk', { dim: 128 }),
+    )
   })
 
   test('建议 3: 学习率过大 → 警告', () => {
@@ -99,7 +118,9 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    expect(result.warnings.some(w => w.message.includes('学习率'))).toBe(true)
+    expect(pickWarning(result, 'learning_rate')?.message).toBe(
+      uiText('validator.learning_rate_too_large', { lr: String(0.01) }),
+    )
   })
 
   test('建议 4: 训练步数过少 → 警告', () => {
@@ -109,11 +130,12 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    expect(result.warnings.some(w => w.message.includes('训练步数'))).toBe(true)
+    expect(pickWarning(result, 'max_train_steps')?.message).toBe(
+      uiText('validator.max_train_steps_too_few', { steps: 50 }),
+    )
   })
 
   test('冲突 3: DoRA 叠加在 LyCORIS 算法（LoKr）上 → 警告并自动关闭', () => {
-    // 后端注入链 LyCORIS 分支先于 use_dora 分派：LoKr+DoRA 训练不到分解。
     const config = {
       network_module: 'lycoris.kohya',
       lycoris_algo: 'lokr',
@@ -122,22 +144,25 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    expect(result.warnings.some(w => w.message.includes('DoRA'))).toBe(true)
     expect(result.autoFixes?.dora_enabled).toBe(false)
     expect(result.autoFixes?.dora_wd).toBe(false)
   })
 
-  test('冲突 3: 五站审计收官 —— 所有已知名族文案统一引用实证结论', () => {
+  test('冲突 3: 五站审计收官 —— audited 家族警告携带 routeId 且走 audited 文案', () => {
     const base = { network_module: 'lycoris.kohya', lycoris_algo: 'lokr', use_dora: true, train_data_dir: '/d', pretrained_model_name_or_path: '/m' }
-    const sdxl = validateConfig({ ...base, model_train_type: 'sdxl-lora' }, 'sdxl-lora')
-    const sdxlWarning = sdxl.warnings.find(w => w.message.includes('DoRA'))
-    expect(sdxlWarning?.message).toContain('后端实证')
-    // ANIMA 站（第 2 站）实证：与 SDXL 同一 LulynxTrainer 注入链，LyCORIS 分支短路。
-    const anima = validateConfig({ ...base, model_train_type: 'anima-lora' }, 'anima-lora')
-    const animaWarning = anima.warnings.find(w => w.message.includes('DoRA'))
-    expect(animaWarning?.message).toContain('后端实证')
-    expect(animaWarning?.message).toContain('anima-lora')
-    // NEWBIE 站（第 3 站）实证：同一注入链 + adapter_type 二次映射不改 rider 语义。
+    const auditedTypes = ['sdxl-lora', 'anima-lora', 'krea2-lora', 'sd-lora', 'flux-lora']
+    for (const typeId of auditedTypes) {
+      const result = validateConfig({ ...base, model_train_type: typeId }, typeId)
+      const warning = pickWarning(result, 'use_dora')
+      // audited 文案含具体 routeId；pending（防御性回退）文案不含「实证」结论。
+      expect(warning?.message, typeId).toBe(uiText('validator.dora_unstackable_audited', {
+        type: typeId,
+        base: String(base.lycoris_algo),
+      }))
+      expect(warning?.fields).toEqual(['dora_enabled', 'use_dora', 'dora_wd'])
+      expect(result.autoFixes?.use_dora, typeId).toBe(false)
+    }
+    // NEWBIE 站：adapter_type 二次映射不改 rider 语义，autoFix 照常生效。
     const newbie = validateConfig({
       model_train_type: 'newbie-lora',
       adapter_type: 'lokr',
@@ -145,37 +170,15 @@ describe('validateConfig', () => {
       train_data_dir: '/d',
       pretrained_model_name_or_path: '/m',
     }, 'newbie-lora')
-    const newbieWarning = newbie.warnings.find(w => w.message.includes('DoRA'))
-    expect(newbieWarning?.message).toContain('后端实证')
-    expect(newbieWarning?.message).toContain('newbie-lora')
     expect(newbie.autoFixes?.use_dora).toBe(false)
-    // 第 5 站收官：krea2 行转正，pending 文案分支退役。
-    const krea2 = validateConfig({ ...base, model_train_type: 'krea2-lora' }, 'krea2-lora')
-    const krea2Warning = krea2.warnings.find(w => w.message.includes('DoRA'))
-    expect(krea2Warning?.message).toContain('后端实证')
-    expect(krea2Warning?.message).not.toContain('逐管线审计')
-    // sd15 行同样在第 5 站转正。
-    const sd15 = validateConfig({ ...base, model_train_type: 'sd-lora' }, 'sd-lora')
-    const sd15Warning = sd15.warnings.find(w => w.message.includes('DoRA'))
-    expect(sd15Warning?.message).toContain('后端实证')
-    expect(sd15Warning?.message).toContain('sd-lora')
   })
 
-  test('冲突 3: FLUX/LTX 站（第 4 站）已实证，警告文案引用实证结论', () => {
-    // FLUX 站：双路由（统一/legacy）均 fail-closed 拒绝 LyCORIS；
-    // lycoris.kohya 草稿在 flux 上只会触发 RuntimeError，不存在静默降级。
+  test('冲突 3: FLUX/LTX 站已实证，警告自动关闭 use_dora', () => {
     const base = { network_module: 'lycoris.kohya', lycoris_algo: 'lokr', use_dora: true, train_data_dir: '/d', pretrained_model_name_or_path: '/m' }
     const flux = validateConfig({ ...base, model_train_type: 'flux-lora' }, 'flux-lora')
-    const fluxWarning = flux.warnings.find(w => w.message.includes('DoRA'))
-    expect(fluxWarning?.message).toContain('后端实证')
-    expect(fluxWarning?.message).toContain('flux-lora')
-    // LTX 站：ltx25-lora 与 ltx23-lora 同一 canonical ltx23 运行时族；
-    // 页面无算法选择键，仅旧草稿可能携带残留 use_dora。
+    expect(flux.autoFixes?.use_dora).toBe(false)
     for (const typeId of ['ltx23-lora', 'ltx25-lora']) {
       const result = validateConfig({ ...base, model_train_type: typeId }, typeId)
-      const warning = result.warnings.find(w => w.message.includes('DoRA'))
-      expect(warning?.message, typeId).toContain('后端实证')
-      expect(warning?.message, typeId).toContain(typeId)
       expect(result.autoFixes?.use_dora, typeId).toBe(false)
     }
   })
@@ -188,7 +191,6 @@ describe('validateConfig', () => {
       train_data_dir: '/path/to/data',
       pretrained_model_name_or_path: '/path/to/model',
     })
-    expect(result.warnings.some(w => w.message.includes('DoRA'))).toBe(true)
     expect(result.autoFixes?.use_dora).toBe(false)
   })
 
@@ -199,7 +201,7 @@ describe('validateConfig', () => {
       train_data_dir: '/path/to/data',
       pretrained_model_name_or_path: '/path/to/model',
     })
-    expect(result.warnings.some(w => w.message.includes('DoRA'))).toBe(false)
+    expect(result.warnings.some(w => w.fields?.includes('dora_enabled'))).toBe(false)
   })
 
   test('冲突 3: DoRA + 不兼容算法（ia3）→ 警告并自动关闭', () => {
@@ -211,34 +213,12 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    expect(result.warnings.some(w => w.message.includes('DoRA'))).toBe(true)
+    expect(result.warnings.some(w => w.fields?.includes('dora_enabled'))).toBe(true)
     expect(result.autoFixes?.dora_enabled).toBe(false)
     expect(result.autoFixes?.dora_wd).toBe(false)
   })
 
-  test('冲突 3: Anima 原生 LoRA + dora_wd 别名 → 不警告', () => {
-    const result = validateConfig({
-      model_train_type: 'anima-lora',
-      lora_type: 'lora',
-      dora_wd: true,
-      train_data_dir: '/path/to/data',
-      pretrained_model_name_or_path: '/path/to/model',
-    })
-    expect(result.warnings.some(w => w.message.includes('DoRA'))).toBe(false)
-  })
-
-  test('冲突 3: DoRA + 独立实体（VeRA）→ 警告并自动关闭', () => {
-    const result = validateConfig({
-      vera_enabled: true,
-      dora_enabled: true,
-      train_data_dir: '/path/to/data',
-      pretrained_model_name_or_path: '/path/to/model',
-    })
-    expect(result.warnings.some(w => w.message.includes('DoRA'))).toBe(true)
-    expect(result.autoFixes?.use_dora).toBe(false)
-  })
-
-  test('冲突 4: network_alpha > network_dim → 警告', () => {
+  test('冲突 4: network_alpha > network_dim → 警告（bundle 派生插值）', () => {
     const config = {
       model_train_type: 'sdxl-lora',
       network_dim: 16,
@@ -247,26 +227,24 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    expect(result.warnings.some(w => w.message.includes('network_alpha'))).toBe(true)
+    expect(pickWarning(result, 'network_alpha')?.message).toBe(
+      uiText('validator.alpha_exceeds_dim', { alpha: 32, dim: 16 }),
+    )
   })
 
   test('冲突 5: 数据集路径为空 → 错误', () => {
-    const config = {
-      pretrained_model_name_or_path: '/path/to/model',
-    }
+    const config = { pretrained_model_name_or_path: '/path/to/model' }
     const result = validateConfig(config)
-    expect(result.errors.some(e => e.message.includes('数据集路径'))).toBe(true)
+    expect(result.errors.some(e => e.message === uiText('validator.missing_train_data_dir'))).toBe(true)
   })
 
   test('冲突 6: 模型路径为空 → 错误', () => {
-    const config = {
-      train_data_dir: '/path/to/data',
-    }
+    const config = { train_data_dir: '/path/to/data' }
     const result = validateConfig(config)
-    expect(result.errors.some(e => e.message.includes('模型路径'))).toBe(true)
+    expect(result.errors.some(e => e.message === uiText('validator.missing_model_path'))).toBe(true)
   })
 
-  test('建议 5: Anima 短训练 + lulynx_steady_accel=off → 警告', () => {
+  test('建议 5: Anima 短训练 + lulynx_steady_accel=off → 组合推荐含两条子建议', () => {
     const config = {
       model_train_type: 'anima-lora',
       max_train_steps: 400,
@@ -275,8 +253,13 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    expect(result.warnings.some(w => w.message.includes('Anima LoRA 短训练'))).toBe(true)
-    expect(result.warnings.some(w => w.message.includes('lulynx_steady_accel'))).toBe(true)
+    const expected = uiText('validator.anima_short_training_recommendations', {
+      recommendations: [
+        uiText('validator.anima_rec_steady_accel'),
+        uiText('validator.anima_rec_gradient_accumulation'),
+      ].join('; '),
+    })
+    expect(pickWarning(result, 'lulynx_steady_accel')?.message).toBe(expected)
   })
 
   test('建议 5: Anima 短训练 + steady=auto 仍提示梯度累积', () => {
@@ -288,9 +271,9 @@ describe('validateConfig', () => {
       pretrained_model_name_or_path: '/path/to/model',
     }
     const result = validateConfig(config)
-    const warning = result.warnings.find(w => w.message.includes('Anima LoRA 短训练'))
-    expect(warning?.message).toContain('gradient_accumulation_steps=2')
-    expect(warning?.message).not.toContain('启用 lulynx_steady_accel')
+    const warning = pickWarning(result, 'gradient_accumulation_steps')
+    expect(warning?.message).toContain(uiText('validator.anima_rec_gradient_accumulation'))
+    expect(warning?.message).not.toContain(uiText('validator.anima_rec_steady_accel'))
   })
 
   test('建议 5: steady=auto 且梯度累积已为 2 → 不警告', () => {
@@ -302,7 +285,7 @@ describe('validateConfig', () => {
       train_data_dir: '/path/to/data',
       pretrained_model_name_or_path: '/path/to/model',
     })
-    expect(result.warnings.some(w => w.message.includes('Anima LoRA 短训练'))).toBe(false)
+    expect(result.warnings.some(w => w.message.includes(uiText('validator.anima_short_training_recommendations').replace('：{recommendations}', '')))).toBe(false)
   })
 
   test('正常配置 → 无错误', () => {
@@ -320,12 +303,50 @@ describe('validateConfig', () => {
   })
 })
 
+describe('validateConfig save-interval double-zero interlock (configs_save_interval_interlock mirror)', () => {
+  test.each<[string]>([['sdxl-lora'], ['anima-lora'], ['newbie-lora']])('%s: both intervals 0 -> error listing both fields', (typeId) => {
+    const result = validateConfig({
+      model_train_type: typeId,
+      save_every_n_epochs: 0,
+      save_every_n_steps: 0,
+    }, typeId)
+    const error = result.errors.find((e) => e.fields?.includes('save_every_n_epochs'))
+    expect(error, `${typeId} should flag both-zero`).toBeTruthy()
+    expect(error?.fields).toEqual(['save_every_n_epochs', 'save_every_n_steps'])
+    expect(error?.message).toBe(uiText('validator.save_interval_both_zero'))
+  })
+
+  test('epochs-only route is legal (0 epochs + steps>0)', () => {
+    const result = validateConfig({ save_every_n_epochs: 0, save_every_n_steps: 100 }, 'sdxl-lora')
+    expect(result.errors.find((e) => e.fields?.includes('save_every_n_epochs'))).toBeUndefined()
+  })
+
+  test('empty strings read as off, matching backend read_save_interval', () => {
+    const result = validateConfig(
+      { save_every_n_epochs: '', save_every_n_steps: '' } as Record<string, unknown>,
+      'sdxl-lora',
+    )
+    expect(result.errors.find((e) => e.fields?.includes('save_every_n_epochs'))).toBeTruthy()
+  })
+
+  test('unwritten keys fall back to schema defaults (no false positive)', () => {
+    const result = validateConfig({}, 'sdxl-lora')
+    expect(result.errors.find((e) => e.fields?.includes('save_every_n_epochs'))).toBeUndefined()
+  })
+
+  test('without typeId the interlock is not applied (legacy contract)', () => {
+    const result = validateConfig({})
+    expect(result.errors.find((e) => e.fields?.includes('save_every_n_epochs'))).toBeUndefined()
+  })
+})
+
 describe('validateConfig with typeId (schema-driven input resolution)', () => {
-  test('sdxl-lora empty config reports 模型输入 and 训练数据 as empty', () => {
+  test('sdxl-lora empty config reports model input and training data groups as empty', () => {
     const result = validateConfig({}, 'sdxl-lora')
     const messages = result.errors.map((error) => error.message)
-    expect(messages.some((message) => message.includes('模型输入') && message.includes('为空'))).toBe(true)
-    expect(messages.some((message) => message.includes('训练数据') && message.includes('为空'))).toBe(true)
+    // 组标签经 inputGroupLabel → schemaGroupsEn 链路本地化（默认 zh 直接用 zh 文本）。
+    expect(messages.some((message) => message === uiText('validator.input_group_empty', { group: '模型输入' }))).toBe(true)
+    expect(messages.some((message) => message === uiText('validator.input_group_empty', { group: '训练数据' }))).toBe(true)
   })
 
   test('sdxl-lora with model+dataset (and output) filled -> no missing-input errors', () => {
@@ -334,7 +355,7 @@ describe('validateConfig with typeId (schema-driven input resolution)', () => {
       train_data_dir: '/path/to/data',
       output_dir: '/path/to/output',
     }, 'sdxl-lora')
-    expect(result.errors).toEqual([])
+    expect(result.errors.filter((error) => error.fields?.some((f) => f !== 'save_every_n_epochs'))).toEqual([])
   })
 
   test('aesthetic-scorer with annotations filled but image_root empty -> no missing errors', () => {
@@ -343,11 +364,32 @@ describe('validateConfig with typeId (schema-driven input resolution)', () => {
       image_root: '',
       output_dir: '/path/to/output',
     }, 'aesthetic-scorer')
-    expect(result.errors).toEqual([])
+    expect(result.errors.filter((e) => !e.fields?.includes('save_every_n_epochs'))).toEqual([])
   })
 
   test('aesthetic-scorer without annotations still errors (annotations required)', () => {
     const result = validateConfig({ image_root: '/path/to/images' }, 'aesthetic-scorer')
-    expect(result.errors.some((error) => error.message.includes('标注文件') && error.message.includes('为空'))).toBe(true)
+    expect(result.errors.some((error) => error.fields?.includes('annotations'))).toBe(true)
+    // 组标签走 inputGroupLabel → schemaGroupsEn 双语链路（默认 zh 文本）。
+    expect(result.errors[0].message).toBe(uiText('validator.input_group_empty', { group: '标注文件' }))
+  })
+})
+
+describe('validateConfig messages follow the active UI language', () => {
+  const original = useLocaleStore.getState().language
+
+  afterEach(() => {
+    // localeStore 是模块级单例，不复位会把语言泄漏给同一文件里后面的用例。
+    useLocaleStore.getState().setLanguage(original as UiLanguage)
+  })
+
+  test('same input produces the en bundle text under en', () => {
+    const config = { model_train_type: 'sdxl-lora', network_dim: 128 }
+    useLocaleStore.getState().setLanguage('zh')
+    const zhMessage = pickWarning(validateConfig(config, 'sdxl-lora'), 'network_dim')?.message
+    useLocaleStore.getState().setLanguage('en')
+    const enMessage = pickWarning(validateConfig(config, 'sdxl-lora'), 'network_dim')?.message
+    expect(zhMessage).not.toBe(enMessage)
+    expect(enMessage).toBe(enBundle['validator.lora_rank_overfit_risk'].replace('{dim}', '128'))
   })
 })

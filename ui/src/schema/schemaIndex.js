@@ -297,7 +297,7 @@ export function applyBackendConfigOptions(optionsPayload) {
 
 export function getSectionsForTab(tabKey, typeId) {
   const sections = getSectionsForType(typeId || 'sdxl-lora');
-  let filtered = sections.filter((s) => {
+  const filtered = sections.filter((s) => {
     if (tabKey === 'dataset') return s.tab === 'dataset' || s.id === 'noise-settings';
     if (tabKey === 'advanced') return s.tab === 'advanced' && s.id !== 'noise-settings';
     if (tabKey === 'frontier') return s.tab === 'frontier';

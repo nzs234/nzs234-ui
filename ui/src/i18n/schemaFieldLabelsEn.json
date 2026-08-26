@@ -1,5 +1,12 @@
 {
   "__ui_group_compile_expert_collapsed": "Advanced Compile Strategy",
+  "__ui_group_lycoris_structure": "LyCORIS Base Structure",
+  "__ui_group_lycoris_regularization": "Regularization & Stability",
+  "__ui_group_dora_variant_common": "DoRA Weight Decomposition (Stacked Enhancement)",
+  "__ui_group_lokr_params": "LoKr-Specific Parameters",
+  "__ui_group_prefix_protection": "Prefix Protection & Scope",
+  "__ui_group_entity_injectors": "Entity Injectors (Hard Mutex)",
+  "__ui_group_dora_variant_frontier": "DoRA Weight Decomposition (Stacked Enhancement)",
   "ac_auto_lr_scale_factor": "Learning Rate",
   "ac_clip_drift_danger": "CLIP threshold",
   "ac_clip_drift_warning": "CLIP threshold",
@@ -1354,6 +1361,7 @@
   "train_data_dir": "Training Data Directory (train_data_dir)",
   "train_length_mode": "Training Mode",
   "train_norm": "Training Norm layer",
+  "lycoris_train_norm": "Train Norm Layers (lycoris_train_norm)",
   "train_quant_preset": "Train Quant Preset",
   "train_split": "Training split (train_split)",
   "train_t5xxl": "Train T5-XXL (not recommended)",
@@ -1658,5 +1666,12 @@
   "zimage_depth_expansion_enabled": "Expand Transformer Depth",
   "zimage_depth_expansion_target_layers": "Target Layer Count",
   "zimage_depth_expansion_train_scope": "Training Scope",
-  "zimage_discrete_flow_shift": "Flow Shift"
+  "zimage_discrete_flow_shift": "Flow Shift",
+  "anima_faithful_degrade_policy": "Faithful-Forward Degrade Policy",
+  "newbie_sigma_schedule": "Sigma Distribution Preset",
+  "sample_algorithm": "Preview Solver",
+  "sample_sde_eta": "SDE Noise Strength (eta)",
+  "trajectory_variant": "Trajectory Objective Variant",
+  "trajectory_sparse_steps": "Sparse Trajectory Points",
+  "trajectory_mix_ratio": "Trajectory Objective Mix Ratio"
 }

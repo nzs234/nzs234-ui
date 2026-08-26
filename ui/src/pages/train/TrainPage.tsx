@@ -35,6 +35,7 @@ import { Button } from '@/components/primitives'
 import { Input } from '@/components/form'
 import { SectionCard } from './SectionCard'
 import { useTrainingVramProfile } from './useTrainingVramProfile'
+import { TURBOCORE_OVERRIDE_KEYS, useTurboCoreGlobal } from '@/features/training/useTurboCoreGlobal'
 import { HelpModal } from './HelpModal'
 import { PreflightModal, SavedConfigsModal } from './modals'
 import './train.css'
@@ -183,6 +184,23 @@ export default function TrainPage() {
 
   // P2: 配置冲突检测 + 自动修正
   const validation = useMemo(() => validateConfig(displayDraft, typeId), [displayDraft, typeId])
+
+  // 全局 TurboCore 开关（后端 entry_train 用它覆写 run 级三键）：
+  // 开启时在受影响字段上加覆盖警示，并把警示并入 warnings 横幅/向导 review 展示。
+  const turboGlobal = useTurboCoreGlobal()
+  const turbocoreOverrideMessage = tt('turbocore.override_hint_enabled')
+  const validationWithTurbocore = useMemo(() => {
+    if (!turboGlobal.enabled) return validation
+    const alreadyListed = validation.warnings.some((w) => w.fields?.some((f) => TURBOCORE_OVERRIDE_KEYS.has(f)))
+    if (alreadyListed) return validation
+    return {
+      ...validation,
+      warnings: [
+        ...validation.warnings,
+        { message: tt('turbocore.global_override_warning'), fields: [...TURBOCORE_OVERRIDE_KEYS] },
+      ],
+    }
+  }, [validation, turboGlobal.enabled, turbocoreOverrideMessage, tt])
 
   useEffect(() => {
     if (validation.autoFixes) {
@@ -455,7 +473,7 @@ export default function TrainPage() {
           displayDraft={displayDraft}
           managedKeys={managedKeys}
           managedMessage={VRAM_PROFILE_MANAGED_MESSAGE}
-          validation={validation}
+          validation={validationWithTurbocore}
           explicitFields={allExplicitFields}
           schemaRev={schemaRev}
           igniting={igniting}
@@ -568,13 +586,13 @@ export default function TrainPage() {
             </div>
           )}
 
-          {validation.warnings.length > 0 && (
+          {validationWithTurbocore.warnings.length > 0 && (
             <div className="lx-validation-banner lx-validation-warning" role="status">
               <div className="lx-validation-icon">💡</div>
               <div className="lx-validation-content">
                 <strong>{tt('train.config_warnings')}</strong>
                 <ul>
-                  {validation.warnings.map((warn, i) => (
+                  {validationWithTurbocore.warnings.map((warn, i) => (
                     <li key={i}>{warn.message}</li>
                   ))}
                 </ul>
@@ -639,6 +657,8 @@ export default function TrainPage() {
                     managedKeys={managedKeys}
                     managedMessage={VRAM_PROFILE_MANAGED_MESSAGE}
                     expert={expertMode}
+                    overrideKeys={turboGlobal.enabled ? TURBOCORE_OVERRIDE_KEYS : undefined}
+                    overrideMessage={turbocoreOverrideMessage}
                   />
                 )) : null}
               </div>

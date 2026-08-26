@@ -8,6 +8,7 @@ import {
   normalizePreflightReport,
   type PreflightSnapshot,
 } from './preflight'
+import { I18N_BUNDLES, activeLanguage } from '@/test/i18n'
 
 describe('normalizePreflightReport', () => {
   test('errors/blockers land in blocking; issues/warnings land in confirmable; canStart honors can_start', () => {
@@ -39,7 +40,11 @@ describe('normalizePreflightReport', () => {
     const report = normalizePreflightReport({ can_start: false })
     expect(report.canStart).toBe(false)
     expect(report.blocking).toHaveLength(1)
-    expect(report.blocking[0]).toMatchObject({ message: '后端判定当前配置不可启动。', severity: 'blocker' })
+    // 文案走 i18n 双语包：断言用当前语言包派生，不抄字面量（zh/en 都得非裸键）。
+    expect(report.blocking[0]).toMatchObject({
+      message: I18N_BUNDLES[activeLanguage()]['preflight.backend_reports_unstartable'],
+      severity: 'blocker',
+    })
   })
 
   test('can_start:false with existing errors -> no duplicate generic blocker', () => {

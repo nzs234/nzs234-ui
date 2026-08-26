@@ -60,14 +60,14 @@ describe('A1: prediction target uses the backend canonical key', () => {
   })
 })
 
-describe('A2: tlora_rank_schedule aligned with backend {constant,linear,geometric}', () => {
-  it('both former cosine copies now offer the legal set with a legal default', () => {
+describe('A2: tlora_rank_schedule aligned with backend {constant,linear,cosine,geometric}', () => {
+  it('both copies offer the full backend support set (cosine promoted) with a legal default', () => {
     for (const typeId of ['anima-lora', 'anima-ileco']) {
       const fields = fieldsOf(typeId).filter((f) => f.key === 'tlora_rank_schedule')
       expect(fields.length, `${typeId} tlora_rank_schedule copies`).toBe(1)
       const field = fields[0]
       const values = Array.isArray(field.options) ? field.options : []
-      expect(values).toEqual(['constant', 'linear', 'geometric'])
+      expect(values).toEqual(['constant', 'linear', 'cosine', 'geometric'])
       expect(field.defaultValue).toBe('constant')
     }
   })

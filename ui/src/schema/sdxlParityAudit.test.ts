@@ -175,10 +175,10 @@ describe('shared static value tables align with backend legal sets', () => {
     }
   })
 
-  it('tlora_rank_schedule no longer offers the silently-degrading cosine value', () => {
+  it('tlora_rank_schedule offers the full backend support set (cosine promoted upstream)', () => {
     const field = fieldsOf('sdxl-lora').find((f) => f.key === 'tlora_rank_schedule')
     const values = field && Array.isArray(field.options) ? field.options : []
-    expect(values).toEqual(['constant', 'linear', 'geometric'])
+    expect(values).toEqual(['constant', 'linear', 'cosine', 'geometric'])
   })
 
   it('network dim slider upper bound matches backend max 1024', () => {

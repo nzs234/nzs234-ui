@@ -127,7 +127,7 @@ for (const rel of FILES) {
     const start = m.index;
     const end = i + 1 < marks.length ? marks[i + 1].index : text.length;
     out += text.slice(cursor, start);
-    let chunk = text.slice(start, end);
+    const chunk = text.slice(start, end);
     cursor = end;
 
     const key = m[1];
@@ -176,7 +176,7 @@ for (const rel of FILES) {
   if (out !== text) writeFileSync(path, out, 'utf8');
 }
 
-let touched = 0; const zero = []; const multiVariantMissed = [];
+let touched = 0; const zero = [];
 for (const key of Object.keys(CONTENT).sort()) {
   const s = stats.get(key);
   if (!s) zero.push(key);

@@ -6,12 +6,16 @@
 //      指不到任何真实字段(或 字段|值)的条目;zh/en bundle 死键
 //
 // 用法:
-//   node tools/i18nGapScan.mjs              # 汇总统计
-//   node tools/i18nGapScan.mjs --json       # 全量 JSON
+//   node tools/i18nGapScan.mjs                    # 汇总统计
+//   node tools/i18nGapScan.mjs --json             # 全量 JSON
+//   node tools/i18nGapScan.mjs --capture-baseline # 固化缺口基线(F5 门禁快照)
+//
+// 本文件同时被 src/i18n/i18nGapRegression.test.ts 直接 import(取 gapSummary),
+// 以免门禁与扫描器的判定链分叉;被 import 时不打印(见文件末尾的 isCli 判定)。
 import { TRAINING_TYPES as ALL_TRAINING_TYPES } from '../src/schema/trainingTypeRegistry.js';
 import { getSectionsForType, createDefaultConfig, isFieldVisible } from '../src/schema/schemaIndex.js';
 import { createRequire } from 'node:module';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -335,9 +339,37 @@ const summary = {
   },
 };
 
-if (process.argv.includes('--json')) {
+// 门禁消费面(src/i18n/i18nGapRegression.test.ts):导出扫描结果与基线读写,
+// 让"相对基线不得新增缺口"的判定复用同一条判定链,而不是在测试里重写一遍。
+export const gapSummary = summary;
+
+export const GAP_BASELINE_PATH = join(HERE, '.i18n-gap-baseline.json');
+
+/** 缺口基线的最小形状:只留键清单,不含计数(计数由清单派生,避免两处打架)。 */
+export function gapFingerprint(sum = summary) {
+  const tiers = ['wizard', 'standard', 'expertTab', 'hiddenType'];
+  return {
+    missingLabelEn: tiers.flatMap((tier) => sum.missingLabelEn.lists[tier]).sort(),
+    missingDescEn: tiers.flatMap((tier) => sum.missingDescEn.lists[tier]).sort(),
+    cjkOptions: sum.optionsZhOnly.items.filter((o) => CJK.test(o.label)).map((o) => o.key).sort(),
+  };
+}
+
+export function readGapBaseline() {
+  return JSON.parse(readFileSync(GAP_BASELINE_PATH, 'utf8'));
+}
+
+// import 时不产出任何输出;只有直接 node 执行才走 CLI 分支。
+const isCli = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isCli && process.argv.includes('--capture-baseline')) {
+  const fingerprint = gapFingerprint();
+  writeFileSync(GAP_BASELINE_PATH, `${JSON.stringify(fingerprint, null, 2)}\n`, 'utf8');
+  console.log(`captured gap baseline: ${GAP_BASELINE_PATH}`);
+  console.log(`  missing label_en ${fingerprint.missingLabelEn.length}, missing desc_en ${fingerprint.missingDescEn.length}, CJK options ${fingerprint.cjkOptions.length}`);
+} else if (isCli && process.argv.includes('--json')) {
   console.log(JSON.stringify(summary, null, 2));
-} else {
+} else if (isCli) {
   const t = summary.missingLabelEn.byTier;
   console.log(`fields(total unique keys): ${summary.fieldsTotal}`);
   console.log(`missing label_en: ${summary.missingLabelEn.total}  (wizard ${t.wizard} / standard ${t.standard} / expert ${t.expertTab} / hiddenType ${t.hiddenType})`);

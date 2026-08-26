@@ -115,6 +115,12 @@ const S_ANIMA_INFERENCE_ACCEL = [
 // 缺 t5_input_ids 或同时开了 reducer 等不兼容时自动回退旧路径(后端醒目提示,不报错)。native anima 默认开;后端 config.anima_faithful_forward 直接消费(Pydantic 声明字段,无需白名单)。
 const S_ANIMA_FAITHFUL_FORWARD = [
   { key: 'anima_faithful_forward', type: 'boolean', label: '忠实原生前向（native anima）', desc: '使用忠实原生 DiT 前向（native anima），与参考实现对齐。建议保持 true（默认）；性能实验才关。', defaultValue: true },
+  // 后端 configs_anima.py:434：fail|warn，默认 fail。仅作用于「请求了 faithful + 检查点带
+  // 冻结 llm_adapter + 前置条件不满足」的降级分支；无 adapter 底模走 legacy 本就是合法目的地，不受此键管。
+  { key: 'anima_faithful_degrade_policy', type: 'select', label: '忠实前向降级策略', title: 'anima_faithful_degrade_policy', desc: '请求了忠实前向、检查点带冻结 llm_adapter 但前置条件缺失（缓存缺 t5_input_ids / 开着不兼容 seam）时的行为：fail 拒绝启动（默认——legacy 条件空间没训练过该 checkpoint，跑完只会产出噪声图）；warn 提示后继续降级。建议保持 fail；确认想临时对比 legacy 路径时才选 warn。', defaultValue: 'fail', options: [
+    { value: 'fail', label: 'fail（拒绝启动，默认）' },
+    { value: 'warn', label: 'warn（提示后继续）' },
+  ], visibleWhen: (c) => c.anima_faithful_forward === true },
 ];
 
 // FG-LoRA 训练时选择性层注入 (adapter_target_policy)。默认 'all' 训练所有层=传统 LoRA=parity。
@@ -404,7 +410,7 @@ const animaConceptEditNetworkFields = [
   { key: 'network_alpha', type: 'slider', label: '网络 Alpha', title: 'network_alpha', desc: '缩放系数：有效学习率 ≈ lr × alpha/rank。推荐范围：rank 或 rank/2（如 rank=32 时 alpha=16–32）；高 rank 可降低比值求稳。', defaultValue: 16, min: 1, max: 256, step: 1 },
   { key: 'dim_from_weights', type: 'boolean', label: '从权重推断 Dim', title: 'dim_from_weights', desc: '从已加载的 network_weights 自动推断 rank/dim，忽略手填值。建议续训旧 LoRA 且不确定原参数时开启。', defaultValue: false },
   { key: 'scale_weight_norms', type: 'number', label: '最大范数正则化', title: 'scale_weight_norms', desc: '对 LoRA 权重做最大范数约束（Spectral Norm 正则），抑制过拟合。推荐范围：1（社区惯例值）；留空/0 关闭。', defaultValue: '', min: 0, step: 0.01 },
-  { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '额外把归一化层（LayerNorm/RMSNorm）纳入训练。建议角色一致性微调时试验，常规保持关闭。', defaultValue: false },
+  { key: 'lycoris_train_norm', type: 'boolean', label: '训练 Norm 层', title: 'lycoris_train_norm', desc: '额外把归一化层（LayerNorm/RMSNorm）纳入训练。后端真名 lycoris_train_norm（configs_monitoring.py:431；幻影键 train_norm 已改名，旧值后端不识别）。建议角色一致性微调时试验，常规保持关闭。', defaultValue: false },
   // dora_wd 是 legacy 别名（后端 normalizer 映射成 use_dora/dora_enabled）。
   // 可见 master 统一为 S_LORA_VARIANTS 的 dora_enabled，避免双开关互不同步。
   { key: 'dora_wd', type: 'hidden', defaultValue: false },
@@ -416,7 +422,7 @@ const animaConceptEditNetworkFields = [
   { key: 'network_dropout', type: 'number', label: 'Dropout', title: 'network_dropout', desc: '对 LoRA 输出按神经元随机置零的正则。推荐范围：0（默认）或 ≤0.1；过大伤收敛。', defaultValue: 0, min: 0, step: 0.01, visibleWhen: (c) => ['lora', 'dora', 'lora_plus', 'rs_lora', 'lora_fa', 'vera', 'tlora', 'flexrank', 'hydralora', 'fera', 'gdlokr', ...LYCORIS_DELTA_ALGOS].includes(c.lora_type) },
   { key: 'flexrank_lora_rank_range_min', type: 'number', label: 'FlexRank 最小 Rank', title: 'flexrank_lora_rank_range_min', desc: 'FlexRank 采样激活 rank 下界；上界沿用 network_dim。推荐范围：dim 的 25%–50%。', defaultValue: 1, min: 1, visibleWhen: when('lora_type', 'flexrank') },
   { key: 'tlora_min_rank', type: 'number', label: 'T-LoRA 最小 Rank', title: 'tlora_min_rank', desc: 'T-LoRA 动态 rank 下界。推荐范围：保持 1。', defaultValue: 1, min: 1, visibleWhen: when('lora_type', 'tlora') },
-  { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: '动态 rank 调度策略（constant/linear/geometric，后端支持集）。建议 constant 起步。', defaultValue: 'constant', options: ['constant', 'linear', 'geometric'], visibleWhen: when('lora_type', 'tlora') },
+  { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: '动态 rank 调度策略（constant/linear/cosine/geometric，后端支持集，cosine 于 configs_training_methods.py:442 加入）。建议 constant 起步；需要中段平滑增减 rank 时试 cosine。', defaultValue: 'constant', options: ['constant', 'linear', 'cosine', 'geometric'], visibleWhen: when('lora_type', 'tlora') },
   { key: 'tlora_orthogonal_init', type: 'boolean', label: 'T-LoRA 正交初始化', title: 'tlora_orthogonal_init', desc: '对 lora_down 用正交初始化提升早期稳定。建议默认关闭，不稳定时试开。', defaultValue: false, visibleWhen: when('lora_type', 'tlora') },
   { key: 'lokr_factor', type: 'number', label: 'LoKr 系数', title: 'lokr_factor', desc: 'LoKr Kronecker 分解因子：越大越省参数越弱表达。-1 表示无穷大因子（最省）。推荐范围：4（常用起点）～8；-1 极限压缩。', defaultValue: 8, min: -1, visibleWhen: when('lora_type', 'lokr') },
   { key: 'pissa_init', type: 'boolean', label: '启用 PiSSA 初始化', title: 'pissa_init', desc: 'PiSSA 用 SVD 主奇异分量初始化 LoRA，收敛更快更好。建议中大数据集开启；导出兼容性见导出模式选项。', defaultValue: false, visibleWhen: (c) => c.lora_type === 'lora' && !doraEnabled(c) },
@@ -549,7 +555,7 @@ export const ANIMA_LORA_SECTIONS = [
     { key: 'network_alpha', type: 'slider', label: '网络 Alpha', title: 'network_alpha', desc: '缩放系数：有效学习率 ≈ lr × alpha/rank。推荐范围：rank 或 rank/2（如 rank=32 时 alpha=16–32）；高 rank 可降低比值求稳。', defaultValue: 16, min: 1, max: 256, step: 1 },
     { key: 'dim_from_weights', type: 'boolean', label: '从权重推断 Dim', title: 'dim_from_weights', desc: '从已加载的 network_weights 自动推断 rank/dim，忽略手填值。建议续训旧 LoRA 且不确定原参数时开启。', defaultValue: false },
     { key: 'scale_weight_norms', type: 'number', label: '最大范数正则化', title: 'scale_weight_norms', desc: '对 LoRA 权重做最大范数约束（Spectral Norm 正则），抑制过拟合。推荐范围：1（社区惯例值）；留空/0 关闭。', defaultValue: '', min: 0, step: 0.01 },
-    { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '额外把归一化层（LayerNorm/RMSNorm）纳入训练。建议角色一致性微调时试验，常规保持关闭。', defaultValue: false },
+    { key: 'lycoris_train_norm', type: 'boolean', label: '训练 Norm 层', title: 'lycoris_train_norm', desc: '额外把归一化层（LayerNorm/RMSNorm）纳入训练。后端真名 lycoris_train_norm（configs_monitoring.py:431；幻影键 train_norm 已改名，旧值后端不识别）。建议角色一致性微调时试验，常规保持关闭。', defaultValue: false },
     { key: 'anima_train_llm_adapter', type: 'boolean', label: '训练 LLM Adapter', title: 'anima_train_llm_adapter', desc: '训练 LLM Adapter 附加分支（普通 Anima LoRA 不含它）。建议先跑普通 LoRA 基线再考虑，属进阶路径。', defaultValue: false },
     // dora_wd 是 legacy 别名（后端 normalizer 映射成 use_dora/dora_enabled）。
     // 可见 master 统一为 S_LORA_VARIANTS 的 dora_enabled，避免双开关互不同步。
@@ -563,9 +569,9 @@ export const ANIMA_LORA_SECTIONS = [
     { key: 'network_dropout', type: 'number', label: 'Dropout', desc: '对 LoRA 输出按神经元随机置零的正则。推荐范围：0（默认）或 ≤0.1；过大伤收敛。', defaultValue: 0, min: 0, step: 0.01, visibleWhen: (c) => ['lora', 'dora', 'lora_plus', 'rs_lora', 'lora_fa', 'vera', 'tlora', 'flexrank', 'hydralora', 'fera', 'gdlokr', ...LYCORIS_DELTA_ALGOS].includes(c.lora_type) },
     { key: 'flexrank_lora_rank_range_min', type: 'number', label: 'FlexRank 最小 Rank', title: 'flexrank_lora_rank_range_min', desc: 'FlexRank 采样激活 rank 下界；上界沿用 network_dim。推荐范围：dim 的 25%–50%。', defaultValue: 1, min: 1, visibleWhen: when('lora_type', 'flexrank') },
     { key: 'tlora_min_rank', type: 'number', label: 'T-LoRA 最小 Rank', title: 'tlora_min_rank', desc: 'T-LoRA 动态 rank 下界。推荐范围：保持 1。', defaultValue: 1, min: 1, visibleWhen: when('lora_type', 'tlora') },
-    // 后端仅认 constant/linear/geometric（configs_training_methods.py ln 声明）；
-    // cosine 为非法值，运行时静默退化为 constant。与 SDXL 桶共享副本同规则。
-    { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: '动态 rank 调度策略（constant/linear/geometric，后端支持集）。建议 constant 起步。', defaultValue: 'constant', options: ['constant', 'linear', 'geometric'], visibleWhen: when('lora_type', 'tlora') },
+    // 后端支持集 constant/linear/cosine/geometric（configs_training_methods.py:442，
+    // cosine 已转正）。与 SDXL 桶共享副本同规则。
+    { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: '动态 rank 调度策略（constant/linear/cosine/geometric，后端支持集，cosine 于 configs_training_methods.py:442 加入）。建议 constant 起步；需要中段平滑增减 rank 时试 cosine。', defaultValue: 'constant', options: ['constant', 'linear', 'cosine', 'geometric'], visibleWhen: when('lora_type', 'tlora') },
     { key: 'tlora_orthogonal_init', type: 'boolean', label: 'T-LoRA 正交初始化', title: 'tlora_orthogonal_init', desc: '对 lora_down 用正交初始化提升早期稳定。建议默认关闭，不稳定时试开。', defaultValue: false, visibleWhen: when('lora_type', 'tlora') },
     { key: 'pissa_init', type: 'boolean', label: '启用 PiSSA 初始化', title: 'pissa_init', desc: 'PiSSA 用 SVD 主奇异分量初始化 LoRA，收敛更快更好。建议中大数据集开启；导出兼容性见导出模式选项。', defaultValue: false, visibleWhen: when('lora_type', 'lora') },
     { key: 'network_args_custom', type: 'textarea', label: '自定义 network_args', title: 'network_args_custom', desc: '自定义 network_args，每行一个参数。', defaultValue: '' },

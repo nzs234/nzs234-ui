@@ -34,6 +34,8 @@ export function SectionCard({
   managedKeys,
   managedMessage,
   expert = false,
+  overrideKeys,
+  overrideMessage = '',
 }: {
   section: SchemaSection
   idx: number
@@ -46,6 +48,10 @@ export function SectionCard({
   managedKeys: ReadonlySet<string>
   managedMessage: string
   expert?: boolean
+  /** 被「更高权威」覆盖仍保持可编辑的字段集（如全局 TurboCore 覆写 run 三键）。 */
+  overrideKeys?: ReadonlySet<string>
+  /** 这些字段上展示的覆盖说明（disabledReason 同款 note，但不禁用输入）。 */
+  overrideMessage?: string
 }) {
   const { language } = useI18n()
   const visibleFields = useMemo(
@@ -77,21 +83,27 @@ export function SectionCard({
     >
       {section.description ? <p className="lx-cfg-desc">{section.description}</p> : null}
       <div className={['lx-cfg-grid', expert ? 'lx-cfg-grid--expert' : ''].filter(Boolean).join(' ')}>
-        {renderedFields.map((f) => (
-          <FieldControl
-            key={f.key}
-            field={f}
-            value={config[f.key]}
-            onChange={(raw) => onChange(f.key, raw)}
-            onHelp={onHelp}
-            disabled={managedKeys.has(f.key) || f.disabled === true}
-            disabledReason={
-              managedKeys.has(f.key) ? managedMessage
-              : f.disabled === true ? resolveDisabledReason(f, language)
-              : ''
-            }
-          />
-        ))}
+        {renderedFields.map((f) => {
+          const managed = managedKeys.has(f.key)
+          const disabled = managed || f.disabled === true
+          const overridden = !managed && !disabled && overrideKeys?.has(f.key) === true
+          return (
+            <FieldControl
+              key={f.key}
+              field={f}
+              value={config[f.key]}
+              onChange={(raw) => onChange(f.key, raw)}
+              onHelp={onHelp}
+              disabled={disabled}
+              disabledReason={
+                managed ? managedMessage
+                : f.disabled === true ? resolveDisabledReason(f, language)
+                : overridden ? overrideMessage
+                : ''
+              }
+            />
+          )
+        })}
       </div>
       {progressiveScheduleField ? (
         <ProgressivePhaseEditor

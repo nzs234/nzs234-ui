@@ -1036,7 +1036,7 @@ describe('runConfigBuilder: theory variant aliases', () => {
 describe('runConfigBuilder: adapter entity mutex', () => {
   const ENTITY_KEYS = [
     'lora2_adaptive_enabled', 'fera_enabled', 'hydralora_enabled', 'vera_enabled', 'lora_fa_enabled',
-    'tlora_enabled', 'flexrank_lora_enabled', 'reslora_enabled', 'lora2_enabled', 'tensorring_lora_enabled',
+    't_lora_enabled', 'flexrank_lora_enabled', 'reslora_enabled', 'lora2_enabled', 'tensorring_lora_enabled',
     'dokr_enabled', 'gdlokr_enabled', 'cdka_enabled', 'krona_enabled',
   ]
   const mutexFields: FieldSpec[] = [
@@ -1066,7 +1066,7 @@ describe('runConfigBuilder: adapter entity mutex', () => {
   test.each([
     ['vera', 'vera_enabled'],
     ['lora_fa', 'lora_fa_enabled'],
-    ['tlora', 'tlora_enabled'],
+    ['tlora', 't_lora_enabled'],
     ['flexrank', 'flexrank_lora_enabled'],
     ['fera', 'fera_enabled'],
     ['hydralora', 'hydralora_enabled'],
@@ -1083,7 +1083,7 @@ describe('runConfigBuilder: adapter entity mutex', () => {
   })
 
   test('adapter_type is an accepted alias of lora_type', () => {
-    expect(winners(build({ adapter_type: 'tlora' }, 'newbie-lora', mutexFields))).toEqual(['tlora_enabled'])
+    expect(winners(build({ adapter_type: 'tlora' }, 'newbie-lora', mutexFields))).toEqual(['t_lora_enabled'])
   })
 
   test('lora_type=dora stays on default LoRALinear and sets both DoRA flags', () => {
@@ -1141,7 +1141,7 @@ describe('runConfigBuilder: adapter entity mutex', () => {
   test('disabled FLUX T-LoRA module does not materialize a native master flag', () => {
     const payload = build({ network_module: 'networks.tlora_flux' }, 'flux-lora', [['network_module', 'string']])
     expect(payload.network_module).toBe('networks.tlora_flux')
-    expect(payload).not.toHaveProperty('tlora_enabled')
+    expect(payload).not.toHaveProperty('t_lora_enabled')
   })
 
   test('a LyCORIS lora_type clears every native entity toggle and DoRA alias', () => {

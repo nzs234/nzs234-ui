@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
 import { getSectionsForType, isFieldVisible } from '@/schema/schemaIndex.js'
+import { useLocaleStore } from '@/stores/localeStore'
+import { resolveGroupLabel } from '@/i18n/useI18n'
 
 export interface TrainingInputGroup {
   id: string
@@ -62,6 +64,15 @@ function firstAvailable(keys: string[], available: Set<string>): string[] {
 
 function group(id: string, label: string, keys: string[], required = true, anyOf = false): TrainingInputGroup {
   return { id, label, keys, required, anyOf }
+}
+
+/**
+ * 组标签的本地化出口：schemaGroupsEn.json 按 zh 文本映射 EN（与 TypeRail 的
+ * resolveGroupLabel 同一条链）。错误消息拼接组 label 时必须走这里，EN 界面
+ * 才不会裸露中文。
+ */
+export function inputGroupLabel(group: TrainingInputGroup): string {
+  return resolveGroupLabel(group.label, useLocaleStore.getState().language)
 }
 
 export function resolveTrainingInputs(typeId: string, config: Record<string, unknown>): TrainingInputResolution {

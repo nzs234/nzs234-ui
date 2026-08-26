@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
+import { translate } from '@/i18n/useI18n'
 
 export type PreflightListKey = 'errors' | 'blockers' | 'issues' | 'warnings' | 'notes' | 'messages' | 'checks'
 
@@ -47,7 +48,7 @@ export function normalizePreflightReport(value: unknown): NormalizedPreflightRep
   // 后端 can_start=false 而列表为空时仍按阻塞处理（后端判定当前配置不可启动）。
   const blocking = [...result.errors, ...result.blockers]
   if (!canStart && !hasExplicitBlocking) {
-    blocking.push({ message: '后端判定当前配置不可启动。', severity: 'blocker' })
+    blocking.push({ message: translate('preflight.backend_reports_unstartable'), severity: 'blocker' })
   }
   return {
     ...result,

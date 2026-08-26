@@ -115,27 +115,30 @@ describe('wizardModel coverage', () => {
       visible: true,
     } as WizardStepDefinition
 
-    expect(validateWizardStep(step, {}).errors).toEqual(['pretrained_model_name_or_path 不能为空'])
+    expect(validateWizardStep(step, {}).errors).toEqual(
+      [zhBundle['wizard.error.field_required'].replace('{key}', 'pretrained_model_name_or_path')],
+    )
     expect(validateWizardStep(step, { pretrained_model_name_or_path: 'model.safetensors' }).errors)
       .toEqual([])
   })
-
+ 
   /* ───────── displayValue 的语言边界 ─────────
    *
-   * wizardModel 是纯 domain 层:不 import i18n、不读 localeStore。所以它的返回值
-   * 只能是**语言无关的标记**(布尔 'true'/'false'、空值 '--'),本地化呈现属于 UI 层
-   * —— review 摘要若要显示「开启/关闭/未设置」,应在 WizardPage 渲染处按 typeof
-   * 分派到 t('value.on') / t('value.off') / t('value.unset'),而不是让 domain 函数
-   * 直接吐中文。
+   * wizardModel 的 displayValue 保持纯 domain 标记('true'/'false'/'--'),本地化
+   * 呈现属于 UI 层 —— review 摘要按 typeof 分派到 t('value.on') 等。
+   * validateWizardStep 是唯一例外:它的 errors 直接进界面文本,2026-08 起改走
+   * translate() 双语包(见 wizard.error.* 键);因此本文件的文案断言一律从
+   * zhBundle/enBundle 派生,不抄字面量。
    *
-   * 为什么边界必须划在这里,而不是"顺手让 displayValue 返回中文更省事":
+   * 为什么 displayValue 不能顺手返回中文/翻译:
    *  - buildWizardProjection 及其下游都是纯函数,给 domain 层引一条 store 依赖会让
-   *    投影随语言变化重算,并把 wizardModel 的可测性绑到 React/zustand 上;
+   *    投影随语言变化重算;
    *  - 硬编码中文既不是 domain 标记也不是翻译:en 用户会在 review 里看到「开启」。
    *
    * 下面三条把这条边界从三个角度钉住。第一条是正契约,二三条是防退化:
    * 单独看第二条(跨语言不变)不足以证明"语言无关" —— 硬编码中文也是跨语言不变的。
    */
+
 
   test('CONTRACT: displayValue returns language-neutral tokens, not UI copy', () => {
     // 与语言无关的部分:数组拼接与数字透传,当前实现已满足。
@@ -302,7 +305,7 @@ describe('wizardModel validateWizardStep anyOf', () => {
   test('sdxl-lora files step: empty config errors, any one base key clears them', () => {
     const step = filesStep()
     const empty = validateWizardStep(step, {}, 'sdxl-lora')
-    expect(empty.errors.some((message) => message.includes('至少需要填写一项'))).toBe(true)
+    expect(empty.errors.some((message) => message.includes(zhBundle['wizard.error.group_anyof_empty'].replace('{group}', '')))).toBe(true)
     expect(empty.requiredKeys).toContain('pretrained_model_name_or_path')
 
     const filled = validateWizardStep(step, { pretrained_model_name_or_path: '/models/sdxl' }, 'sdxl-lora')
@@ -314,7 +317,7 @@ describe('wizardModel validateWizardStep anyOf', () => {
     const baseKey = resolveTrainingInputs('newbie-lora', {}).model.find((group) => group.id === 'base-model')!.keys[0]
 
     const transformerOnly = validateWizardStep(step, { transformer_path: '/models/transformer' }, 'newbie-lora')
-    expect(transformerOnly.errors.some((message) => message.includes('不能为空'))).toBe(true)
+    expect(transformerOnly.errors.some((message) => message.includes(zhBundle['wizard.error.field_required'].replace('{key}', '').trim()))).toBe(true)
 
     const baseFilled = validateWizardStep(step, { transformer_path: '/models/transformer', [baseKey]: '/models/base' }, 'newbie-lora')
     expect(baseFilled.errors).toEqual([])

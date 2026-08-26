@@ -808,6 +808,8 @@ export const NATIVE_ADAPTER_TYPES = [
 //   lora2_adaptive(独立 injector) > fera > hydralora > vera > lora_fa > tlora >
 //   flexrank > reslora > lora2_gate > tensorring > dokr > gdlokr > cdka > krona >
 //   default LoRA(+dora/adalora 仅挂 default)
+// T-LoRA master 键用后端真名 t_lora_enabled（configs_training_methods.py:439）；
+// 旧 UI 内部键 tlora_enabled 不是 trainer 配置字段也无别名，pydantic 静默丢弃。
 const _truthy = (v) => v === true || v === 1 || String(v ?? '').trim().toLowerCase() === 'true';
 
 /** @type {ReadonlyArray<{ id: string, key: string, label: string }>} */
@@ -817,7 +819,7 @@ export const ADAPTER_ENTITY_PRIORITY = Object.freeze([
   { id: 'hydralora', key: 'hydralora_enabled', label: 'HydraLoRA' },
   { id: 'vera', key: 'vera_enabled', label: 'VeRA' },
   { id: 'lora_fa', key: 'lora_fa_enabled', label: 'LoRA-FA' },
-  { id: 'tlora', key: 'tlora_enabled', label: 'T-LoRA' },
+  { id: 'tlora', key: 't_lora_enabled', label: 'T-LoRA' },
   { id: 'flexrank', key: 'flexrank_lora_enabled', label: 'FlexRank' },
   { id: 'reslora', key: 'reslora_enabled', label: 'ResLoRA' },
   { id: 'lora2', key: 'lora2_enabled', label: 'LoRA2 Gate' },
@@ -963,7 +965,10 @@ export function normalizeAdapterEntityMutex(payload = {}) {
   // lora_type 侧的常见映射（与 newbie prepare 对齐）
   if (loraType === 'vera') payload.vera_enabled = true;
   if (loraType === 'lora_fa') payload.lora_fa_enabled = true;
-  if (loraType === 'tlora') payload.tlora_enabled = true;
+  if (loraType === 'tlora') payload.t_lora_enabled = true;
+  // tlora_enabled 是本表改名前的 UI 内部键：旧草稿/旧提交的残值一律剥除，
+  // 避免死键继续随 payload 出站。
+  delete payload.tlora_enabled;
   if (loraType === 'flexrank') payload.flexrank_lora_enabled = true;
   if (loraType === 'fera') payload.fera_enabled = true;
   if (loraType === 'hydralora' || loraType === 'hydra_lora') payload.hydralora_enabled = true;
@@ -992,7 +997,7 @@ export function normalizeAdapterEntityMutex(payload = {}) {
   for (const ent of ADAPTER_ENTITY_PRIORITY) {
     if (unsupportedFluxModule) {
       // The disabled FLUX T-LoRA option is retained for draft diagnostics, but
-      // its schema has no native tlora_enabled master to materialize.
+      // its schema has no native t_lora_enabled master to materialize.
       if (Object.prototype.hasOwnProperty.call(payload, ent.key)) payload[ent.key] = false;
       continue;
     }
@@ -1149,9 +1154,9 @@ export const BLOCK_SWAP_STRATEGY_OPTIONS = [
 // ---- DiT 检查点字段构造器 ----
 export const ditGradientCheckpointingField = (family, defaultValue = true) => ({
   key: 'gradient_checkpointing',
-  type: 'boolean', desc: '反传时重算激活以省显存（约换 20–30% 速度）。建议除显存富余外保持开启（默认 true）。',
+  type: 'boolean',
   label: `${family} 通用检查点`,
-  desc: `${family} 通用检查点；主路径看加速页 DiT Block Checkpointing，建议显存不足时优先用分块检查点而不是本开关。`,
+  desc: `${family} 通用检查点：反传时重算激活以省显存（约换 20–30% 速度）；主路径看加速页 DiT Block Checkpointing，建议显存不足时优先用分块检查点而不是本开关。`,
   defaultValue,
 });
 
@@ -1214,8 +1219,11 @@ export const ds = (reso, bucketMax = 2048, bucketStep = 64, extra = []) => [
 ];
 
 // ---- UI 分组占位字段 ----
-export const uiGroup = (title, desc = '', visibleWhen = null) => ({
-  key: `__ui_group_${title.replace(/[^a-zA-Z0-9]+/g, '_').toLowerCase()}`,
+// 第一参数必须是显式稳定 id：旧实现从标题折叠生成 key，纯中文标题会全部折叠成
+// 同一个 `__ui_group_`，多组之间互相碰撞（React key 复用/折叠态共享）。id 用
+// ascii 短横线命名，i18n EN 包按 `__ui_group_<id>` 补 label/desc。
+export const uiGroup = (id, title, desc = '', visibleWhen = null) => ({
+  key: `__ui_group_${id}`,
   type: 'ui_group',
   label: title,
   desc,
@@ -1245,25 +1253,25 @@ export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], ext
   // 这些字段的 visibleWhen 锚在 lycorisNetworkSelected 上永不可见，纯属死 schema
   // 重量（2026-08 第 3 站审计 F 项）。
   ...(includeLycoris ? [
-    uiGroup('LyCORIS 基础结构', '这里放算法类型、卷积维度、preset 这类决定网络骨架的参数。普通 LoRA 路线可直接忽略。', lycorisNetworkSelected),
+    uiGroup('lycoris_structure', 'LyCORIS 基础结构', '这里放算法类型、卷积维度、preset 这类决定网络骨架的参数。普通 LoRA 路线可直接忽略。', lycorisNetworkSelected),
     { key: 'lycoris_algo', type: 'select', label: 'LyCORIS 算法', title: 'lycoris_algo', desc: 'LyCORIS 具体算法（LoCon/LoHa/LoKr/IA3/Diag-Oft 等后端原生集）。按容量/速度需求选择，建议 LoCon 起步。', defaultValue: 'locon', options: SUPPORTED_LYCORIS_ALGOS, visibleWhen: lycorisNetworkSelected },
     { key: 'conv_dim', type: 'number', label: '卷积维度', title: 'conv_dim', desc: 'Conv 层的 rank（作用卷积投影）。推荐范围：与 network_dim 相同或减半；仅影响含 Conv 的目标层。', defaultValue: 4, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
     { key: 'conv_alpha', type: 'number', label: '卷积 Alpha', title: 'conv_alpha', desc: 'Conv 层缩放系数。推荐范围：与 conv_dim 对齐（=dim 或 dim/2）。', defaultValue: 1, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
     { key: 'lycoris_preset', type: 'string', label: 'LyCORIS Preset', title: 'lycoris_preset', desc: '传给 LyCORIS 库的 preset。', defaultValue: '', visibleWhen: lycorisNetworkSelected },
-    uiGroup('正则化与稳定性', 'LyCORIS 专用 dropout / 正则项。大多数训练保持默认即可。', lycorisNetworkSelected),
+    uiGroup('lycoris_regularization', '正则化与稳定性', 'LyCORIS 专用 dropout / 正则项。大多数训练保持默认即可。', lycorisNetworkSelected),
     { key: 'dropout', type: 'number', label: 'LyCORIS Dropout', desc: 'LyCORIS 主 dropout 概率。推荐范围：0–0.1，默认 0。', defaultValue: 0, min: 0, max: 1, step: 0.01, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_DELTA_ALGOS.includes(c.lycoris_algo) },
     { key: 'rank_dropout', type: 'number', label: 'LoKr Rank Dropout', title: 'rank_dropout', desc: '按 rank/输出维度随机丢弃的概率（LoKr 等变体）。推荐范围：0 默认；≤0.1 试验。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
     { key: 'module_dropout', type: 'number', label: 'LoKr Module Dropout', title: 'module_dropout', desc: '按整个模块随机丢弃的概率。推荐范围：0 默认；≤0.1 试验，过大明显伤收敛。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
     { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '额外把归一化层（LayerNorm/RMSNorm）纳入训练。建议角色一致性微调时试验，常规保持关闭。', defaultValue: false, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && c.lycoris_algo !== 'ia3' },
   ] : []),
-  uiGroup('DoRA 权重分解（叠加增强）', 'DoRA 不是独立算法，而是叠加在标准 LoRA 路线上的增强：把权重分解为方向与幅度分别训练。后端注入链中 LyCORIS 分支先于 DoRA 分派，因此 LyCORIS 算法路线上的叠加开关不会生效。', doraWdVisible),
+  uiGroup('dora_variant_common', 'DoRA 权重分解（叠加增强）', 'DoRA 不是独立算法，而是叠加在标准 LoRA 路线上的增强：把权重分解为方向与幅度分别训练。后端注入链中 LyCORIS 分支先于 DoRA 分派，因此 LyCORIS 算法路线上的叠加开关不会生效。', doraWdVisible),
   { key: 'dora_wd', type: opts.hideDoraWd ? 'hidden' : 'boolean', label: '启用 DoRA 权重分解', title: 'dora_wd', desc: opts.hideDoraWd ? DORA_WD_DESC_ALIAS : DORA_WD_DESC_MASTER, defaultValue: false, visibleWhen: opts.hideDoraWd ? undefined : doraWdVisible },
   { key: 'adapter_init_strategy', type: 'select', label: 'LoRA 初始化策略', title: 'adapter_init_strategy', desc: '统一初始化入口：default 标准 LoRA；pissa/olora/loftq 特殊初始化（仍走请求管线，不加新入口）。建议 default，需要快速收敛换 pissa。', defaultValue: 'default', options: ADAPTER_INIT_STRATEGY_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), (c) => !doraEnabled(c)) },
   { key: 'adapter_init_export_mode', type: 'select', label: '初始化导出模式', title: 'adapter_init_export_mode', desc: '特殊初始化产物的导出方式：auto 在最终保存时转成可直接加载到原底模的 LoRA。建议 auto。', defaultValue: 'auto', options: ADAPTER_INIT_EXPORT_MODE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), nativeLoraInitSelected) },
   { key: 'loftq_bits', type: 'number', label: 'LoftQ 量化位宽', title: 'loftq_bits', desc: 'LoftQ 量化位宽（fake-quant 初始化，不是持久 4bit 底座）。推荐范围：4（默认）或 8。', defaultValue: 4, min: 2, max: 8, step: 1, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
   { key: 'loftq_quant_type', type: 'select', label: 'LoftQ 量化粒度', title: 'loftq_quant_type', desc: '量化粒度：rowwise 按输出通道，tensorwise 整张量。建议 rowwise（默认，精度更好）。', defaultValue: 'rowwise', options: LOFTQ_QUANT_TYPE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
   ...(includeLycoris ? [
-    uiGroup('LoKr 专属参数', '这组只会在 LoKr 下出现，包含 Kronecker 分解方式、双侧分解和 full matrix 等更重口味的结构控制。', all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'))),
+    uiGroup('lokr_params', 'LoKr 专属参数', '这组只会在 LoKr 下出现，包含 Kronecker 分解方式、双侧分解和 full matrix 等更重口味的结构控制。', all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'))),
     { key: 'lokr_factor', type: 'number', label: 'LoKr 系数', title: 'lokr_factor', desc: 'LoKr Kronecker 分解因子：越大越省参数越弱表达。-1 表示无穷大因子（最省）。推荐范围：4（常用起点）～8；-1 极限压缩。', defaultValue: -1, min: -1, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
     { key: 'decompose_both', type: 'boolean', label: 'LoKr 双侧分解', title: 'decompose_both', desc: 'LoKr 额外分解较小侧矩阵，进一步省参数但更慢。建议默认关闭，参数预算极紧时开。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
     { key: 'full_matrix', type: 'boolean', label: 'LoKr Full Matrix', title: 'full_matrix', desc: '强制 LoKr 走完整矩阵路径（放弃分解收益换稳定）。建议排查 LoKr 数值问题时临时开启。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useToastStore } from '@/stores/toastStore'
 import { X } from 'lucide-react'
 
@@ -20,7 +20,8 @@ export function Modal({
 }) {
   const modalRef = useRef<HTMLDivElement>(null)
   const prevActiveRef = useRef<HTMLElement | null>(null)
-  const titleIdRef = useRef(`lx-modal-title-${Math.random().toString(36).slice(2, 9)}`)
+  // useId 而非 Math.random():SSR/并发渲染下稳定,且渲染期读 ref.current 属于不纯读取。
+  const titleId = useId()
 
   useEffect(() => {
     if (!open) return
@@ -94,12 +95,12 @@ export function Modal({
         style={width ? { maxWidth: width } : undefined}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleIdRef.current}
+        aria-labelledby={titleId}
         aria-label={typeof title === 'string' ? title : undefined}
         tabIndex={-1}
       >
         <div className="lx-modal-head">
-          <span id={titleIdRef.current} className="lx-modal-title">{title}</span>
+          <span id={titleId} className="lx-modal-title">{title}</span>
           <button type="button" className="lx-btn sm ghost" onClick={onClose} aria-label="Close dialog">
             <X size={15} />
           </button>

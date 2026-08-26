@@ -536,8 +536,12 @@ export const NEWBIE_LORA_SECTIONS = [
   sec('save-settings', 'model', '输出与保存', '输出路径与 checkpoint / 训练状态保存。', [
     { key: 'output_dir', type: 'folder', pickerType: 'folder', label: '输出目录', title: 'output_dir', desc: '模型输出目录。建议指向专用盘的 models/lora 类目录，避免系统盘；训练缓存与数据集分开存放。', defaultValue: './output/newbie' },
     { key: 'output_name', type: 'string', label: '输出名称', title: 'output_name', desc: '输出文件名（不含扩展名）。建议用「概念名+版本」命名（如 lulu_v2），同一目录多次训练勿重名以免覆盖。', defaultValue: 'newbie-lora' },
-    { key: 'save_every_n_steps', type: 'number', label: '每 N 步保存', title: 'save_every_n_steps', desc: '每 N 步保存一次模型。推荐范围：500–2000；与 epoch 保存互斥。', defaultValue: 0, min: 0 },
-    { key: 'save_every_n_epochs', type: 'number', label: '每 N 轮保存', title: 'save_every_n_epochs', desc: '每 N 轮保存一次模型。推荐范围：1–5；注意与 save_every_n_steps 互斥，同时设置可能导致存储暴涨。', defaultValue: 0, min: 0 },
+    // 后端真相镜像（2026-08 漂移审计）：registry newbie_lora.py declare
+    // save_every_n_epochs default=5/min=1；save_every_n_steps 走 UnifiedTrainingConfig
+    // 默认 0。两个间隔字段的 0 都表示「关闭该路保存」，但 backend
+    // configs_save_interval_interlock.py 在构造期拒绝「两路同时为 0」——run 必挂。
+    { key: 'save_every_n_steps', type: 'number', label: '每 N 步保存', title: 'save_every_n_steps', desc: '每 N 步保存一次模型。推荐范围：500–2000；与 epoch 保存互斥。0 表示关闭按步保存，此时每轮保存必须 ≥1（两路不能同时为 0）。', defaultValue: 0, min: 0 },
+    { key: 'save_every_n_epochs', type: 'number', label: '每 N 轮保存', title: 'save_every_n_epochs', desc: '每 N 轮保存一次模型（后端默认 5，最小 1）。推荐范围：1–5；0 表示关闭按轮保存，此时按步保存必须 ≥1——两路同时为 0 会在启动时被后端拒绝。', defaultValue: 5, min: 1 },
     ...S_SAVE.filter((f) => ['save_model_as', 'save_precision', 'save_state', 'save_state_on_train_end', 'save_last_n_epochs_state', 'save_last_n_steps_state', 'save_n_epoch_ratio', 'save_last_n_epochs', 'save_last_n_steps'].includes(f.key))
   ]),
   sec('training-settings', 'training', '训练参数', '', [
@@ -555,6 +559,12 @@ export const NEWBIE_LORA_SECTIONS = [
     // B2（2026-08 第 3 站审计）：fp32 不在后端 MixedPrecision 枚举
     // （configs_enums.py:135-139 = {no,fp16,bf16}），选中即校验失败；no=关闭 AMP。
     { key: 'mixed_precision', type: 'select', label: '训练精度', title: 'mixed_precision', desc: '混合精度：前向/反向用低精度计算、保留 FP32 主权重。bf16 数值最稳（RTX30 系+/A100 必选）；fp16 给旧卡但需梯度缩放；no 为全精度调试用。推荐范围：bf16（默认）。', defaultValue: 'bf16', options: ['bf16', 'fp16', 'no'] },
+    // 后端 configs_newbie.py:30 + configs.py:280-314 桥接：standard|lulynx，默认 standard。
+    // 仅当 ddpm_timestep_sampling 为空且 faster_dit_snr 未开时才桥接，显式设了以其为准。
+    { key: 'newbie_sigma_schedule', type: 'select', label: 'Sigma 分布预设', title: 'newbie_sigma_schedule', desc: 'Newbie 训练噪声 sigma 的分布预设：standard 是参考实现自己的默认 logit-normal(0,1)、无分辨率偏移；lulynx 在同一采样上叠加分辨率相关的 flow shift，把更多噪声预算放到高噪声区（分辨率越高 shift 越大），预览与训练走同一条变换。显式设置 ddpm_timestep_sampling 或开启 FasterDiT SNR 时以其为准。建议 standard 起步；出图整体偏灰/高噪细节不足时用 lulynx 做 A/B 对照。', defaultValue: 'standard', options: [
+      { value: 'standard', label: 'standard（参考默认）' },
+      { value: 'lulynx', label: 'lulynx（分辨率偏移）' },
+    ] },
     { key: 'seed', type: 'number', label: '随机种子', title: 'seed', desc: '随机种子：固定后数据顺序/初始化/噪声可复现。推荐范围：调试期与正式出包都建议固定（如 1337）便于复现；-1 表示每次随机。', defaultValue: 42 }
 ]),
   // 排版重排（F）：optimizer-settings 归 optimizer 页（原挂 training 页，而
@@ -1020,7 +1030,7 @@ const wan22Sections = ({
     { key: 'pretrained_model_name_or_path', type: 'folder', pickerType: 'folder', label: pathLabel, title: 'pretrained_model_name_or_path', desc: pathDesc, defaultValue: '' },
     { key: 'output_dir', type: 'folder', pickerType: 'folder', label: '输出目录', title: 'output_dir', desc: '模型输出目录。建议指向专用盘的 models/lora 类目录，避免系统盘；训练缓存与数据集分开存放。', defaultValue: outputDir },
     { key: 'output_name', type: 'string', label: '输出名称', title: 'output_name', desc: '输出文件名（不含扩展名）。建议用「概念名+版本」命名（如 lulu_v2），同一目录多次训练勿重名以免覆盖。', defaultValue: outputName },
-    { key: 'wan22_model_variant', type: 'select', desc: 'Wan2.2 变体选择（14B/A14B 等），决定权重结构与缓存格式。必须与底模一致。', label: '变体', title: 'wan22_model_variant', desc: variantDesc, defaultValue: variantDefault, options: [
+    { key: 'wan22_model_variant', type: 'select', label: '变体', title: 'wan22_model_variant', desc: `Wan2.2 变体选择（14B/A14B 等），决定权重结构与缓存格式：${variantDesc}。建议与底模严格一致，选错会在加载权重时直接失败。`, defaultValue: variantDefault, options: [
       { value: 'ti2v-5b', label: 'TI2V-5B' },
       { value: 't2v-a14b', label: 'T2V-A14B' }
     ] },

@@ -539,7 +539,7 @@ export const S_CAPTION_DROPOUT = [
   { key: 'caption_tag_dropout_targets', type: 'textarea', label: '指定丢弃 Tag 列表', title: 'caption_tag_dropout_targets', desc: '指定要处理的 tag 列表。一行一个，也支持逗号分隔', defaultValue: '' },
   { key: 'caption_tag_dropout_target_mode', type: 'select', label: '指定 Tag 处理方式', title: 'caption_tag_dropout_target_mode', desc: '命中保护外 tag 后的处理方式：drop_all 全部移除；random_n 只随机移除 N 个。建议 drop_all（默认）。', defaultValue: 'drop_all', options: ['drop_all', 'random_n'] },
   { key: 'caption_tag_dropout_target_count', type: 'number', label: '随机丢弃数量', title: 'caption_tag_dropout_target_count', desc: 'random_n 模式下每张图随机丢弃的命中 tag 数。推荐范围：1（默认）。', defaultValue: 1, min: 1, step: 1, visibleWhen: when('caption_tag_dropout_target_mode', 'random_n') },
-  uiGroup('前缀保护与作用域', '这些键决定 drop/shuffle 的作用边界：可把 keep_tokens 前缀或分隔符头部排除在变动之外（后端 dataset_caption_policy / output_caption_fragments 消费）。'),
+  uiGroup('prefix_protection', '前缀保护与作用域', '这些键决定 drop/shuffle 的作用边界：可把 keep_tokens 前缀或分隔符头部排除在变动之外（后端 dataset_caption_policy / output_caption_fragments 消费）。'),
   { key: 'caption_tag_mutate_scope', type: 'select', label: 'Tag 变动范围', title: 'caption_tag_mutate_scope', desc: 'tag 变动范围：all 全部可动；after_separator 仅分隔符之后可动（头部前缀始终保留）。建议有结构化前缀时选 after_separator。', defaultValue: 'all', options: [
     { value: 'all', label: '全部' },
     { value: 'after_separator', label: '仅分隔符之后' },
@@ -762,6 +762,14 @@ export const S_PREVIEW = [
   { key: 'sample_steps', type: 'number', label: '采样步数', title: 'sample_steps', desc: '预览采样步数。推荐范围：24（默认）附近；仅影响预览速度与质量。', defaultValue: 24, min: 1, max: 300, visibleWhen: when('enable_preview', true) },
   { key: 'sample_seed', type: 'number', label: '预览图种子', title: 'sample_seed', desc: '预览随机种子：固定可横向对比不同 step 的效果。推荐范围：固定一个值；0 每次随机。', defaultValue: '', min: 0, visibleWhen: when('enable_preview', true) },
   { key: 'sample_sampler', type: 'select', label: '采样器', title: 'sample_sampler', desc: '预览采样器（canonical 命名，旧名为运行时别名）。建议 euler_a 快速看趋势，karras 系看细节。', defaultValue: 'euler_a', options: SAMPLE_SAMPLER_OPTIONS, visibleWhen: when('enable_preview', true) },
+  // 训练中预览求解器（configs_monitoring.py:123-124 / web_training_config.py:141-142）：
+  // sde=ER-SDE-Solver-3 带退火随机项（默认）；ode=确定性 Euler。eta 缩放随机项强度，
+  // eta=0 时两条路径逐位一致。
+  { key: 'sample_algorithm', type: 'select', label: '预览求解器', title: 'sample_algorithm', desc: '训练中预览的求解算法：sde 走 ER-SDE-Solver-3 并带退火随机项（默认）；ode 为确定性 Euler 路径，无随机项。建议 sde（默认）；想排除随机性做逐步对照时切 ode 并把 SDE eta 设 0。', defaultValue: 'sde', options: [
+    { value: 'sde', label: 'sde（ER-SDE-Solver-3，默认）' },
+    { value: 'ode', label: 'ode（确定性 Euler）' },
+  ], visibleWhen: when('enable_preview', true) },
+  { key: 'sample_sde_eta', type: 'number', label: 'SDE 随机项强度 (eta)', title: 'sample_sde_eta', desc: '缩放 sde 求解器的随机项强度：1.0 为后端默认；eta=0 时与 ode 路径完全一致（可做 A/B 对照）。推荐范围：0–1；>1 会明显放大预览噪声，仅实验用。', defaultValue: 1.0, min: 0, step: 0.05, visibleWhen: all(when('enable_preview', true), when('sample_algorithm', 'sde')) },
   { key: 'sample_scheduler', type: 'string', label: '采样调度器覆盖（sample_scheduler）', title: 'sample_scheduler', desc: '预览调度器选择。建议留空跟随模型默认。', defaultValue: '', visibleWhen: when('enable_preview', true) }
 ];
 

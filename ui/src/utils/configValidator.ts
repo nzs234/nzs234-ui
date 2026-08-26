@@ -3,6 +3,10 @@
  * 训练配置冲突检测与验证
  *
  * 在用户提交训练前实时检测配置冲突，避免训练失败
+ *
+ * 文案契约：所有面向用户的 message 都经 translate() 走 zh/en 双语包；字段名保持
+ * 机器键（fields 数组）供测试与定位使用。测试断言用语言包派生文本或 fields，
+ * 不抄字面量。
  */
 
 export interface ValidationResult {
@@ -16,17 +20,36 @@ export interface ValidationMessage {
   fields?: string[]  // 涉及的字段名
 }
 
-import { resolveTrainingInputs } from '@/pages/train/wizard/trainingInputs'
+import { resolveTrainingInputs, inputGroupLabel } from '@/pages/train/wizard/trainingInputs'
+import { createDefaultConfig, getSectionsForType } from '@/schema/schemaIndex.js'
 import {
   baseAlgoFamilyForDora,
   doraEnabled,
   doraStackableFamiliesForType,
   doraSupportAuditedForType,
 } from '@/schema/schemaCommon.js'
+import { translate } from '@/i18n/useI18n'
+
+function t(key: string, vars?: Record<string, string | number>): string {
+  return translate(key, vars)
+}
+
+/** 互锁涉及的两路保存间隔键（与 SAVE_INTERVAL_FIELDS 后端常量同名同序）。 */
+const SAVE_INTERVAL_FIELDS = ['save_every_n_epochs', 'save_every_n_steps']
 
 /**
- * 验证训练配置，检测冲突和潜在问题
+ * save 间隔互锁的后端真相镜像（configs_save_interval_interlock.py）：
+ * 缺失/None/空串/负数一律读作 0（=关闭该路保存）。
  */
+function readSaveInterval(config: Record<string, any>, field: string): number {
+  const raw = config?.[field]
+  if (raw === undefined || raw === null || raw === '') return 0
+  const parsed = Number(raw)
+  if (Number.isNaN(parsed)) return 0
+  return Math.max(Math.trunc(parsed), 0)
+}
+
+/** 验证训练配置，检测冲突和潜在问题 */
 export function validateConfig(config: Record<string, any>, typeId?: string): ValidationResult {
   const errors: ValidationMessage[] = []
   const warnings: ValidationMessage[] = []
@@ -47,9 +70,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
 
   if (turbocoreEnabled && (gradientReleaseMode === 'full' || gradientReleaseMode === 'compatible')) {
     warnings.push({
-      message:
-        'Gradient Release (Full/Compatible) 与 TurboCore 冲突，已自动切换为 post_step 模式。' +
-        'TurboCore 需要全局 optimizer.step()，而 Full/Compatible 使用逐参数优化器实例。',
+      message: t('validator.gradient_release_turbocore'),
       fields: ['turbocore_enabled', 'gradient_release_mode']
     })
     autoFixes.gradient_release_mode = 'post_step'
@@ -67,9 +88,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
 
   if (torchCompile && hasRandomFeatures) {
     warnings.push({
-      message:
-        'torch.compile 会使部分随机化特征失效（包括 pyramid noise、noise offset、perlin noise、caption dropout、random flip）。' +
-        '如需使用这些特征，建议关闭 torch.compile。',
+      message: t('validator.compile_random_features'),
       fields: ['torch_compile_scope']
     })
   }
@@ -86,9 +105,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
     gradientReleaseMode === 'off'
   ) {
     warnings.push({
-      message:
-        '全参微调在 < 24GB 显存下建议启用 Gradient Release（可节省 15-20% VRAM）。' +
-        '推荐设置 gradient_release_mode = "post_step"。',
+      message: t('validator.finetune_small_vram_gradient_release'),
       fields: ['gradient_release_mode']
     })
   }
@@ -98,9 +115,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
 
   if (isLoraRoute && networkDim > 64) {
     warnings.push({
-      message:
-        `LoRA rank (network_dim) 设置为 ${networkDim}，可能导致过拟合。` +
-        '推荐值：小模型 (Anima/Boogu) 使用 8-16，大模型 (FLUX) 使用 16-32。',
+      message: t('validator.lora_rank_overfit_risk', { dim: networkDim }),
       fields: ['network_dim']
     })
   }
@@ -110,9 +125,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
 
   if (learningRate > 1e-3) {
     warnings.push({
-      message:
-        `学习率 ${learningRate} 过大，可能导致训练不稳定或 NaN。` +
-        '推荐值：1e-4 ~ 5e-4（LoRA），1e-5 ~ 1e-4（全参微调）。',
+      message: t('validator.learning_rate_too_large', { lr: learningRate }),
       fields: ['learning_rate']
     })
   }
@@ -122,9 +135,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
 
   if (maxTrainSteps > 0 && maxTrainSteps < 100) {
     warnings.push({
-      message:
-        `训练步数 ${maxTrainSteps} 过少，模型可能无法充分学习。` +
-        '推荐值：LoRA 至少 400 步，全参微调至少 1000 步。',
+      message: t('validator.max_train_steps_too_few', { steps: maxTrainSteps }),
       fields: ['max_train_steps']
     })
   }
@@ -140,10 +151,8 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
       const audited = doraSupportAuditedForType(routeId)
       warnings.push({
         message: audited
-          ? `DoRA 只能叠加在标准 LoRA 路线上（${routeId || '当前类型'} 管线已经过后端实证）：` +
-            `当前基础算法 ${baseAlgo || 'lora'} 不支持叠加（后端会忽略该开关），已自动关闭 DoRA。`
-          : `DoRA 当前仅允许叠加在标准 LoRA 路线上：` +
-            `当前基础算法 ${baseAlgo || 'lora'} 不在允许列表（后端会忽略该开关），已自动关闭 DoRA。`,
+          ? t('validator.dora_unstackable_audited', { type: routeId || '', base: baseAlgo || 'lora' })
+          : t('validator.dora_unstackable_pending', { base: baseAlgo || 'lora' }),
         fields: ['dora_enabled', 'use_dora', 'dora_wd'],
       })
       autoFixes.dora_enabled = false
@@ -157,9 +166,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
 
   if (isLoraRoute && networkAlpha > 0 && networkDim > 0 && networkAlpha > networkDim) {
     warnings.push({
-      message:
-        `network_alpha (${networkAlpha}) 大于 network_dim (${networkDim})，会降低 LoRA 的实际学习率。` +
-        '推荐设置 network_alpha = network_dim / 2（例如 dim=16 → alpha=8）。',
+      message: t('validator.alpha_exceeds_dim', { alpha: networkAlpha, dim: networkDim }),
       fields: ['network_alpha', 'network_dim']
     })
   }
@@ -171,9 +178,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
   // resolved 压成 off 并给 reason）。前端加联动提示，避免「开了 compile 却没生效」。
   if (routeId === 'newbie-lora' && compileRequested && config.use_cache !== true) {
     warnings.push({
-      message:
-        'Newbie 的 torch.compile 需要 cache-first 训练：当前「启用缓存流程」已关闭，' +
-        '后端会把编译计划降级为 off（compile_contract.py:297）。请开启缓存流程或改回 optimized 后端。',
+      message: t('validator.newbie_compile_requires_cache'),
       fields: ['use_cache', 'execution_backend']
     })
   }
@@ -183,9 +188,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
   const blocksToSwap = Number(config.blocks_to_swap || 0)
   if ((routeId === 'flux-lora' || routeId === 'newbie-lora') && compileRequested && blocksToSwap > 0) {
     warnings.push({
-      message:
-        `torch.compile 与 Block Swap（blocks_to_swap=${blocksToSwap}）互斥：` +
-        '后端契约按冲突处理（可能直接报错或静默关闭交换）。请二选一：关闭编译，或把交换块数设为 0。',
+      message: t('validator.compile_blocks_swap_conflict', { blocks: blocksToSwap }),
       fields: ['blocks_to_swap', 'execution_backend']
     })
   }
@@ -200,9 +203,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
     config.h3_checkpoint_mode !== 'unsloth'
   ) {
     warnings.push({
-      message:
-        `H3 Block Swap 开启时仅支持 Unsloth checkpointing（当前 ${config.h3_checkpoint_mode}）。` +
-        '提交时会自动复位为 unsloth（configs_h3.py:105 硬约束）。',
+      message: t('validator.h3_swap_requires_unsloth', { mode: config.h3_checkpoint_mode }),
       fields: ['h3_blocks_to_swap', 'h3_checkpoint_mode']
     })
     autoFixes.h3_checkpoint_mode = 'unsloth'
@@ -212,8 +213,7 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
   // （training_config_checks.py:424-425 warning），schema 文案已注明，这里兜底提醒。
   if (routeId === 'newbie-lora' && config.newbie_force_cache_only === true && config.newbie_rebuild_cache === true) {
     warnings.push({
-      message:
-        '「仅构建缓存」与「强制重建缓存」同时开启：本次运行只会重建缓存并跳过训练循环。',
+      message: t('validator.newbie_cache_only_combo'),
       fields: ['newbie_force_cache_only', 'newbie_rebuild_cache']
     })
   }
@@ -223,31 +223,56 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
   // variant 显隐，这里兜底「先开扩层、后切 A14B」的旧草稿：自动关闭并给出反馈。
   if (routeId.startsWith('wan22') && String(config.wan22_model_variant || '') === 't2v-a14b' && config.wan22_depth_expansion_enabled === true) {
     warnings.push({
-      message:
-        'Wan2.2 深度扩层仅支持 TI2V-5B 单塔：T2V-A14B 双塔变体不支持扩层' +
-        '（后端会直接拒绝该组合）。已自动关闭深度扩层。',
+      message: t('validator.wan22_depth_expansion_variant'),
       fields: ['wan22_model_variant', 'wan22_depth_expansion_enabled']
     })
     autoFixes.wan22_depth_expansion_enabled = false
+  }
+
+  // ========== 保存间隔双零互锁（P0 漂移修复，全 40 型生效）==========
+  // 后端 configs_save_interval_interlock.py 在 UnifiedTrainingConfig 构造期抛
+  // ValueError，而 preflight 无此检查 → 失败发生在 run 启动后。这里前置到 UI：
+  // 两路保存间隔都为 0 时报 error（阻断启动），语义与后端逐字对齐
+  // （''/null 读作 0；任一 > 0 即放行）。
+  //
+  // 判定基准是「生效值」：草稿未写的键会回落 schema 默认（epochs 默认 ≥1），
+  // 所以必须先并上该类型的默认配置再判，否则没显式带这两个键的类型会全误报。
+  // 没有 typeId 的旧调用方无法解析默认值，不在此判定（维持原契约，后端兜底）。
+  // 且仅当该类型的 schema 真的暴露了这两个键之一时才判定：完全不暴露的类型
+  // （yolo / aesthetic-scorer / lab 路线等）由后端自带默认（epochs=1），不存在
+  // 双零形态，UI 误报只会制造噪音。
+  if (typeId) {
+    const schemaHasSaveInterval = getSectionsForType(typeId).some((section) =>
+      (section.fields || []).some((field) => SAVE_INTERVAL_FIELDS.includes(field.key)))
+    if (schemaHasSaveInterval) {
+      const effective = { ...createDefaultConfig(typeId), ...config }
+      const saveEveryEpochs = readSaveInterval(effective, 'save_every_n_epochs')
+      const saveEverySteps = readSaveInterval(effective, 'save_every_n_steps')
+      if (saveEveryEpochs === 0 && saveEverySteps === 0) {
+        errors.push({
+          message: t('validator.save_interval_both_zero'),
+          fields: [...SAVE_INTERVAL_FIELDS],
+        })
+      }
+    }
   }
 
   // ========== 必填输入：按当前 schema/type 解析，而不是假设所有训练都是 SDXL ==========
   if (typeId) {
     const inputs = resolveTrainingInputs(typeId, config)
     for (const missing of inputs.missing) {
-      const label = missing.group.label
       errors.push({
-        message: `${label}为空，无法开始训练。`,
+        message: t('validator.input_group_empty', { group: inputGroupLabel(missing.group) }),
         fields: missing.keys,
       })
     }
   } else {
     // 兼容旧调用方（没有 typeId 时保持原有通用校验契约）。
     if (!String(config.train_data_dir || '').trim()) {
-      errors.push({ message: '训练数据集路径为空，无法开始训练。', fields: ['train_data_dir'] })
+      errors.push({ message: t('validator.missing_train_data_dir'), fields: ['train_data_dir'] })
     }
     if (!String(config.pretrained_model_name_or_path || '').trim()) {
-      errors.push({ message: '预训练模型路径为空，无法开始训练。', fields: ['pretrained_model_name_or_path'] })
+      errors.push({ message: t('validator.missing_model_path'), fields: ['pretrained_model_name_or_path'] })
     }
   }
 
@@ -257,16 +282,18 @@ export function validateConfig(config: Record<string, any>, typeId?: string): Va
     const recommendations: string[] = []
     const fields = ['max_train_steps']
     if (steady === 'off') {
-      recommendations.push('启用 lulynx_steady_accel = "auto" 或 "on"（稳态加速）')
+      recommendations.push(t('validator.anima_rec_steady_accel'))
       fields.push('lulynx_steady_accel')
     }
     if (Number(config.gradient_accumulation_steps || 1) < 2) {
-      recommendations.push('设置 gradient_accumulation_steps=2（提高稳定性）')
+      recommendations.push(t('validator.anima_rec_gradient_accumulation'))
       fields.push('gradient_accumulation_steps')
     }
     if (recommendations.length > 0) {
       warnings.push({
-        message: `Anima LoRA 短训练（< 800 步）建议：${recommendations.join('；')}`,
+        message: t('validator.anima_short_training_recommendations', {
+          recommendations: recommendations.join('; ')
+        }),
         fields,
       })
     }
@@ -283,7 +310,7 @@ export function validateField(fieldName: string, value: any): ValidationMessage 
     case 'network_dim':
       if (value && parseInt(value) > 128) {
         return {
-          message: `LoRA rank ${value} 过大，可能导致过拟合和显存不足`,
+          message: t('validator.field_rank_too_large', { value }),
           fields: ['network_dim']
         }
       }
@@ -292,13 +319,13 @@ export function validateField(fieldName: string, value: any): ValidationMessage 
     case 'learning_rate':
       if (value && parseFloat(value) > 1e-3) {
         return {
-          message: `学习率 ${value} 过大，可能导致训练不稳定`,
+          message: t('validator.field_lr_too_large', { value }),
           fields: ['learning_rate']
         }
       }
       if (value && parseFloat(value) < 1e-6) {
         return {
-          message: `学习率 ${value} 过小，模型可能无法学习`,
+          message: t('validator.field_lr_too_small', { value }),
           fields: ['learning_rate']
         }
       }
@@ -307,7 +334,7 @@ export function validateField(fieldName: string, value: any): ValidationMessage 
     case 'max_train_steps':
       if (value && parseInt(value) < 50) {
         return {
-          message: `训练步数 ${value} 过少，模型无法充分学习`,
+          message: t('validator.field_steps_too_few', { value }),
           fields: ['max_train_steps']
         }
       }

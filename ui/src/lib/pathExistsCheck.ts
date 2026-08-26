@@ -77,7 +77,7 @@ function toFieldLike(field: PathCheckOptions | null | undefined): SchemaFieldLik
 export function parentDirOf(path: string): string {
   const raw = String(path ?? '').trim()
   if (!raw) return '/'
-  let text = raw.replace(/[\\/]+$/, '')
+  const text = raw.replace(/[\\/]+$/, '')
   if (!text) return '/'
   const idx = Math.max(text.lastIndexOf('/'), text.lastIndexOf('\\'))
   if (idx < 0) return '/'

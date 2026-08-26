@@ -1,21 +1,32 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
 import { useEffect, useRef, useState } from 'react'
-import type { ECharts } from 'echarts'
+import type { EChartsType } from 'echarts/core'
 import type { ChartPoint } from '@/stores/monitorStore'
 import { isEcoMotion, useThemeStore } from '@/stores/themeStore'
+import type * as EchartsCore from './lossChartEcharts'
 
 /* Loss/LR 双序列曲线,echarts 懒加载(vendor-echarts chunk),配色取当前主题 CSS 变量 */
 
+/* 按需注册见 ./lossChartEcharts.ts：只装 LineChart + Grid/Tooltip/Legend +
+   Canvas 渲染器（5.x 全量引入实测 vendor 1042KB / gzip 345KB）。注册幂等，
+   theme 变化重复 loadEcharts 不会叠加。 */
+let echartsCorePromise: Promise<typeof EchartsCore> | null = null
+
+function loadEcharts() {
+  echartsCorePromise ||= import('./lossChartEcharts')
+  return echartsCorePromise
+}
+
 export function LossChart({ loss, lr }: { loss: ChartPoint[]; lr: ChartPoint[] }) {
   const ref = useRef<HTMLDivElement | null>(null)
-  const chartRef = useRef<ECharts | null>(null)
+  const chartRef = useRef<EChartsType | null>(null)
   const theme = useThemeStore((s) => s.theme)
   const [ready, setReady] = useState(0)
 
   useEffect(() => {
     let disposed = false
     let ro: ResizeObserver | undefined
-    void import('echarts').then((echarts) => {
+    void loadEcharts().then((echarts) => {
       if (disposed || !ref.current) return
       chartRef.current?.dispose()
       const chart = echarts.init(ref.current)

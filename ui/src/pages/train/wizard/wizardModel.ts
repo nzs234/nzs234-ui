@@ -7,7 +7,8 @@ import {
   getSectionsForType,
   isFieldVisible,
 } from '@/schema/schemaIndex.js'
-import { resolveTrainingInputs } from './trainingInputs'
+import { resolveTrainingInputs, inputGroupLabel } from './trainingInputs'
+import { translate } from '@/i18n/useI18n'
 
 export type WizardCategory =
   | 'lora'
@@ -579,17 +580,17 @@ export function validateWizardStep(step: WizardStepDefinition, config: Record<st
       if (!group.required) continue
       if (group.anyOf) {
         const hasAny = group.keys.some((key) => String(config[key] ?? '').trim().length > 0)
-        if (!hasAny) errors.push(`${group.label} 至少需要填写一项`)
+        if (!hasAny) errors.push(translate('wizard.error.group_anyof_empty', { group: inputGroupLabel(group) }))
       } else {
         for (const key of group.keys) {
-          if (!String(config[key] ?? '').trim()) errors.push(`${key} 不能为空`)
+          if (!String(config[key] ?? '').trim()) errors.push(translate('wizard.error.field_required', { key }))
         }
       }
     }
   } else {
     const missing = requiredKeys
       .filter((key) => !String(config[key] ?? '').trim())
-      .map((key) => `${key} 不能为空`)
+      .map((key) => translate('wizard.error.field_required', { key }))
     errors.push(...missing)
   }
   return { errors, warnings: [], requiredKeys }

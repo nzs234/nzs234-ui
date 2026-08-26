@@ -107,9 +107,9 @@ export const SDXL_LORA_SECTIONS = [
       { value: 'raw', label: 'raw' },
       { value: 'auto', label: 'auto' },
     ], visibleWhen: all(when('network_module', 'networks.lora'), pissaInitSelected) },
-    // T-LoRA rank 调度：后端仅认 constant/linear/geometric（sdxl_lora.py:165-171），
-    // 未知值在 tlora.py 静默退化为 min-rank 恒定。cosine 为非法值，已移除。
-    { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: '动态 rank 调度策略（constant/linear/geometric，后端支持集）。建议 constant 起步。', defaultValue: 'constant', options: ['constant', 'linear', 'geometric'], visibleWhen: when('network_module', 'networks.tlora') },
+    // T-LoRA rank 调度：后端支持集 constant/linear/cosine/geometric
+    // （configs_training_methods.py:442，cosine 已转正；launcher registry sdxl_lora.py 同步）。
+    { key: 'tlora_rank_schedule', type: 'select', label: 'T-LoRA Rank 调度', title: 'tlora_rank_schedule', desc: '动态 rank 调度策略（constant/linear/cosine/geometric，后端支持集，cosine 于 configs_training_methods.py:442 加入）。建议 constant 起步；需要中段平滑增减 rank 时试 cosine。', defaultValue: 'constant', options: ['constant', 'linear', 'cosine', 'geometric'], visibleWhen: when('network_module', 'networks.tlora') },
     ...S_LORA_METHOD_MODIFIERS,
   ], ['networks.lora_fa', 'networks.vera', 'networks.tlora', 'networks.flexrank_lora', 'networks.oft'], true, { hideDoraWd: true })),
   sec('optimizer-settings', 'optimizer', '学习率与优化器', '学习率、调度器与优化器。', excludeKeys(S_LR_TARGET, ['lora_plus_enabled', 'lora_plus_lr_ratio', 'rs_lora_enabled'])),

@@ -7,7 +7,12 @@
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-import { TRAINING_TYPES, getSectionsForType } from '../src/schema/schemaIndex.js';
+// 用全量注册表(含 hidden/disabled 训练类型)建字段类型表:schemaIndex.TRAINING_TYPES 只是
+// 侧栏可见的 40 型,曾把 yolo/concept-edit/anima-edit-model/lumina 等隐藏类型独占的字段
+// 判成"非字段键"而静默跳过 —— 那是 i18nGapScan 里 hiddenType 档 desc_en 缺口清不掉的原因。
+// 孤儿门禁(i18nParity schemaFieldKeys)本来就按全量注册表判定,这里对齐即可。
+import { TRAINING_TYPES } from '../src/schema/trainingTypeRegistry.js';
+import { getSectionsForType } from '../src/schema/schemaIndex.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 

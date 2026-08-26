@@ -157,7 +157,7 @@ describe('adapterModel standard-LoRA selection', () => {
     const lora = findCard(cards, 'lora')
     expect(lora.clears).toEqual(expect.arrayContaining([
       'vera_enabled',
-      'tlora_enabled',
+      't_lora_enabled',
       'flexrank_lora_enabled',
       'fera_enabled',
       'hydralora_enabled',
@@ -371,7 +371,7 @@ describe('adapterModel selected state (winner-id based)', () => {
     const cases = [
       { module: 'networks.lora_fa', expectedWinnerId: 'lora_fa', expectedFamily: 'lora-fa', flagKey: 'lora_fa_enabled' },
       { module: 'networks.vera', expectedWinnerId: 'vera', expectedFamily: 'vera', flagKey: 'vera_enabled' },
-      { module: 'networks.tlora', expectedWinnerId: 'tlora', expectedFamily: 'tlora', flagKey: 'tlora_enabled' },
+      { module: 'networks.tlora', expectedWinnerId: 'tlora', expectedFamily: 'tlora', flagKey: 't_lora_enabled' },
       { module: 'networks.flexrank_lora', expectedWinnerId: 'flexrank', expectedFamily: 'flexrank', flagKey: 'flexrank_lora_enabled' },
     ]
 
