@@ -626,9 +626,11 @@ const DORA_FAMILY_NOTE_I18N_KEYS: Record<string, string> = {
   // 均只接受 networks.lora，TE 恒冻结 → DoRA 只落 DiT；dora_wd 是本类型唯一
   // master 键，经后端 ConfigAdapter 归一化驱动两条路由。
   flux: 'wizard.adapter.dora_toggle_family_flux',
-  // 第 5 站：五个 cache-first DiT 族共享同一条结构性边界（TE 目标列表为空 →
-  // DoRA 仅落 DiT；深度扩层仅限全参微调；wan22 A14B 只挂主塔）。这些类型的
-  // adapter 区没有 DoRA 键，rider 不渲染，本提示仅供未来补暴露时复用。
+  // 第 5 站：cache-first DiT 族共享同一条结构性边界（TE 目标列表为空 →
+  // DoRA 仅落 DiT；深度扩层仅限全参微调；wan22 A14B 只挂主塔）。第 6 站桶 D 项起
+  // zimage / wan22-TI2V(5B) / boogu-Base 已在 adapter 区补暴露单一 dora_enabled 键，
+  // rider 正常渲染（managedKeys=['dora_enabled']）；krea2 / boogu-edit / flux2 /
+  // wan22 A14B 暂仍无 DoRA 键不渲染，本提示供后续补暴露时复用。
   krea2: 'wizard.adapter.dora_toggle_family_cached_dit',
   zimage: 'wizard.adapter.dora_toggle_family_cached_dit',
   boogu: 'wizard.adapter.dora_toggle_family_cached_dit',

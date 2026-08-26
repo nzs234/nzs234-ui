@@ -352,8 +352,8 @@ export function doraEnabled(config = {}) {
 // 本身不可启动/无注入面，而非算法层拒绝；doraWdVisible 据此隐藏死 schema 上的
 // DoRA 开关。
 //
-// 未知 family 键仍落入保守默认行（audited:false）作为防御性回退；已知 36 个可见
-// 训练类型 + 全部隐藏类型至此均有显式矩阵行，无 pending 行。
+// 未知 family 键仍落入保守默认行（audited:false）作为防御性回退；可见训练类型全集
+// （VISIBLE_TRAINING_TYPES，当前 28 型）+ 全部隐藏类型至此均有显式矩阵行，无 pending 行。
 const DORA_SUPPORT_DEFAULT_ROW = Object.freeze({ stackable: Object.freeze(['lora']), audited: false });
 
 export const DORA_SUPPORT_BY_MODEL_FAMILY = Object.freeze({
@@ -630,29 +630,29 @@ export const PCIE_TRANSFER_FORMAT_FIELD = {
   key: 'pcie_transfer_format',
   type: 'select',
   label: 'PCIe 训练传输格式',
-  desc: 'CPU-pinned 冻结权重的传输格式。',
+  desc: 'CPU-pinned 冻结权重的 PCIe 传输格式（off 关闭）。建议 off 起步，带宽瓶颈实测后再选格式。',
   defaultValue: 'off',
   options: PCIE_TRANSFER_FORMAT_OPTIONS,
 };
 
 export const sparseSwapFields = (residencyKey) => [
-  { key: 'sparse_swap_enabled', type: 'boolean', label: '稀疏交换方案', title: 'sparse_swap_enabled', desc: '仅对 Streaming Offload 生效。', defaultValue: false, visibleWhen: streamingBlockMode(residencyKey) },
+  { key: 'sparse_swap_enabled', type: 'boolean', label: '稀疏交换方案', title: 'sparse_swap_enabled', desc: '稀疏交换：只搬大张量的冷分块而非整层。建议整层交换粒度过粗时开启。', defaultValue: false, visibleWhen: streamingBlockMode(residencyKey) },
   { key: 'sparse_swap_warm_fraction', type: 'number', label: '稀疏交换 Warm 比例', title: 'sparse_swap_warm_fraction', desc: '冷层中允许提前预取的比例', defaultValue: 0.35, min: 0, max: 1, step: 0.05, visibleWhen: all(streamingBlockMode(residencyKey), when('sparse_swap_enabled', true)) },
-  { key: 'sparse_swap_budget_mb', type: 'number', label: '稀疏交换 Warm 预算 MB', title: 'sparse_swap_budget_mb', desc: '限制 warm prefetch 的 FP16 等效预算。', defaultValue: 0, min: 0, step: 64, visibleWhen: all(streamingBlockMode(residencyKey), when('sparse_swap_enabled', true)) },
+  { key: 'sparse_swap_budget_mb', type: 'number', label: '稀疏交换 Warm 预算 MB', title: 'sparse_swap_budget_mb', desc: '稀疏交换的显存预算（MB）。推荐范围：256–1024 按空闲显存设定。', defaultValue: 0, min: 0, step: 64, visibleWhen: all(streamingBlockMode(residencyKey), when('sparse_swap_enabled', true)) },
 ];
 
 export const pcieDeltaCacheField = (residencyKey) => ({
   key: 'pcie_delta_cache_enabled',
   type: 'boolean',
   label: 'PCIe Delta/Cache 候选分析',
-  desc: 'observe 输出候选报告',
+  desc: 'PCIe Delta/Cache 候选分析：observe 输出候选报告不改变行为。建议诊断期开启。',
   defaultValue: false,
   visibleWhen: nonResidentBlockMode(residencyKey),
 });
 
 export const pcieDeltaCacheModeFields = (residencyKey) => [
-  { key: 'pcie_delta_cache_mode', type: 'select', label: 'PCIe Delta/Cache 模式', title: 'pcie_delta_cache_mode', desc: 'observe 只读观察；cache_v0 手动缓存。', defaultValue: 'observe', options: ['observe', 'cache_v0'], visibleWhen: all(nonResidentBlockMode(residencyKey), when('pcie_delta_cache_enabled', true)) },
-  { key: 'pcie_delta_cache_budget_mb', type: 'number', label: 'PCIe Cache v0 预算 MB', title: 'pcie_delta_cache_budget_mb', desc: 'GPU 缓存预算。建议 256MB 起步。0 表示不启用。', defaultValue: 256, min: 0, step: 64, visibleWhen: all(nonResidentBlockMode(residencyKey), when('pcie_delta_cache_enabled', true), when('pcie_delta_cache_mode', 'cache_v0')) },
+  { key: 'pcie_delta_cache_mode', type: 'select', label: 'PCIe Delta/Cache 模式', title: 'pcie_delta_cache_mode', desc: 'observe 只读观察；cache_v0 手动启用缓存。建议 observe 先看报告。', defaultValue: 'observe', options: ['observe', 'cache_v0'], visibleWhen: all(nonResidentBlockMode(residencyKey), when('pcie_delta_cache_enabled', true)) },
+  { key: 'pcie_delta_cache_budget_mb', type: 'number', label: 'PCIe Cache v0 预算 MB', title: 'pcie_delta_cache_budget_mb', desc: 'GPU 缓存预算 MB；0 表示不启用。推荐范围：256 起步，按空闲显存上调。', defaultValue: 256, min: 0, step: 64, visibleWhen: all(nonResidentBlockMode(residencyKey), when('pcie_delta_cache_enabled', true), when('pcie_delta_cache_mode', 'cache_v0')) },
 ];
 
 export const VORTEX_RUNTIME_MODE_OPTIONS = [
@@ -676,7 +676,7 @@ export const vortexRuntimeFields = (residencyKey, baseVisible = null) => {
       key: 'vortex_enabled',
       type: 'boolean',
       label: 'Vortex 显存管理',
-      desc: '开启后只进入显式 Vortex 运行契约',
+      desc: 'Vortex 显存管理器总开关。建议默认关闭，需要其规划能力时再开。',
       defaultValue: false,
       visibleWhen: visible,
     },
@@ -684,7 +684,7 @@ export const vortexRuntimeFields = (residencyKey, baseVisible = null) => {
       key: 'vortex_mode',
       type: 'select',
       label: 'Vortex 模式',
-      desc: 'observe/planner 不改变训练 tensor 路径',
+      desc: 'Vortex 模式：observe/planner 只记录不改训练路径。建议 observe 先看信号。',
       defaultValue: 'observe',
       options: VORTEX_RUNTIME_MODE_OPTIONS,
       visibleWhen: enabled,
@@ -693,7 +693,7 @@ export const vortexRuntimeFields = (residencyKey, baseVisible = null) => {
       key: 'vortex_profile',
       type: 'select',
       label: 'Vortex 档位',
-      desc: 'standard 默认',
+      desc: 'Vortex 档位。建议 standard 默认。',
       defaultValue: 'standard',
       options: [
         { value: 'standard', label: 'standard' },
@@ -706,7 +706,7 @@ export const vortexRuntimeFields = (residencyKey, baseVisible = null) => {
       key: 'vortex_strategy',
       type: 'select',
       label: 'Vortex 策略',
-      desc: '传给 Vortex 管理器的策略名；通常保持 standard。',
+      desc: '传给 Vortex 管理器的策略名。建议保持 standard 默认。',
       defaultValue: 'standard',
       options: [
         { value: 'standard', label: 'standard' },
@@ -717,7 +717,7 @@ export const vortexRuntimeFields = (residencyKey, baseVisible = null) => {
       key: 'vortex_budget_mb',
       type: 'number',
       label: 'Vortex Cache 预算 MB',
-      desc: 'Vortex Cache 预算 MB',
+      desc: 'Vortex Cache 预算（MB）。推荐范围：256 起步按余量上调。',
       defaultValue: 256,
       min: 0,
       step: 64,
@@ -727,7 +727,7 @@ export const vortexRuntimeFields = (residencyKey, baseVisible = null) => {
       key: 'vortex_low_vram_protection_enabled',
       type: 'boolean',
       label: 'Vortex 低显存保护',
-      desc: '开启后允许 Vortex 在低显存压力下收紧',
+      desc: '低于水位触发 Vortex 保护判断。建议与 free 水线配套使用。',
       defaultValue: false,
       visibleWhen: enabled,
     },
@@ -735,7 +735,7 @@ export const vortexRuntimeFields = (residencyKey, baseVisible = null) => {
       key: 'vortex_low_vram_protection_mode',
       type: 'select',
       label: '低显存保护模式',
-      desc: 'observe 只记录低显存信号',
+      desc: '保护模式：observe 只记录。建议 observe。',
       defaultValue: 'observe',
       options: VORTEX_LOW_VRAM_PROTECTION_MODE_OPTIONS,
       visibleWhen: lowVramEnabled,
@@ -744,7 +744,7 @@ export const vortexRuntimeFields = (residencyKey, baseVisible = null) => {
       key: 'vortex_low_vram_min_free_mb',
       type: 'number',
       label: '低显存保底 MB',
-      desc: '低于该 free VRAM 水位时触发保护判断。',
+      desc: '触发保护的最低空闲显存（MB）。推荐范围：512–2048 按卡设定。',
       defaultValue: 0,
       min: 0,
       step: 64,
@@ -1149,9 +1149,9 @@ export const BLOCK_SWAP_STRATEGY_OPTIONS = [
 // ---- DiT 检查点字段构造器 ----
 export const ditGradientCheckpointingField = (family, defaultValue = true) => ({
   key: 'gradient_checkpointing',
-  type: 'boolean',
+  type: 'boolean', desc: '反传时重算激活以省显存（约换 20–30% 速度）。建议除显存富余外保持开启（默认 true）。',
   label: `${family} 通用检查点`,
-  desc: `${family} 通用检查点；主路径看加速页 DiT Block Checkpointing`,
+  desc: `${family} 通用检查点；主路径看加速页 DiT Block Checkpointing，建议显存不足时优先用分块检查点而不是本开关。`,
   defaultValue,
 });
 
@@ -1164,12 +1164,12 @@ export const ditTrainFields = (fields, family) => fields.map((field) => (
 // ---- V 参数化字段构造器(SDXL / SD1.5 共用) ----
 export const vParameterizationFields = (includeVPredOptions = false) => {
   const fields = [
-    { key: 'v_parameterization', type: 'boolean', label: 'V 参数化', title: 'v_parameterization', desc: 'v-parameterization 学习（训练', defaultValue: false },
+    { key: 'v_parameterization', type: 'boolean', label: 'V 参数化', title: 'v_parameterization', desc: 'v-prediction 模式：模型预测 v=noise−latent 而非噪声本身，部分 SD2.x/512 底模需要。建议跟随底模说明，不确定时关闭。', defaultValue: false },
   ];
   if (includeVPredOptions) {
     fields.push(
-      { key: 'zero_terminal_snr', type: 'boolean', label: '零终端 SNR', title: 'zero_terminal_snr', desc: 'Zero Terminal SNR（v-pred 模型训练推荐开启）', defaultValue: true, visibleWhen: when('v_parameterization', true) },
-      { key: 'scale_v_pred_loss_like_noise_pred', type: 'boolean', label: '缩放 v-pred 损失', title: 'scale_v_pred_loss_like_noise_pred', desc: '缩放 v-prediction 损失（v-pred', defaultValue: true, visibleWhen: when('v_parameterization', true) },
+      { key: 'zero_terminal_snr', type: 'boolean', label: '零终端 SNR', title: 'zero_terminal_snr', desc: '把 SNR 曲线终端置零，改善 v-pred 亮部/暗部对比度。建议仅 v-pred 训练配合使用，eps 训练不要开。', defaultValue: true, visibleWhen: when('v_parameterization', true) },
+      { key: 'scale_v_pred_loss_like_noise_pred', type: 'boolean', label: '缩放 v-pred 损失', title: 'scale_v_pred_loss_like_noise_pred', desc: '把 v-pred 损失缩放到 noise-pred 量纲，统一不同预测目标的损失尺度。建议 v-pred 训练保持开启（默认 true）。', defaultValue: true, visibleWhen: when('v_parameterization', true) },
     );
   }
   return fields;
@@ -1194,22 +1194,22 @@ export const BUCKET_SELECTION_MODE_OPTIONS = [
 
 // ---- 数据集字段构造器 ----
 export const ds = (reso, bucketMax = 2048, bucketStep = 64, extra = []) => [
-  { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '训练数据集路径', title: 'train_data_dir', desc: '训练数据集路径', defaultValue: './output/lulynx' },
-  { key: 'reg_data_dir', type: 'folder', pickerType: 'folder', label: '正则化数据集路径', title: 'reg_data_dir', desc: '正则化数据集路径。默认留空，不使用正则化图像。', defaultValue: '' },
-  { key: 'prior_loss_weight', type: 'number', label: '先验损失权重', title: 'prior_loss_weight', desc: '正则化 - 先验损失权重', defaultValue: 1, min: 0, step: 0.1 },
-  { key: 'resolution', type: 'string', label: '训练分辨率', title: 'resolution', desc: '训练图片分辨率，宽x高。支持非正方形，但必须是 64 倍数。', importantDesc: '训练分辨率', defaultValue: reso },
-  { key: 'enable_bucket', type: 'boolean', label: '启用分桶', title: 'enable_bucket', desc: 'SDXL/SD15 等 UNet 路径：arb 分桶全支持。DiT cache-first（Anima/Newbie 等）多半不改已缓存分辨率，主要影响 online/rebuild。视频族不保证。', defaultValue: true },
-  { key: 'min_bucket_reso', type: 'number', label: '桶最小分辨率', title: 'min_bucket_reso', desc: 'arb 桶最小边。仅在分桶真正生效的路径上有意义。', defaultValue: 256 },
-  { key: 'max_bucket_reso', type: 'number', label: '桶最大分辨率', title: 'max_bucket_reso', desc: 'arb 桶最大边。cache-first 回放通常沿用构建时分辨率。', defaultValue: bucketMax },
-  { key: 'bucket_reso_steps', type: 'number', label: '桶划分单位', title: 'bucket_reso_steps', desc: '桶分辨率步进。UNet 全支持；DiT 见 enable_bucket 说明。', defaultValue: bucketStep },
-  { key: 'bucket_no_upscale', type: 'boolean', label: '桶不放大图片', title: 'bucket_no_upscale', desc: 'arb 桶不放大图片', defaultValue: false },
-  { key: 'bucket_selection_mode', type: 'select', label: '分桶策略', title: 'bucket_selection_mode', desc: 'aspect 默认宽高比匹配；area 面积匹配；no_downscale 桶不小于原图；no_upscale 桶不大于原图。灰色项为旧行为别名，行为与规范名完全一致。', defaultValue: 'aspect', options: BUCKET_SELECTION_MODE_OPTIONS },
+  { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '训练数据集路径', title: 'train_data_dir', desc: '训练数据集根目录：每个子文件夹是一个概念，文件夹名 = 重复次数@概念名（如 10_lulu）。建议图片统一存放于此盘，SSD 更快。', defaultValue: './output/lulynx' },
+  { key: 'reg_data_dir', type: 'folder', pickerType: 'folder', label: '正则化数据集路径', title: 'reg_data_dir', desc: '先验保留（prior preservation）的正则图目录，配合 prior_loss_weight 使用。建议仅在防灾难遗忘需求下提供类别图。', defaultValue: '' },
+  { key: 'prior_loss_weight', type: 'number', label: '先验损失权重', title: 'prior_loss_weight', desc: '先验损失权重：正则项相对主损失的比例。推荐范围：1.0（默认）或 0.5–1；仅提供了正则集时生效。', defaultValue: 1, min: 0, step: 0.1 },
+  { key: 'resolution', type: 'string', label: '训练分辨率', title: 'resolution', desc: '训练分辨率「宽,高」，须为 64 的倍数，匹配底模训练分辨率最佳。推荐范围：SDXL/Flux/Anima 1024,1024；SD1.5 512,512。降分辨率省显存但丢细节。', importantDesc: '训练分辨率', defaultValue: reso },
+  { key: 'enable_bucket', type: 'boolean', label: '启用分桶', title: 'enable_bucket', desc: '宽高比分桶（ARB）：把不同比例的图分进各桶减少裁剪。UNet 路线全支持；DiT cache-first 族主要影响 online/重建路径。建议保持开启（默认 true）。', defaultValue: true },
+  { key: 'min_bucket_reso', type: 'number', label: '桶最小分辨率', title: 'min_bucket_reso', desc: '桶允许的最小边长，过小会产生极端拉伸样本。推荐范围：256 以上且不超过 resolution 一半太多。', defaultValue: 256 },
+  { key: 'max_bucket_reso', type: 'number', label: '桶最大分辨率', title: 'max_bucket_reso', desc: '桶允许的最大边长；cache-first 回放通常沿用构建时分辨率。推荐范围：不超过 resolution 的 2 倍。', defaultValue: bucketMax },
+  { key: 'bucket_reso_steps', type: 'number', label: '桶划分单位', title: 'bucket_reso_steps', desc: '桶分辨率的划分步进（px）。推荐范围：64（标准）；低显存模式可 32；DiT 路线见 enable_bucket 说明。', defaultValue: bucketStep },
+  { key: 'bucket_no_upscale', type: 'boolean', label: '桶不放大图片', title: 'bucket_no_upscale', desc: '桶内不放大小于目标分辨率的图（只缩大图）。建议小图多时开启避免放大模糊；追求统一尺寸时关闭。', defaultValue: false },
+  { key: 'bucket_selection_mode', type: 'select', label: '分桶策略', title: 'bucket_selection_mode', desc: '分桶策略：aspect 宽高比匹配（默认）；area 面积匹配；no_downscale/no_upscale 为旧行为别名（行为等价规范名）。建议保持 aspect。', defaultValue: 'aspect', options: BUCKET_SELECTION_MODE_OPTIONS },
   // 与 bucket_selection_mode 无关：后端 dataset_bucketing.py 只要这里解析出非空桶表就
   // 优先采用。原先锚在幽灵值 'custom_only' 上（options 里没有），字段永久不可见。
   { key: 'bucket_custom_resos', type: 'textarea', label: '自定义桶列表', title: 'bucket_custom_resos', desc: '一行一个，支持 1024x1024。留空则按上面的分桶策略自动生成；一旦填了内容，后端会优先使用这里的桶表，「分桶策略」将不再生效。', defaultValue: '', visibleWhen: when('enable_bucket', true) },
-  { key: 'image_decode_backend', type: 'select', label: '图片解码后端', title: 'image_decode_backend', desc: 'pil 最兼容；pil_lru 会按文件 mtime/大小缓存已解码 RGB', defaultValue: 'pil', options: IMAGE_DECODE_BACKEND_OPTIONS, visibleWhen: when('performance_expert_mode', true) },
-  { key: 'data_backend', type: 'select', label: '数据后端', title: 'data_backend', desc: 'auto/caption 当前继续走 CaptionDataset', defaultValue: 'auto', options: DATA_BACKEND_OPTIONS, visibleWhen: when('performance_expert_mode', true) },
-  { key: 'image_decode_cache_size', type: 'number', label: '图片解码缓存张数', title: 'image_decode_cache_size', desc: '每个 DataLoader worker 的 PIL 解码 LRU', defaultValue: 0, min: 0, visibleWhen: all(when('performance_expert_mode', true), oneOf('image_decode_backend', ['auto', 'pil_lru'])) },
+  { key: 'image_decode_backend', type: 'select', label: '图片解码后端', title: 'image_decode_backend', desc: '图片解码后端：pil 最兼容；pil_lru 按 mtime/大小缓存已解码 RGB。建议大数据集 SSD 上 pil_lru。', defaultValue: 'pil', options: IMAGE_DECODE_BACKEND_OPTIONS, visibleWhen: when('performance_expert_mode', true) },
+  { key: 'data_backend', type: 'select', label: '数据后端', title: 'data_backend', desc: '数据后端：auto/caption 当前都走 CaptionDataset 实现。建议 auto 保持跟随。', defaultValue: 'auto', options: DATA_BACKEND_OPTIONS, visibleWhen: when('performance_expert_mode', true) },
+  { key: 'image_decode_cache_size', type: 'number', label: '图片解码缓存张数', title: 'image_decode_cache_size', desc: '每个 worker 的解码 LRU 容量（张数），0 关闭。推荐范围： 64–256 按内存。', defaultValue: 0, min: 0, visibleWhen: all(when('performance_expert_mode', true), oneOf('image_decode_backend', ['auto', 'pil_lru'])) },
   ...extra,
 ];
 
@@ -1230,49 +1230,49 @@ export const uiGroup = (title, desc = '', visibleWhen = null) => ({
 // ——此时文案必须按 master 语义描述（第 4 站 FLUX 审计核实：flux 页无「LoRA 结构
 // 变体」区，旧别名文案与事实矛盾；后端 config_adapter.py:511-517 会把 dora_wd
 // 归一为 use_dora/dora_enabled 路由旗标）。
-const DORA_WD_DESC_MASTER = '叠加在标准 LoRA 路线上的权重分解增强（方向+幅度），比标准 LoRA 表达力强但稍慢。本类型的 DoRA 主入口就是这个开关（向导中的「叠加 DoRA」开关读写它），后端会将其归一为 use_dora/dora_enabled 训练旗标。';
-const DORA_WD_DESC_ALIAS = '叠加在标准 LoRA 路线上的权重分解增强（方向+幅度），比标准 LoRA 表达力强但稍慢。本类型的 DoRA 主入口在「LoRA 结构变体」区的 dora_enabled，此处仅为旧草稿兼容别名。';
+const DORA_WD_DESC_MASTER = '叠加在标准 LoRA 路线上的权重分解增强（方向+幅度），比标准 LoRA 表达力强但稍慢。本类型的 DoRA 主入口就是这个开关（向导中的「叠加 DoRA」开关读写它），后端会将其归一为 use_dora/dora_enabled 训练旗标并强制 bypass_mode=False。建议小数据集或需要更强概念绑定（如角色脸）时开启。';
+const DORA_WD_DESC_ALIAS = '叠加在标准 LoRA 路线上的权重分解增强（方向+幅度），比标准 LoRA 表达力强但稍慢。本类型的 DoRA 主入口在「LoRA 结构变体」区的 dora_enabled，此处仅为旧草稿兼容别名，后端同样会归一为 use_dora/dora_enabled 并强制 bypass_mode=False。建议改用主开关，保持此项关闭以免双开混淆。';
 export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], extraModules = [], includeLycoris = true, opts = {}) => [
-  { key: 'network_module', type: 'select', label: '训练网络模块', title: 'network_module', desc: '训练网络模块', defaultValue: mod, options: [mod, ...extraModules, ...(includeLycoris && !mod.includes('lycoris') ? ['lycoris.kohya'] : [])] },
-  { key: 'network_dim', type: 'slider', label: '网络维度', title: 'network_dim', desc: '网络维度', defaultValue: dim, min: 1, max: maxDim, step: 1, visibleWhen: adapterFamilySupports('supports_rank') },
-  { key: 'network_alpha', type: 'slider', label: '网络 Alpha', title: 'network_alpha', desc: '网络 Alpha', defaultValue: alpha, min: 1, max: maxDim, step: 1, visibleWhen: adapterFamilySupports('supports_alpha') },
-  { key: 'network_dropout', type: 'number', label: '网络 Dropout', title: 'network_dropout', desc: '网络 Dropout', defaultValue: 0, min: 0, step: 0.01, visibleWhen: all(nonLycorisNetworkSelected, adapterFamilySupports('supports_dropout')) },
-  { key: 'flexrank_lora_rank_range_min', type: 'number', label: 'FlexRank 最小 Rank', title: 'flexrank_lora_rank_range_min', desc: 'FlexRank 每步随机采样激活 rank 的下界', defaultValue: 1, min: 1, step: 1, visibleWhen: when('network_module', 'networks.flexrank_lora') },
-  { key: 'dim_from_weights', type: 'boolean', label: '从权重推断 Dim', title: 'dim_from_weights', desc: '从已有 network_weights 自动推断 rank / dim', defaultValue: false, visibleWhen: adapterFamilySupports('supports_rank') },
-  { key: 'scale_weight_norms', type: 'number', label: '最大范数正则化', title: 'scale_weight_norms', desc: '最大范数正则化。如果使用，推荐为 1', defaultValue: '', min: 0, step: 0.01 },
+  { key: 'network_module', type: 'select', label: '训练网络模块', title: 'network_module', desc: '训练网络模块决定适配器实现路线。建议 networks.lora（兼容性最好）；lora_fa/vera/tlora/flexrank 为实验变体；lycoris.kohya 是旧入口。', defaultValue: mod, options: [mod, ...extraModules, ...(includeLycoris && !mod.includes('lycoris') ? ['lycoris.kohya'] : [])] },
+  { key: 'network_dim', type: 'slider', label: '网络维度', title: 'network_dim', desc: 'LoRA rank：低秩子空间维度，决定可学习容量与文件体积。推荐范围：4–128；角色/复杂风格 32–64 起步，简单概念 8–16 即可。', defaultValue: dim, min: 1, max: maxDim, step: 1, visibleWhen: adapterFamilySupports('supports_rank') },
+  { key: 'network_alpha', type: 'slider', label: '网络 Alpha', title: 'network_alpha', desc: '缩放系数：有效学习率 ≈ lr × alpha/rank。推荐范围：rank 或 rank/2（如 rank=32 时 alpha=16–32）；高 rank 可降低比值求稳。', defaultValue: alpha, min: 1, max: maxDim, step: 1, visibleWhen: adapterFamilySupports('supports_alpha') },
+  { key: 'network_dropout', type: 'number', label: '网络 Dropout', title: 'network_dropout', desc: '对 LoRA 输出按神经元随机置零的正则。推荐范围：0（默认）或 ≤0.1；过大伤收敛。', defaultValue: 0, min: 0, step: 0.01, visibleWhen: all(nonLycorisNetworkSelected, adapterFamilySupports('supports_dropout')) },
+  { key: 'flexrank_lora_rank_range_min', type: 'number', label: 'FlexRank 最小 Rank', title: 'flexrank_lora_rank_range_min', desc: 'FlexRank 采样激活 rank 下界；上界沿用 network_dim。推荐范围：dim 的 25%–50%。', defaultValue: 1, min: 1, step: 1, visibleWhen: when('network_module', 'networks.flexrank_lora') },
+  { key: 'dim_from_weights', type: 'boolean', label: '从权重推断 Dim', title: 'dim_from_weights', desc: '从已加载的 network_weights 自动推断 rank/dim，忽略手填值。建议续训旧 LoRA 且不确定原参数时开启。', defaultValue: false, visibleWhen: adapterFamilySupports('supports_rank') },
+  { key: 'scale_weight_norms', type: 'number', label: '最大范数正则化', title: 'scale_weight_norms', desc: '对 LoRA 权重做最大范数约束（Spectral Norm 正则），抑制过拟合。推荐范围：1（社区惯例值）；留空/0 关闭。', defaultValue: '', min: 0, step: 0.01 },
   // includeLycoris=false 的族（flux-lora：后端白名单只接 networks.lora，
   // flux_preflight + inject mixin 双重 RuntimeError）不再携带 LyCORIS 死结构：
   // 这些字段的 visibleWhen 锚在 lycorisNetworkSelected 上永不可见，纯属死 schema
   // 重量（2026-08 第 3 站审计 F 项）。
   ...(includeLycoris ? [
     uiGroup('LyCORIS 基础结构', '这里放算法类型、卷积维度、preset 这类决定网络骨架的参数。普通 LoRA 路线可直接忽略。', lycorisNetworkSelected),
-    { key: 'lycoris_algo', type: 'select', label: 'LyCORIS 算法', title: 'lycoris_algo', desc: '后端原生支持：LoCon / LoHa / LoKr / IA3 /', defaultValue: 'locon', options: SUPPORTED_LYCORIS_ALGOS, visibleWhen: lycorisNetworkSelected },
-    { key: 'conv_dim', type: 'number', label: '卷积维度', title: 'conv_dim', desc: '卷积维度', defaultValue: 4, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
-    { key: 'conv_alpha', type: 'number', label: '卷积 Alpha', title: 'conv_alpha', desc: '卷积 Alpha', defaultValue: 1, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
+    { key: 'lycoris_algo', type: 'select', label: 'LyCORIS 算法', title: 'lycoris_algo', desc: 'LyCORIS 具体算法（LoCon/LoHa/LoKr/IA3/Diag-Oft 等后端原生集）。按容量/速度需求选择，建议 LoCon 起步。', defaultValue: 'locon', options: SUPPORTED_LYCORIS_ALGOS, visibleWhen: lycorisNetworkSelected },
+    { key: 'conv_dim', type: 'number', label: '卷积维度', title: 'conv_dim', desc: 'Conv 层的 rank（作用卷积投影）。推荐范围：与 network_dim 相同或减半；仅影响含 Conv 的目标层。', defaultValue: 4, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
+    { key: 'conv_alpha', type: 'number', label: '卷积 Alpha', title: 'conv_alpha', desc: 'Conv 层缩放系数。推荐范围：与 conv_dim 对齐（=dim 或 dim/2）。', defaultValue: 1, min: 1, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_CONV_ALGOS.includes(c.lycoris_algo) },
     { key: 'lycoris_preset', type: 'string', label: 'LyCORIS Preset', title: 'lycoris_preset', desc: '传给 LyCORIS 库的 preset。', defaultValue: '', visibleWhen: lycorisNetworkSelected },
     uiGroup('正则化与稳定性', 'LyCORIS 专用 dropout / 正则项。大多数训练保持默认即可。', lycorisNetworkSelected),
-    { key: 'dropout', type: 'number', label: 'LyCORIS Dropout', desc: 'LyCORIS 主 dropout 概率。', defaultValue: 0, min: 0, max: 1, step: 0.01, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_DELTA_ALGOS.includes(c.lycoris_algo) },
-    { key: 'rank_dropout', type: 'number', label: 'LoKr Rank Dropout', title: 'rank_dropout', desc: 'LoKr 专用：按 rank/输出维度随机丢弃的概率。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-    { key: 'module_dropout', type: 'number', label: 'LoKr Module Dropout', title: 'module_dropout', desc: 'LoKr 专用：按整个模块随机丢弃的概率。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-    { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '额外训练归一化层（LayerNorm/RMSNorm 等）的可学习缩放/偏置', defaultValue: false, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && c.lycoris_algo !== 'ia3' },
+    { key: 'dropout', type: 'number', label: 'LyCORIS Dropout', desc: 'LyCORIS 主 dropout 概率。推荐范围：0–0.1，默认 0。', defaultValue: 0, min: 0, max: 1, step: 0.01, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && LYCORIS_DELTA_ALGOS.includes(c.lycoris_algo) },
+    { key: 'rank_dropout', type: 'number', label: 'LoKr Rank Dropout', title: 'rank_dropout', desc: '按 rank/输出维度随机丢弃的概率（LoKr 等变体）。推荐范围：0 默认；≤0.1 试验。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'module_dropout', type: 'number', label: 'LoKr Module Dropout', title: 'module_dropout', desc: '按整个模块随机丢弃的概率。推荐范围：0 默认；≤0.1 试验，过大明显伤收敛。', defaultValue: '', min: 0, max: 1, step: 0.01, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'train_norm', type: 'boolean', label: '训练 Norm 层', title: 'train_norm', desc: '额外把归一化层（LayerNorm/RMSNorm）纳入训练。建议角色一致性微调时试验，常规保持关闭。', defaultValue: false, visibleWhen: (c) => LYCORIS_NETWORK_MODULES.includes(c.network_module) && c.lycoris_algo !== 'ia3' },
   ] : []),
   uiGroup('DoRA 权重分解（叠加增强）', 'DoRA 不是独立算法，而是叠加在标准 LoRA 路线上的增强：把权重分解为方向与幅度分别训练。后端注入链中 LyCORIS 分支先于 DoRA 分派，因此 LyCORIS 算法路线上的叠加开关不会生效。', doraWdVisible),
   { key: 'dora_wd', type: opts.hideDoraWd ? 'hidden' : 'boolean', label: '启用 DoRA 权重分解', title: 'dora_wd', desc: opts.hideDoraWd ? DORA_WD_DESC_ALIAS : DORA_WD_DESC_MASTER, defaultValue: false, visibleWhen: opts.hideDoraWd ? undefined : doraWdVisible },
-  { key: 'adapter_init_strategy', type: 'select', label: 'LoRA 初始化策略', title: 'adapter_init_strategy', desc: '统一初始化入口：默认 LoRA / PiSSA /', defaultValue: 'default', options: ADAPTER_INIT_STRATEGY_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), (c) => !doraEnabled(c)) },
-  { key: 'adapter_init_export_mode', type: 'select', label: '初始化导出模式', title: 'adapter_init_export_mode', desc: 'auto 会在最终保存时导出成可加载到原始底模的 LoRA', defaultValue: 'auto', options: ADAPTER_INIT_EXPORT_MODE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), nativeLoraInitSelected) },
-  { key: 'loftq_bits', type: 'number', label: 'LoftQ 量化位宽', title: 'loftq_bits', desc: 'LoftQ 首版使用 fake-quant/dequant 权重残差初始化', defaultValue: 4, min: 2, max: 8, step: 1, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
-  { key: 'loftq_quant_type', type: 'select', label: 'LoftQ 量化粒度', title: 'loftq_quant_type', desc: 'rowwise 按输出通道量化，tensorwise 按整层张量量化。', defaultValue: 'rowwise', options: LOFTQ_QUANT_TYPE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
+  { key: 'adapter_init_strategy', type: 'select', label: 'LoRA 初始化策略', title: 'adapter_init_strategy', desc: '统一初始化入口：default 标准 LoRA；pissa/olora/loftq 特殊初始化（仍走请求管线，不加新入口）。建议 default，需要快速收敛换 pissa。', defaultValue: 'default', options: ADAPTER_INIT_STRATEGY_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), (c) => !doraEnabled(c)) },
+  { key: 'adapter_init_export_mode', type: 'select', label: '初始化导出模式', title: 'adapter_init_export_mode', desc: '特殊初始化产物的导出方式：auto 在最终保存时转成可直接加载到原底模的 LoRA。建议 auto。', defaultValue: 'auto', options: ADAPTER_INIT_EXPORT_MODE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), nativeLoraInitSelected) },
+  { key: 'loftq_bits', type: 'number', label: 'LoftQ 量化位宽', title: 'loftq_bits', desc: 'LoftQ 量化位宽（fake-quant 初始化，不是持久 4bit 底座）。推荐范围：4（默认）或 8。', defaultValue: 4, min: 2, max: 8, step: 1, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
+  { key: 'loftq_quant_type', type: 'select', label: 'LoftQ 量化粒度', title: 'loftq_quant_type', desc: '量化粒度：rowwise 按输出通道，tensorwise 整张量。建议 rowwise（默认，精度更好）。', defaultValue: 'rowwise', options: LOFTQ_QUANT_TYPE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
   ...(includeLycoris ? [
     uiGroup('LoKr 专属参数', '这组只会在 LoKr 下出现，包含 Kronecker 分解方式、双侧分解和 full matrix 等更重口味的结构控制。', all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'))),
-    { key: 'lokr_factor', type: 'number', label: 'LoKr 系数', title: 'lokr_factor', desc: '常用 4~无穷（填写 -1 为无穷）', defaultValue: -1, min: -1, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-    { key: 'decompose_both', type: 'boolean', label: 'LoKr 双侧分解', title: 'decompose_both', desc: 'LoKr 额外分解较小那一侧矩阵。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-    { key: 'full_matrix', type: 'boolean', label: 'LoKr Full Matrix', title: 'full_matrix', desc: 'LoKr 强制走 full matrix 路线', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-    { key: 'unbalanced_factorization', type: 'boolean', label: 'LoKr 非均衡分解', title: 'unbalanced_factorization', desc: 'LoKr 在分解维度时交换较大的那一侧，改变', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'lokr_factor', type: 'number', label: 'LoKr 系数', title: 'lokr_factor', desc: 'LoKr Kronecker 分解因子：越大越省参数越弱表达。-1 表示无穷大因子（最省）。推荐范围：4（常用起点）～8；-1 极限压缩。', defaultValue: -1, min: -1, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'decompose_both', type: 'boolean', label: 'LoKr 双侧分解', title: 'decompose_both', desc: 'LoKr 额外分解较小侧矩阵，进一步省参数但更慢。建议默认关闭，参数预算极紧时开。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'full_matrix', type: 'boolean', label: 'LoKr Full Matrix', title: 'full_matrix', desc: '强制 LoKr 走完整矩阵路径（放弃分解收益换稳定）。建议排查 LoKr 数值问题时临时开启。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'unbalanced_factorization', type: 'boolean', label: 'LoKr 非均衡分解', title: 'unbalanced_factorization', desc: 'LoKr 分解时交换较大侧，改变参数分布形态。建议默认关闭；属实验开关。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
     // 后端 sdxl_lora.py:192-211 声明、config_adapter 归一层消费；仅 lycoris.kohya+lokr 生效。
-    { key: 'lokr_no_materialize_forward', type: 'boolean', label: 'LoKr 免实体化前向', title: 'lokr_no_materialize_forward', desc: '实验：前向直接用 Kronecker 因子计算，不实体化完整权重。省显存但可能更慢', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
-    { key: 'lokr_no_materialize_strategy', type: 'select', label: '免实体化前向实现', title: 'lokr_no_materialize_strategy', desc: 'auto 按当前基准启发式选择路径；legacy 为旧实现', defaultValue: 'legacy', options: ['auto', 'legacy', 'matmul'], visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'), when('lokr_no_materialize_forward', true)) },
+    { key: 'lokr_no_materialize_forward', type: 'boolean', label: 'LoKr 免实体化前向', title: 'lokr_no_materialize_forward', desc: '前向直接用 Kronecker 因子计算而不实体化整块权重，省显存可能更慢。建议显存紧张且用 LoKr 时试验。', defaultValue: false, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
+    { key: 'lokr_no_materialize_strategy', type: 'select', label: '免实体化前向实现', title: 'lokr_no_materialize_strategy', desc: '免实体化前向的实现选择：auto 按启发式选路，legacy 旧行为。建议 auto。', defaultValue: 'legacy', options: ['auto', 'legacy', 'matmul'], visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'), when('lokr_no_materialize_forward', true)) },
   ] : []),
-  { key: 'enable_base_weight', type: 'boolean', label: '启用基础权重', title: 'enable_base_weight', desc: '启用基础权重（差异炼丹）', defaultValue: false },
+  { key: 'enable_base_weight', type: 'boolean', label: '启用基础权重', title: 'enable_base_weight', desc: '差异炼丹：叠加一个基础权重参照网络。建议实验性玩法，常规训练关闭。', defaultValue: false },
   { key: 'base_weights', type: 'textarea', label: '基础权重路径', title: 'base_weights', desc: '合并入底模的 LoRA 路径，一行一个路径', defaultValue: '', visibleWhen: when('enable_base_weight', true) },
   { key: 'base_weights_multiplier', type: 'textarea', label: '基础权重比例', title: 'base_weights_multiplier', desc: '合并入底模的 LoRA 权重，一行一个数字', defaultValue: '', visibleWhen: when('enable_base_weight', true) },
   { key: 'network_args_custom', type: 'textarea', label: '自定义 network_args', title: 'network_args_custom', desc: '自定义 network_args，每行一个参数', defaultValue: '' },
@@ -1283,38 +1283,38 @@ export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], ext
 // defaults.tsExtra: 额外的 timestep_sampling 选项(如 anima 路线支持的 'logit_normal',
 // SD3 论文消融中优于 uniform);仅在传入时追加,其他训练族不受影响。
 export const flowParams = (defaults = {}) => [
-  { key: 'timestep_sampling', type: 'select', label: '时间步采样', title: 'timestep_sampling', desc: '时间步采样策略', defaultValue: defaults.ts || 'sigmoid', options: ['sigma', 'uniform', 'sigmoid', 'shift', 'flux_shift', ...(defaults.tsExtra || [])] },
+  { key: 'timestep_sampling', type: 'select', label: '时间步采样', title: 'timestep_sampling', desc: '扩散时间步采样分布（shift/logit_normal/uniform 等）。建议 shift（默认）对多数 flow 模型最佳。', defaultValue: defaults.ts || 'sigmoid', options: ['sigma', 'uniform', 'sigmoid', 'shift', 'flux_shift', ...(defaults.tsExtra || [])] },
   ...((defaults.tsExtra || []).includes('logit_normal') ? [
-    { key: 'flow_logit_mean', type: 'number', label: 'Logit Mean', title: 'flow_logit_mean', desc: 'logit_normal 时间步采样均值（SD3 推荐 0）', defaultValue: 0.0, step: 0.01, visibleWhen: when('timestep_sampling', 'logit_normal') },
-    { key: 'flow_logit_std', type: 'number', label: 'Logit Std', title: 'flow_logit_std', desc: 'logit_normal 时间步采样标准差（SD3 推荐 1）', defaultValue: 1.0, min: 0.001, step: 0.01, visibleWhen: when('timestep_sampling', 'logit_normal') },
+    { key: 'flow_logit_mean', type: 'number', label: 'Logit Mean', title: 'flow_logit_mean', desc: 'logit-normal 均值：正偏高频段采样。推荐范围： 0 居中，偏细节给负值。', defaultValue: 0.0, step: 0.01, visibleWhen: when('timestep_sampling', 'logit_normal') },
+    { key: 'flow_logit_std', type: 'number', label: 'Logit Std', title: 'flow_logit_std', desc: 'logit-normal 标准差（>0）。越小越集中于均值段。推荐范围： 1。', defaultValue: 1.0, min: 0.001, step: 0.01, visibleWhen: when('timestep_sampling', 'logit_normal') },
   ] : []),
   { key: 'sigmoid_scale', type: 'number', label: 'sigmoid 缩放', title: 'sigmoid_scale', desc: 'sigmoid 缩放系数', defaultValue: defaults.ss || 1.0, step: 0.001 },
   { key: 'model_prediction_type', type: 'select', label: '模型预测类型', title: 'model_prediction_type', desc: '模型预测类型', defaultValue: defaults.mp || 'raw', options: ['raw', 'additive', 'sigma_scaled'] },
   // 2026-08 ANIMA 桶：原先这里的四个 sdxl_flow_* 死重量已拆出。它们锚在
   // flow_model 上，而所有挂载 flowParams 的族（anima/newbie/krea/zimage/boogu/
   // 概念编辑）都没有 flow_model 键 → 恒隐藏、永不收集，只是每个 DiT 族白背四键。
-  { key: 'discrete_flow_shift', type: 'number', label: '离散流位移', title: 'discrete_flow_shift', desc: '离散流位移值', defaultValue: defaults.dfs || 1.0, step: 0.001 },
-  { key: 'guidance_scale', type: 'number', label: 'CFG 引导缩放', title: 'guidance_scale', desc: 'CFG 引导缩放', defaultValue: defaults.gs || 1.0, step: 0.01 },
+  { key: 'discrete_flow_shift', type: 'number', label: '离散流位移', title: 'discrete_flow_shift', desc: '离散流采样的 shift 参数：越大越偏向高噪声段。推荐范围：常用 3–4，以模型族默认为准。', defaultValue: defaults.dfs || 1.0, step: 0.001 },
+  { key: 'guidance_scale', type: 'number', label: 'CFG 引导缩放', title: 'guidance_scale', desc: 'CFG/Guidance 强度（LCM-LoRA 类低值）。推荐范围：LCM 1.0–2.0 起测；常规蒸馏按教师设定。', defaultValue: defaults.gs || 1.0, step: 0.01 },
   // 2026-08 第 3 站审计（B1）：sigma_sqrt 在 FLUX unified 运行时会直接
   // ValueError（flux_lora_utils.py:220-223 合法集 none/uniform/logit_normal/
   // mode/cosine/cosmap），cosine 缺失；anima 已改用自有 anima_weighting_scheme
   // （anima_flow.py:266-277 的 sigma_sqrt 与本组无关），故共享组对齐 runtime 集。
   { key: 'weighting_scheme', type: 'select', label: '权重策略', title: 'weighting_scheme', desc: '损失加权策略', defaultValue: defaults.ws || 'none', options: ['logit_normal', 'mode', 'cosine', 'cosmap', 'none'] },
-  { key: 'mode_scale', type: 'number', label: 'mode 权重缩放', title: 'mode_scale', desc: 'mode 权重策略的缩放系数', defaultValue: '', step: 0.01 },
-  { key: 'loss_type', type: 'select', label: '损失函数类型', title: 'loss_type', desc: '损失函数类型', defaultValue: defaults.lt || 'l2', options: ['l1', 'l2', 'huber', 'smooth_l1'] },
+  { key: 'mode_scale', type: 'number', label: 'mode 权重缩放', title: 'mode_scale', desc: 'mode 权重策略的缩放系数（EDM2 mode weighting）。推荐范围：留空关闭。', defaultValue: '', step: 0.01 },
+  { key: 'loss_type', type: 'select', label: '损失函数类型', title: 'loss_type', desc: '损失函数类型（l2/l1/huber 等），决定对离群样本的敏感度。建议保持 l2 默认；标签噪声大时试 huber。', defaultValue: defaults.lt || 'l2', options: ['l1', 'l2', 'huber', 'smooth_l1'] },
 ];
 
 export const rectifiedFlowParams = () => [
-  { key: 'flow_model', type: 'boolean', label: '启用 Rectified Flow', title: 'flow_model', desc: '启用 RF / Flow Matching', defaultValue: false },
-  { key: 'flow_use_ot', type: 'boolean', label: 'RF 最优传输配对', title: 'flow_use_ot', desc: '按 cosine OT 重新配对 latent', defaultValue: false, visibleWhen: when('flow_model', true) },
-  { key: 'flow_timestep_distribution', type: 'select', label: 'RF 时间步分布', title: 'flow_timestep_distribution', desc: 'RF 时间步采样分布', defaultValue: 'logit_normal', options: ['logit_normal', 'uniform'], visibleWhen: when('flow_model', true) },
-  { key: 'flow_logit_mean', type: 'number', label: 'RF Logit Mean', desc: 'logit-normal 时间步采样均值', defaultValue: 0.0, step: 0.01, visibleWhen: all(when('flow_model', true), when('flow_timestep_distribution', 'logit_normal')) },
-  { key: 'flow_logit_std', type: 'number', label: 'RF Logit Std', desc: 'logit-normal 时间步采样标准差，必须大于 0', defaultValue: 1.0, min: 0.001, step: 0.01, visibleWhen: all(when('flow_model', true), when('flow_timestep_distribution', 'logit_normal')) },
-  { key: 'flow_uniform_shift', type: 'boolean', label: 'RF 分辨率偏移', title: 'flow_uniform_shift', desc: '按图像像素数动态偏移 RF 时间步', defaultValue: false, visibleWhen: when('flow_model', true) },
-  { key: 'flow_uniform_base_pixels', type: 'number', label: 'RF 基准像素数', title: 'flow_uniform_base_pixels', desc: '分辨率偏移的基准像素数。1024x1024 = 1048576', defaultValue: 1048576, min: 1, step: 1, visibleWhen: all(when('flow_model', true), when('flow_uniform_shift', true)) },
-  { key: 'flow_uniform_static_ratio', type: 'number', label: 'RF 固定偏移比率', title: 'flow_uniform_static_ratio', desc: '填写后覆盖分辨率动态偏移。留空则不使用固定比率', defaultValue: '', min: 0.001, step: 0.001, visibleWhen: when('flow_model', true) },
+  { key: 'flow_model', type: 'boolean', label: '启用 Rectified Flow', title: 'flow_model', desc: '启用 Rectified Flow / Flow Matching 目标。建议仅在 flow 类底模上开启，UNet 经典底模不要开。', defaultValue: false },
+  { key: 'flow_use_ot', type: 'boolean', label: 'RF 最优传输配对', title: 'flow_use_ot', desc: '按 cosine 最优传输重排 latent 配对。建议小 batch 收敛慢时试验。', defaultValue: false, visibleWhen: when('flow_model', true) },
+  { key: 'flow_timestep_distribution', type: 'select', label: 'RF 时间步分布', title: 'flow_timestep_distribution', desc: 'RF 时间步采样分布（logit_normal 默认等）。建议 logit_normal。', defaultValue: 'logit_normal', options: ['logit_normal', 'uniform'], visibleWhen: when('flow_model', true) },
+  { key: 'flow_logit_mean', type: 'number', label: 'RF Logit Mean', desc: 'logit-normal 均值：正偏高频段采样。推荐范围： 0 居中，偏细节给负值。', defaultValue: 0.0, step: 0.01, visibleWhen: all(when('flow_model', true), when('flow_timestep_distribution', 'logit_normal')) },
+  { key: 'flow_logit_std', type: 'number', label: 'RF Logit Std', desc: 'logit-normal 标准差（>0）。越小越集中于均值段。推荐范围： 1。', defaultValue: 1.0, min: 0.001, step: 0.01, visibleWhen: all(when('flow_model', true), when('flow_timestep_distribution', 'logit_normal')) },
+  { key: 'flow_uniform_shift', type: 'boolean', label: 'RF 分辨率偏移', title: 'flow_uniform_shift', desc: '按像素数动态偏移 RF 时间步。建议多分辨率混合训练开启。', defaultValue: false, visibleWhen: when('flow_model', true) },
+  { key: 'flow_uniform_base_pixels', type: 'number', label: 'RF 基准像素数', title: 'flow_uniform_base_pixels', desc: '分辨率偏移的基准像素数（1024²=1048576）。推荐范围：与主分辨率面积一致。', defaultValue: 1048576, min: 1, step: 1, visibleWhen: all(when('flow_model', true), when('flow_uniform_shift', true)) },
+  { key: 'flow_uniform_static_ratio', type: 'number', label: 'RF 固定偏移比率', title: 'flow_uniform_static_ratio', desc: '固定偏移比率，填写后覆盖动态偏移；留空禁用。推荐范围：留空走动态。', defaultValue: '', min: 0.001, step: 0.001, visibleWhen: when('flow_model', true) },
   { key: 'contrastive_flow_matching', type: 'boolean', label: '对比 Flow Matching', title: 'contrastive_flow_matching', desc: '启用 CFM 辅助项。需要同时开启 Rectified Flow', defaultValue: false, visibleWhen: when('flow_model', true) },
-  { key: 'cfm_lambda', type: 'number', label: 'CFM 权重', title: 'cfm_lambda', desc: '对比 Flow Matching 权重', defaultValue: 0.05, min: 0, step: 0.001, visibleWhen: all(when('flow_model', true), when('contrastive_flow_matching', true)) },
+  { key: 'cfm_lambda', type: 'number', label: 'CFM 权重', title: 'cfm_lambda', desc: '对比 Flow Matching 辅助损失权重。推荐范围： 0.05（默认）小权重起步。', defaultValue: 0.05, min: 0, step: 0.001, visibleWhen: all(when('flow_model', true), when('contrastive_flow_matching', true)) },
 ];
 
 // ---- section 工厂 ----

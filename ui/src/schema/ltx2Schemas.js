@@ -39,7 +39,7 @@ const LTX2_LORA_COMPRESSION_KEYS = new Set([
 const LTX2_LORA_QKV_FIELDS = [
   { key: 'triton_ops_enabled', type: 'boolean', label: '启用 LTX Triton Ops', title: 'triton_ops_enabled', desc: '默认关闭。仅在 QKV 子开关同时开启时尝试 LTX Triton 注入。', defaultValue: false },
   { key: 'triton_ops_inject_qkv', type: 'boolean', label: 'Triton QKV 融合', title: 'triton_ops_inject_qkv', desc: '仅标准视频 attn1；Perturbed、cross 与 audio 路径跳过。与物理打包同开时 Triton 命中优先，未命中由物理路径回退。', defaultValue: false, visibleWhen: when('triton_ops_enabled', true) },
-  { key: 'model_fused_qkv', type: 'boolean', label: '物理 QKV/KV 打包', title: 'model_fused_qkv', desc: '模型级物理 QKV/KV 打包；与 Triton QKV 同开时作为未命中路径的回退。默认关闭。', defaultValue: false },
+  { key: 'model_fused_qkv', type: 'boolean', label: '物理 QKV/KV 打包', title: 'model_fused_qkv', desc: '模型级物理 QKV/KV 打包权重加载。与 Triton QKV 同开时作为未命中回退路径。建议默认关闭。', defaultValue: false },
 ];
 const LTX2_SHARED_SPEED_FIELDS = S_SPEED_FLOW.filter((field) => (
   LTX2_SHARED_SPEED_KEYS.has(field.key)
@@ -55,18 +55,18 @@ const LTX2_CHECKPOINT_FIELDS = [
   ...S_DIT_PERFORMANCE_EXPERT.filter((field) => (
     field.key === 'performance_expert_mode' || field.key === 'checkpoint_policy'
   )),
-  { key: 'activation_cpu_offload_enabled', type: 'boolean', label: '激活 CPU Offload', title: 'activation_cpu_offload_enabled', desc: '将大激活保存到 pinned CPU 内存，降低反向峰值显存。', defaultValue: false },
-  { key: 'activation_cpu_offload_min_tensor_mb', type: 'number', label: 'Offload 最小体积 MB', title: 'activation_cpu_offload_min_tensor_mb', desc: '只卸载达到该体积的激活。', defaultValue: 1.0, min: 0, step: 0.5, visibleWhen: when('activation_cpu_offload_enabled', true) },
-  { key: 'activation_cpu_offload_pool_gb', type: 'number', label: 'Offload Pinned 池 GB', title: 'activation_cpu_offload_pool_gb', desc: '激活 Offload 使用的 pinned CPU 内存池。', defaultValue: 1.0, min: 0.1, step: 0.1, visibleWhen: when('activation_cpu_offload_enabled', true) },
+  { key: 'activation_cpu_offload_enabled', type: 'boolean', label: '激活 CPU Offload', title: 'activation_cpu_offload_enabled', desc: '把大激活搬到 CPU 内存降显存，可与分块检查点组合。建议显存仍不够时的下一档手段。', defaultValue: false },
+  { key: 'activation_cpu_offload_min_tensor_mb', type: 'number', label: 'Offload 最小体积 MB', title: 'activation_cpu_offload_min_tensor_mb', desc: '只卸载达到该体积的激活张量。推荐范围：1 MB（默认）以上。', defaultValue: 1.0, min: 0, step: 0.5, visibleWhen: when('activation_cpu_offload_enabled', true) },
+  { key: 'activation_cpu_offload_pool_gb', type: 'number', label: 'Offload Pinned 池 GB', title: 'activation_cpu_offload_pool_gb', desc: 'CPU pinned 内存池大小（GB），池内传输走 DMA 更快。推荐范围：1–8。', defaultValue: 1.0, min: 0.1, step: 0.1, visibleWhen: when('activation_cpu_offload_enabled', true) },
 ];
 const LTX2_VIDEO_FIELDS = [
-  { key: 'ltx23_target_frames', type: 'number', label: '目标帧数', title: 'ltx23_target_frames', desc: '训练 clip 目标帧数；单图训练保持 1。', defaultValue: 1, min: 1, step: 1 },
-  { key: 'ltx23_frame_stride', type: 'number', label: '帧采样步长', title: 'ltx23_frame_stride', desc: '相邻采样帧之间的源视频帧间隔。', defaultValue: 1, min: 1, step: 1 },
+  { key: 'ltx23_target_frames', type: 'number', label: '目标帧数', title: 'ltx23_target_frames', desc: '训练 clip 目标帧数；单图训练保持 1，视频按 8n+1 取值。推荐范围：1 或 9/17/25 等。', defaultValue: 1, min: 1, step: 1 },
+  { key: 'ltx23_frame_stride', type: 'number', label: '帧采样步长', title: 'ltx23_frame_stride', desc: '相邻采样帧之间的源帧间隔；1 逐帧，2 跳帧加倍时长覆盖。推荐范围：1（默认）。', defaultValue: 1, min: 1, step: 1 },
 ];
 const LTX2_DEPTH_EXPANSION_FIELDS = [
-  { key: 'ltx23_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'ltx23_depth_expansion_enabled', desc: '交错复制 LTX-2.x 双流 block，并以恒等残差初始化新增层（视频+音频输出投影归零，存在的 bias 一并归零）。最终保存完整新底座。', defaultValue: false },
-  { key: 'ltx23_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'ltx23_depth_expansion_target_layers', desc: '扩层后的 Transformer block 总数（22B-dev 原生 48）。', defaultValue: 64, min: 2, step: 1, visibleWhen: when('ltx23_depth_expansion_enabled', true) },
-  { key: 'ltx23_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'ltx23_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。', defaultValue: 'new_layers', visibleWhen: when('ltx23_depth_expansion_enabled', true), options: [
+  { key: 'ltx23_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'ltx23_depth_expansion_enabled', desc: '交错复制 LTX 双流 block 并以恒等残差初始化新增层（输出投影归零），最终保存完整新底座。建议仅在明确要扩容量的全参微调开启。', defaultValue: false },
+  { key: 'ltx23_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'ltx23_depth_expansion_target_layers', desc: '扩层后的 block 总数，必须大于原生层数。推荐范围：22B-dev 原生 48，可升至 64–72。', defaultValue: 64, min: 2, step: 1, visibleWhen: when('ltx23_depth_expansion_enabled', true) },
+  { key: 'ltx23_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'ltx23_depth_expansion_train_scope', desc: '扩层训练范围：只训新增层 / 外围模块 / 全部。建议 new_layers。', defaultValue: 'new_layers', visibleWhen: when('ltx23_depth_expansion_enabled', true), options: [
     { value: 'new_layers', label: '只训练新增层' },
     { value: 'new_layers_periphery', label: '新增层 + 外围模块' },
     { value: 'all', label: '全部参数' },
@@ -104,29 +104,29 @@ export const LTX23_LORA_SECTIONS = dropDuplicateFieldKeys([
     { key: 'pretrained_model_name_or_path', type: 'folder', pickerType: 'folder', label: 'LTX-2.3 模型路径', title: 'pretrained_model_name_or_path', desc: 'LTX-2.3 单文件或模型目录。', defaultValue: '' },
     { key: 'ltx23_text_encoder_path', type: 'file', pickerType: 'model-file', label: 'LTX-2.3 Gemma3 文本编码器', title: 'ltx23_text_encoder_path', desc: '匹配底座的 Gemma3 文本编码器；标准目录可自动解析，自定义布局时覆盖。', defaultValue: '' },
     { key: 'ltx23_video_vae_path', type: 'file', pickerType: 'model-file', label: 'LTX-2.3 视频 VAE', title: 'ltx23_video_vae_path', desc: '匹配底座的视频 VAE；标准目录可自动解析，自定义布局时覆盖。', defaultValue: '' },
-    { key: 'output_dir', type: 'folder', pickerType: 'folder', label: '输出目录', title: 'output_dir', desc: '训练输出目录', defaultValue: './output/ltx23' },
-    { key: 'output_name', type: 'string', label: '输出名称', title: 'output_name', desc: 'LoRA 输出文件名', defaultValue: 'ltx23-lora' },
-    { key: 'ltx23_max_text_length', type: 'number', label: '最大文本长度', title: 'ltx23_max_text_length', desc: '构建 Gemma 文本缓存时的 token 上限；2.3/2.5 共用。', defaultValue: 256, min: 16, max: 1024, step: 1 },
+    { key: 'output_dir', type: 'folder', pickerType: 'folder', label: '输出目录', title: 'output_dir', desc: '模型输出目录。建议指向专用盘的 models/lora 类目录，避免系统盘；训练缓存与数据集分开存放。', defaultValue: './output/ltx23' },
+    { key: 'output_name', type: 'string', label: '输出名称', title: 'output_name', desc: '输出文件名（不含扩展名）。建议用「概念名+版本」命名（如 lulu_v2），同一目录多次训练勿重名以免覆盖。', defaultValue: 'ltx23-lora' },
+    { key: 'ltx23_max_text_length', type: 'number', label: '最大文本长度', title: 'ltx23_max_text_length', desc: 'Gemma 文本缓存的 token 上限（2.3/2.5 共用）。推荐范围：256（默认）内。', defaultValue: 256, min: 16, max: 1024, step: 1 },
   ]),
   sec('dataset-settings', 'dataset', '数据集设置', '图像按单帧或短 clip 进入 cache-first LTX 数据链。', [
-    { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '训练图片目录', title: 'train_data_dir', desc: '训练图片或短视频目录。', defaultValue: './output/lulynx' },
-    { key: 'resolution', type: 'string', label: '训练分辨率', title: 'resolution', desc: '22B 建议先用较小分辨率验证。', defaultValue: '512,512' },
-    { key: 'caption_extension', type: 'string', label: 'Caption 扩展名', title: 'caption_extension', defaultValue: '.txt' },
-    { key: 'dataloader_num_workers', type: 'number', label: 'DataLoader 线程数', defaultValue: 2, min: 0 },
-    { key: 'use_cache', type: 'boolean', label: '使用磁盘缓存', title: 'use_cache', desc: '生成并复用版本匹配的 LTX latent/文本条件缓存；2.3 与 2.5 缓存不可混用。', defaultValue: true },
+    { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '训练图片目录', title: 'train_data_dir', desc: '训练数据集根目录：每个子文件夹是一个概念，文件夹名 = 重复次数@概念名（如 10_lulu）。建议图片统一存放于此盘，SSD 更快。', defaultValue: './output/lulynx' },
+    { key: 'resolution', type: 'string', label: '训练分辨率', title: 'resolution', desc: '训练分辨率「宽,高」，须为 64 的倍数，匹配底模训练分辨率最佳。推荐范围：SDXL/Flux/Anima 1024,1024；SD1.5 512,512。降分辨率省显存但丢细节。', defaultValue: '512,512' },
+    { key: 'caption_extension', type: 'string', desc: '标注文件扩展名（默认 .txt，与图片同名）。建议全库统一一种扩展名，混用会导致部分图读不到标注。', label: 'Caption 扩展名', title: 'caption_extension', defaultValue: '.txt' },
+    { key: 'dataloader_num_workers', type: 'number', desc: 'DataLoader 工作进程数，影响取数吞吐。推荐范围：2–8；Windows 下过高会拖慢启动。', label: 'DataLoader 线程数', defaultValue: 2, min: 0 },
+    { key: 'use_cache', type: 'boolean', label: '使用磁盘缓存', title: 'use_cache', desc: '生成并复用版本匹配的 LTX latent/文本条件缓存；2.3 与 2.5 缓存不可混用。推荐范围：数据未变时保持 true（默认）；数据变更后重建。', defaultValue: true },
     ...LTX2_VIDEO_FIELDS,
   ]),
   sec('save-settings', 'model', '保存设置', '', [
-    { key: 'save_every_n_steps', type: 'number', label: '每 N 步保存', title: 'save_every_n_steps', defaultValue: 0, min: 0 },
-    { key: 'save_every_n_epochs', type: 'number', label: '每 N 轮保存', title: 'save_every_n_epochs', defaultValue: 1, min: 0 },
-    { key: 'train_batch_size', type: 'number', label: 'Batch Size', title: 'train_batch_size', defaultValue: 1, min: 1 },
-    { key: 'resume', type: 'folder', pickerType: 'output-folder', label: '继续训练路径', title: 'resume', desc: '从已有 save_state 目录恢复训练。', defaultValue: '' },
+    { key: 'save_every_n_steps', type: 'number', desc: '每 N 步保存一次模型。推荐范围：500–2000；与 epoch 保存互斥。', label: '每 N 步保存', title: 'save_every_n_steps', defaultValue: 0, min: 0 },
+    { key: 'save_every_n_epochs', type: 'number', desc: '每 N 轮保存一次模型。推荐范围：1–5；注意与 save_every_n_steps 互斥，同时设置可能导致存储暴涨。', label: '每 N 轮保存', title: 'save_every_n_epochs', defaultValue: 1, min: 0 },
+    { key: 'train_batch_size', type: 'number', desc: '每次前向/反向同时处理的图片数，直接影响显存与梯度平滑度。推荐范围：显存优先取 1，24G 卡 SDXL 1024px 可到 2；配合梯度累加放大等效 batch。', label: 'Batch Size', title: 'train_batch_size', defaultValue: 1, min: 1 },
+    { key: 'resume', type: 'folder', pickerType: 'output-folder', label: '继续训练路径', title: 'resume', desc: '从 save_state 保存的状态目录继续训练（选目录而非文件）。建议只在同版本代码/同配置下 resume，跨版本可能不兼容。', defaultValue: '' },
     ...S_SAVE.filter((field) => !['output_dir', 'output_name'].includes(field.key)),
   ]),
   sec('adapter-settings', 'network', 'LoRA 设置', '22B 建议小 rank；仅视觉 attention 与 FFN。', [
-    { key: 'network_dim', type: 'number', label: 'Rank (Dim)', desc: 'LoRA rank', defaultValue: 16, min: 1 },
-    { key: 'network_alpha', type: 'number', label: 'Alpha', desc: 'LoRA alpha', defaultValue: 16, min: 1 },
-    { key: 'network_dropout', type: 'number', label: 'Dropout', defaultValue: 0.05, min: 0, step: 0.01 },
+    { key: 'network_dim', type: 'number', label: 'Rank (Dim)', desc: 'LoRA rank：低秩子空间维度，决定可学习容量与文件体积。推荐范围：4–128；角色/复杂风格 32–64 起步，简单概念 8–16 即可。', defaultValue: 16, min: 1 },
+    { key: 'network_alpha', type: 'number', label: 'Alpha', desc: '缩放系数：有效学习率 ≈ lr × alpha/rank。推荐范围：rank 或 rank/2（如 rank=32 时 alpha=16–32）；高 rank 可降低比值求稳。', defaultValue: 16, min: 1 },
+    { key: 'network_dropout', type: 'number', desc: '对 LoRA 输出按神经元随机置零的正则。推荐范围：0（默认）或 ≤0.1；过大伤收敛。', label: 'Dropout', defaultValue: 0.05, min: 0, step: 0.01 },
     ...S_LAYERED_ALPHA_GENERIC,
   ]),
   sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [...S_LR_DIT]),
@@ -135,14 +135,14 @@ export const LTX23_LORA_SECTIONS = dropDuplicateFieldKeys([
   // training 页独立 Flow Matching 组——后端 schema 即放在 training tab 的
   // Flow Matching section（ltx23_schemas.py:107-119,284），语义分组对齐。
   sec('ltx23-flow-matching', 'training', 'Flow Matching 采样', '时间步采样、模态隔离与 RoPE 帧率。', [
-    { key: 'ltx23_timestep_sampling', type: 'select', label: '时间步采样', title: 'ltx23_timestep_sampling', desc: 'flow matching 采样，默认 shift。', defaultValue: 'shift', options: [
+    { key: 'ltx23_timestep_sampling', type: 'select', label: '时间步采样', title: 'ltx23_timestep_sampling', desc: 'flow matching 时间步采样方式，shift 重心偏移为默认。建议 shift。', defaultValue: 'shift', options: [
       { value: 'shift', label: 'shift（推荐）' },
       { value: 'uniform', label: 'uniform' },
       { value: 'sigma', label: 'sigma' },
     ] },
-    { key: 'ltx23_discrete_flow_shift', type: 'number', label: 'Flow shift', title: 'ltx23_discrete_flow_shift', desc: '默认 1.0', defaultValue: 1.0, min: 0.1, step: 0.1 },
-    { key: 'ltx23_isolate_modalities', type: 'boolean', label: '隔离模态', title: 'ltx23_isolate_modalities', desc: 'true=视觉-only，关闭 a2v/v2a 交叉。', defaultValue: true },
-    { key: 'ltx23_fps', type: 'number', label: 'FPS', title: 'ltx23_fps', desc: 'RoPE 用帧率', defaultValue: 24.0, min: 1, max: 60, step: 1 },
+    { key: 'ltx23_discrete_flow_shift', type: 'number', label: 'Flow shift', title: 'ltx23_discrete_flow_shift', desc: '离散流 shift 系数。推荐范围：1.0（默认）附近。', defaultValue: 1.0, min: 0.1, step: 0.1 },
+    { key: 'ltx23_isolate_modalities', type: 'boolean', label: '隔离模态', title: 'ltx23_isolate_modalities', desc: 'true 只做视觉任务，关闭 a2v/v2a 交叉。建议纯视觉训练保持 true（默认）。', defaultValue: true },
+    { key: 'ltx23_fps', type: 'number', label: 'FPS', title: 'ltx23_fps', desc: 'RoPE 使用的帧率，应与素材一致。推荐范围：24（默认），上限 60。', defaultValue: 24.0, min: 1, max: 60, step: 1 },
   ]),
   sec('weight-composer', 'frontier', '统一权重组合', '空间、时间步、噪声与样本难度权重按乘法组合。', [...S_WEIGHT_COMPOSER]),
   sec('progressive-training', 'frontier', '渐进式 / 分阶段训练', '按 optimizer progress 切换阶段。', [...S_PROGRESSIVE_TRAINING, ...S_ADAPTIVE_TRAINING]),

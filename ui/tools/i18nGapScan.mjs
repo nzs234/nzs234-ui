@@ -115,6 +115,62 @@ for (const type of ALL_TRAINING_TYPES) {
   }
 }
 
+// ── desc 质量审计:功能说明 + 推荐范围 ──────────────────────────────────────
+// 每个用户可见字段的 zh desc 应包含:
+//   · 数值型(number/slider):固定前缀「推荐范围：」
+//   · 布尔/枚举(boolean/select/multiSelect):选择建议(「建议」或「推荐」字样)
+//   · 路径/文本(file/folder/string/text/textarea):至少有功能说明(desc 非空)
+const RECOMMEND_PREFIX = '推荐范围：';
+const ADVICE_RE = /(建议|推荐|优先|适合|保持默认|何时选|开启|关闭时)/;
+
+function descNeedsWork(field) {
+  const zh = String(field.desc_zh ?? field.desc ?? '').trim();
+  if (!zh) return 'missing_desc';
+  const t = String(field.type ?? '');
+  if (t === 'number' || t === 'slider') {
+    return zh.includes(RECOMMEND_PREFIX) ? null : 'no_recommend';
+  }
+  if (t === 'boolean' || t === 'select' || t === 'multiSelect') {
+    return ADVICE_RE.test(zh) ? null : 'no_advice';
+  }
+  return null;
+}
+
+// descNeed: { tier -> { missing_desc:Set, no_recommend:Set, no_advice:Set } }
+const descNeed = { 0: emptyNeed(), 1: emptyNeed(), 2: emptyNeed(), 3: emptyNeed() };
+function emptyNeed() { return { missing_desc: new Set(), no_recommend: new Set(), no_advice: new Set() }; }
+const descMeta = new Map(); // key -> { type, desc, defaultValue, min, max }
+for (const type of ALL_TRAINING_TYPES) {
+  const typeHidden = Boolean(type.hidden || type.disabled);
+  for (const section of safe(() => getSectionsForType(type.id), [])) {
+    if (section.hidden) continue;
+    const expertSection = section.tab === 'advanced' || section.tab === 'frontier' || section.expert === true;
+    for (const field of section.fields || []) {
+      if (!field || !field.key || field.type === 'hidden') continue;
+      const tier = typeHidden ? 3 : (expertSection ? 2 : (STANDARD_TABS.has(section.tab) && visibleAt(field, defaults0(type.id)) ? 0 : 1));
+      const need = descNeedsWork(field);
+      if (need && !descMeta.has(field.key)) {
+        descMeta.set(field.key, {
+          types: [type.id],
+          tier,
+          type: field.type,
+          desc: String(field.desc_zh ?? field.desc ?? ''),
+          defaultValue: field.defaultValue,
+          min: field.min,
+          max: field.max,
+        });
+      } else if (need && descMeta.has(field.key)) {
+        const meta = descMeta.get(field.key);
+        meta.tier = Math.min(meta.tier, tier);
+        if (!meta.types.includes(type.id)) meta.types.push(type.id);
+        if (!meta.desc && field.desc) meta.desc = String(field.desc);
+      }
+      if (need && !descNeed[tier][need].has(field.key)) descNeed[tier][need].add(field.key);
+    }
+  }
+}
+function defaults0(typeId) { return safe(() => createDefaultConfig(typeId), {}); }
+
 // ── 缺口 ────────────────────────────────────────────────────────────────────
 const missingLabelByTier = { 0: [], 1: [], 2: [], 3: [] };
 const missingDescByTier = { 0: [], 1: [], 2: [], 3: [] };
@@ -223,6 +279,16 @@ const deadEn = deadKeysOf(enBundle);
 const deadOnlyInOne = deadZh.filter((key) => !deadEn.includes(key))
   .concat(deadEn.filter((key) => !deadZh.includes(key)));
 
+const descNeedCounts = Object.fromEntries(['missing_desc', 'no_recommend', 'no_advice'].map((kind) => [
+  kind,
+  Object.fromEntries(Object.entries(descNeed).map(([tier, m]) => [TIER_NAME[tier], m[kind].size])),
+]));
+const descNeedItems = Object.fromEntries(Object.entries(descNeed).map(([tier, m]) => [TIER_NAME[tier], {
+  missing_desc: [...m.missing_desc].sort(),
+  no_recommend: [...m.no_recommend].sort(),
+  no_advice: [...m.no_advice].sort(),
+}]));
+
 // ── 输出 ────────────────────────────────────────────────────────────────────
 const summary = {
   fieldsTotal: fieldsByKey.size,
@@ -246,6 +312,11 @@ const summary = {
       wizardVisible: o.wizardVisible,
       types: o.visibleTypes.size,
     })),
+  },
+  descAudit: {
+    counts: descNeedCounts,
+    items: descNeedItems,
+    meta: Object.fromEntries([...descMeta.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, v])),
   },
   orphans: {
     labelsEn: orphanLabels.sort(),
@@ -277,6 +348,11 @@ if (process.argv.includes('--json')) {
   console.log(`groups missing en: ${JSON.stringify(summary.groupCoverage.groupsMissingEn)}`);
   console.log(`tabs missing en:   ${JSON.stringify(summary.groupCoverage.tabsMissingEn)}`);
   console.log(`bundle dead keys: zh ${deadZh.length}, en ${deadEn.length}${deadOnlyInOne.length ? ` (asymmetric: ${deadOnlyInOne.join(', ')})` : ''}`);
+  console.log('\n-- desc 质量审计(功能说明+推荐范围) --');
+  for (const [kind, byTier] of Object.entries(descNeedCounts)) {
+    const total = Object.values(byTier).reduce((a, b) => a + b, 0);
+    console.log(`${kind}: ${total}  (wizard ${byTier.wizard} / standard ${byTier.standard} / expert ${byTier.expertTab} / hiddenType ${byTier.hiddenType})`);
+  }
   console.log('\n-- wizard-tier missing label_en --');
   console.log(summary.missingLabelEn.lists.wizard.join(', ') || '(none)');
   console.log('\n-- wizard-tier missing desc_en --');

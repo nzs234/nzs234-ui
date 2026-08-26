@@ -14,7 +14,7 @@ export const S_UNIVERSAL_DIT = [
   },
   {
     key: 'universal_dit_probe_mode', type: 'select', label: 'Universal DiT 探测模式',
-    desc: 'auto 会按可用输入逐步执行静态检查与前向；train_smoke 还会执行最小反向。',
+    desc: '探测模式：auto 逐级执行静态检查与前向；train_smoke 额外做最小反向。建议 auto。',
     defaultValue: 'auto',
     options: [
       { value: 'auto', label: 'Auto（推荐）' },
@@ -26,7 +26,7 @@ export const S_UNIVERSAL_DIT = [
   },
   {
     key: 'universal_dit_objective_template', type: 'select', label: 'Objective 模板',
-    desc: '未知模型无法从类名可靠推断时不会静默猜测；auto 会在证据不足时要求确认。',
+    desc: 'Universal DiT 目标模板：auto 从模型证据推断，证据不足会要求确认而非猜测。建议 auto。',
     defaultValue: 'auto',
     options: [
       { value: 'auto', label: 'Auto（证据优先）' },
@@ -42,7 +42,7 @@ export const S_UNIVERSAL_DIT = [
   },
   {
     key: 'universal_dit_target_policy', type: 'select', label: 'Linear Target 策略',
-    desc: 'attention_mlp 仅选注意力/MLP；all_linear 扩大到全部 Linear；explicit 使用严格路径白名单。',
+    desc: 'Linear 目标策略：attention_mlp 保守集合 / all_linear 全部 Linear / explicit 白名单。建议 attention_mlp 默认。',
     defaultValue: 'attention_mlp',
     options: [
       { value: 'attention_mlp', label: 'Attention + MLP（推荐）' },
@@ -65,7 +65,7 @@ export const S_UNIVERSAL_DIT = [
   },
   {
     key: 'universal_dit_trust_remote_code', type: 'boolean', label: '信任模型自定义代码',
-    desc: '高风险选项，仅对来源可信且已审查的本地/远程模型启用 trust_remote_code。',
+    desc: '信任模型仓库自定义代码（trust_remote_code）。高风险，仅对来源可信且已审查的模型启用。建议关闭。',
     defaultValue: false,
     visibleWhen: (c) => c.universal_dit_enabled,
   },
@@ -115,12 +115,12 @@ export const UNIVERSAL_DIT_LORA_SECTIONS = [
     { key: 'pretrained_model_name_or_path', type: 'folder', pickerType: 'folder', label: '自定义 DiT 模型目录', title: 'pretrained_model_name_or_path', desc: '必须包含可供 AutoModel 构造的 config 元数据；未知裸权重文件不支持。', defaultValue: '' },
     { ...udField('universal_dit_allow_remote_download') },
     { ...udField('universal_dit_trust_remote_code') },
-    { key: 'output_dir', type: 'folder', pickerType: 'folder', label: '输出目录', title: 'output_dir', desc: '训练输出目录', defaultValue: './output/universal_dit' },
-    { key: 'output_name', type: 'string', label: '输出名称', title: 'output_name', desc: 'LoRA 输出文件名', defaultValue: 'universal_dit_lora' },
+    { key: 'output_dir', type: 'folder', pickerType: 'folder', label: '输出目录', title: 'output_dir', desc: '模型输出目录。建议指向专用盘的 models/lora 类目录，避免系统盘；训练缓存与数据集分开存放。', defaultValue: './output/universal_dit' },
+    { key: 'output_name', type: 'string', label: '输出名称', title: 'output_name', desc: '输出文件名（不含扩展名）。建议用「概念名+版本」命名（如 lulu_v2），同一目录多次训练勿重名以免覆盖。', defaultValue: 'universal_dit_lora' },
     { key: 'use_cache', type: 'hidden', defaultValue: true },
   ]),
   sec('dataset-settings', 'dataset', '预计算训练张量', '输入不是图片：目录至少包含 latents，并携带 forward/objective 契约所需张量。', [
-    { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '预计算张量目录', title: 'train_data_dir', desc: '预计算张量目录：至少包含 latents，并携带 forward/objective 所需张量。', defaultValue: '' },
+    { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '预计算张量目录', title: 'train_data_dir', label_zh: '预计算张量目录', label_en: 'Precomputed Tensor Directory', desc: '输入不是图片：目录必须包含预计算 latents，并携带 forward/objective 契约所需张量；普通图片/concept 数据集在数据集构造阶段会直接失败。', desc_zh: '输入不是图片：目录必须包含预计算 latents，并携带 forward/objective 契约所需张量；普通图片/concept 数据集在数据集构造阶段会直接失败。', desc_en: 'Root directory of precomputed training tensors (NOT an image dataset): must contain latents plus the tensors required by the forward/objective contracts. Plain image or concept folders fail at dataset construction.', defaultValue: '' },
   ]),
   sec('universal-contract-settings', 'contract', 'Batch / Objective / Forward 契约', '探测模式与训练 Objective 必须与外部模型一致；多 Tensor 输出或 cache↔forward 形参歧义时必须显式声明 JSON 契约。', [
     { ...udField('universal_dit_probe_mode') },
@@ -134,9 +134,9 @@ export const UNIVERSAL_DIT_LORA_SECTIONS = [
   ]),
   sec('adapter-settings', 'network', 'LoRA 注入', '后端固定 networks.lora；只暴露 rank / alpha / dropout。', [
     { key: 'network_module', type: 'hidden', defaultValue: 'networks.lora' },
-    { key: 'network_dim', type: 'number', label: 'Rank (Dim)', title: 'network_dim', desc: 'LoRA rank', defaultValue: 16, min: 1, max: 256, step: 1 },
-    { key: 'network_alpha', type: 'number', label: 'Alpha', title: 'network_alpha', desc: 'LoRA alpha', defaultValue: 16, min: 0.1, max: 256, step: 0.1 },
-    { key: 'network_dropout', type: 'number', label: 'Dropout', title: 'network_dropout', desc: 'LoRA dropout', defaultValue: 0, min: 0, max: 1, step: 0.01 },
+    { key: 'network_dim', type: 'number', label: 'Rank (Dim)', title: 'network_dim', desc: 'LoRA rank：低秩子空间维度，决定可学习容量与文件体积。推荐范围：4–128；角色/复杂风格 32–64 起步，简单概念 8–16 即可。', defaultValue: 16, min: 1, max: 256, step: 1 },
+    { key: 'network_alpha', type: 'number', label: 'Alpha', title: 'network_alpha', desc: '缩放系数：有效学习率 ≈ lr × alpha/rank。推荐范围：rank 或 rank/2（如 rank=32 时 alpha=16–32）；高 rank 可降低比值求稳。', defaultValue: 16, min: 0.1, max: 256, step: 0.1 },
+    { key: 'network_dropout', type: 'number', label: 'Dropout', title: 'network_dropout', desc: '对 LoRA 输出按神经元随机置零的正则。推荐范围：0（默认）或 ≤0.1；过大伤收敛。', defaultValue: 0, min: 0, max: 1, step: 0.01 },
   ]),
   sec('optimizer-settings', 'optimizer', '学习率与优化器', '', [
     // LoRA+/RS-LoRA 修饰开关不在后端 universal-dit schema 字段面内（且会经

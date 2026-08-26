@@ -1351,7 +1351,7 @@
   "torch_compile_mode": "Torch.compile Mode",
   "torch_compile_scope": "Torch.compile",
   "train_batch_size": "Train Batch Size",
-  "train_data_dir": "Training Datadirectory (train_data_dir)",
+  "train_data_dir": "Training Data Directory (train_data_dir)",
   "train_length_mode": "Training Mode",
   "train_norm": "Training Norm layer",
   "train_quant_preset": "Train Quant Preset",
