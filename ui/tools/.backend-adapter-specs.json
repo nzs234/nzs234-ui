@@ -1,0 +1,836 @@
+{
+ "lora": {
+  "family": "lora",
+  "label": "LoRA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": true,
+  "supports_rslora": true,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "use_dora",
+   "use_rslora",
+   "adapter_init_strategy"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "dora": {
+  "family": "dora",
+  "label": "DoRA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": true,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "use_dora",
+   "dora_enabled",
+   "dora_wd"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "rs-lora": {
+  "family": "rs-lora",
+  "label": "RS-LoRA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": true,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "use_rslora",
+   "rs_lora_enabled"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "locon": {
+  "family": "locon",
+  "label": "LoCon",
+  "backend": "lycoris",
+  "network_module": "lycoris.kohya",
+  "lycoris_algo": "locon",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "conv_dim",
+   "conv_alpha",
+   "lycoris_preset",
+   "dropout"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "loha": {
+  "family": "loha",
+  "label": "LoHa",
+  "backend": "lycoris",
+  "network_module": "lycoris.kohya",
+  "lycoris_algo": "loha",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "lycoris_preset",
+   "dropout"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "lokr": {
+  "family": "lokr",
+  "label": "LoKr",
+  "backend": "lycoris",
+  "network_module": "lycoris.kohya",
+  "lycoris_algo": "lokr",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "conv_dim",
+   "conv_alpha",
+   "rank_dropout",
+   "module_dropout",
+   "lycoris_preset"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "glora": {
+  "family": "glora",
+  "label": "GLoRA",
+  "backend": "lycoris",
+  "network_module": "lycoris.kohya",
+  "lycoris_algo": "glora",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "conv_dim",
+   "conv_alpha",
+   "lycoris_preset",
+   "dropout"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "glokr": {
+  "family": "glokr",
+  "label": "GLoKr",
+  "backend": "lycoris",
+  "network_module": "lycoris.kohya",
+  "lycoris_algo": "glokr",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "lycoris_preset",
+   "dropout"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "diag-oft": {
+  "family": "diag-oft",
+  "label": "Diag-OFT",
+  "backend": "lycoris",
+  "network_module": "lycoris.kohya",
+  "lycoris_algo": "diag-oft",
+  "supports_rank": true,
+  "supports_alpha": false,
+  "supports_dropout": false,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "lycoris_preset"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "ia3": {
+  "family": "ia3",
+  "label": "IA3",
+  "backend": "lycoris",
+  "network_module": "lycoris.kohya",
+  "lycoris_algo": "ia3",
+  "supports_rank": false,
+  "supports_alpha": false,
+  "supports_dropout": false,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "lycoris_preset"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "full": {
+  "family": "full",
+  "label": "Full",
+  "backend": "lycoris",
+  "network_module": "lycoris.kohya",
+  "lycoris_algo": "full",
+  "supports_rank": false,
+  "supports_alpha": false,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "lycoris_preset",
+   "dropout"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "lora-fa": {
+  "family": "lora-fa",
+  "label": "LoRA-FA",
+  "backend": "native",
+  "network_module": "networks.lora_fa",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "lora_fa_enabled"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "vera": {
+  "family": "vera",
+  "label": "VeRA",
+  "backend": "native",
+  "network_module": "networks.vera",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": false,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "vera_enabled",
+   "vera_d_initial",
+   "vera_prng_key"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "tlora": {
+  "family": "tlora",
+  "label": "T-LoRA",
+  "backend": "native",
+  "network_module": "networks.tlora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "tlora_enabled",
+   "tlora_min_rank",
+   "tlora_rank_schedule",
+   "tlora_orthogonal_init",
+   "tlora_total_steps"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "flexrank": {
+  "family": "flexrank",
+  "label": "FlexRank LoRA",
+  "backend": "native",
+  "network_module": "networks.flexrank_lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "flexrank_lora_enabled",
+   "flexrank_lora_rank_range_min"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "hydralora": {
+  "family": "hydralora",
+  "label": "HydraLoRA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "hydralora_enabled",
+   "hydralora_num_experts",
+   "hydralora_routing",
+   "hydralora_top_k",
+   "hydralora_sparse_top_k"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "fera": {
+  "family": "fera",
+  "label": "FeRA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "fera_enabled",
+   "fera_gate_init"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "reslora": {
+  "family": "reslora",
+  "label": "ResLoRA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "reslora_enabled",
+   "reslora_mode",
+   "reslora_window",
+   "reslora_alpha_star"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "lora2": {
+  "family": "lora2",
+  "label": "LoRA2",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "lora2_enabled",
+   "lora2_gate_init"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "lora2-adaptive": {
+  "family": "lora2-adaptive",
+  "label": "LoRA2 Adaptive",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": false,
+  "supports_alpha": true,
+  "supports_dropout": false,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "lora2_adaptive_enabled",
+   "lora2_adaptive_r_max",
+   "lora2_adaptive_nu_init",
+   "lora2_adaptive_decay_lambda",
+   "lora2_adaptive_rank_threshold"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "tensorring": {
+  "family": "tensorring",
+  "label": "TensorRing LoRA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": true,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "tensorring_lora_enabled",
+   "tensorring_trm_rank",
+   "tensorring_tr_rank",
+   "tensorring_factor"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "dokr": {
+  "family": "dokr",
+  "label": "DoKr",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": false,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "dokr_enabled",
+   "dokr_factor_in",
+   "dokr_factor_out",
+   "dokr_decompose_factor",
+   "dokr_mode",
+   "dokr_alpha"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "gdlokr": {
+  "family": "gdlokr",
+  "label": "GDLoKr",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": false,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "gdlokr_enabled",
+   "gdlokr_factor",
+   "gdlokr_mode",
+   "gdlokr_alpha"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "cdka": {
+  "family": "cdka",
+  "label": "CDKA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": false,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "cdka_enabled",
+   "cdka_factor_in",
+   "cdka_factor_out",
+   "cdka_alpha",
+   "cdka_allora",
+   "cdka_weight_decompose"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ },
+ "krona": {
+  "family": "krona",
+  "label": "KronA",
+  "backend": "native",
+  "network_module": "networks.lora",
+  "lycoris_algo": "",
+  "supports_rank": false,
+  "supports_alpha": true,
+  "supports_dropout": true,
+  "supports_dora": false,
+  "supports_rslora": false,
+  "common_fields": [
+   "network_dim",
+   "network_alpha",
+   "network_dropout",
+   "target_modules",
+   "rank_strategy"
+  ],
+  "family_fields": [
+   "krona_enabled",
+   "krona_factor_in",
+   "krona_factor_out",
+   "krona_allora",
+   "krona_allora_eta",
+   "krona_weight_decompose"
+  ],
+  "export_formats": [
+   "safetensors"
+  ],
+  "lifecycle": {
+   "resolve": "core.services.training_recipe_resolver",
+   "validate": "core.contracts.adapter_family_registry",
+   "inject": "lulynx_trainer.lora_injector",
+   "export": "lulynx_trainer.trainer.trainer_adapter_artifact_runtime"
+  }
+ }
+}

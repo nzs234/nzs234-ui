@@ -324,6 +324,12 @@ export const S_LORA_VARIANTS = [
   { key: 'lora2_adaptive_r_max', type: 'number', label: 'LoRA2 最大 rank', desc: '允许的最大 rank 上限。推荐范围： ≤ network_dim 的 2 倍。', defaultValue: 64, min: 4, max: 512, step: 4, visibleWhen: (c) => c.lora2_adaptive_enabled },
   { key: 'lora2_adaptive_nu_init', type: 'number', label: 'LoRA2 nu 初始值', desc: 'nu 初值控制衰减速度。推荐范围： 1.0（默认）。', defaultValue: 1.0, min: 0.1, max: 10.0, step: 0.1, visibleWhen: (c) => c.lora2_adaptive_enabled },
   { key: 'lora2_adaptive_decay_lambda', type: 'number', label: 'LoRA2 衰减系数', desc: '指数衰减系数 λ。推荐范围： 1.0（默认/论文值）。', defaultValue: 1.0, min: 0.1, max: 5.0, step: 0.1, visibleWhen: (c) => c.lora2_adaptive_enabled },
+  // LoRA2 门控家族（lora2，区别于上面的 lora2_adaptive）：此前 25 族中唯一前后端
+  // 全断——后端 lora2_enabled/lora2_gate_init 齐全（configs_training_methods.py:75、
+  // lora_injector_inject.py:428/436），前端无字段无卡片。补上 master 后向导实体卡
+  // （schemaCommon.js:825 已登记）才会物化，gate_init 的可见性随之生效。
+  { key: 'lora2_enabled', type: 'boolean', label: 'LoRA2 (门控合成)', desc: 'LoRA2：两条可学习门控支路合成增量（gate_init 控制初值），与 LoRA2 Adaptive 分族互斥。建议实验路线。', defaultValue: false },
+  { key: 'lora2_gate_init', type: 'number', label: 'LoRA2 gate 初值', desc: 'LoRA2 门控 nu 初值（FP32 sigmoid 门控，step 0 保持 parity）。推荐范围： 8.0（后端默认）。', defaultValue: 8, min: 0, step: 0.1, visibleWhen: (c) => c.lora2_enabled },
   // 幻影键（2026-08 第 3 站审计 C）：configs_training_methods.py:303 声明后全仓零读者；
   // 注入器只读 r_max/nu_init/decay_lambda。hidden 保旧草稿回显，提交层剥除。
   { key: 'lora2_adaptive_rank_threshold', type: 'hidden', defaultValue: 0.01 },
@@ -624,7 +630,7 @@ export const S_EXPERIMENTAL_PROBES = [
   { key: 'lulynx_ln_guard', type: 'boolean', label: 'LNGuard 归一化漂移保护', desc: 'LNGuard：对可学习 Norm 参数施加基线锚定防漂移（无可训 Norm 时安全空转）。建议风格漂移明显时开。', defaultValue: false },
   { key: 'lulynx_ln_lambda', type: 'number', label: 'LNGuard 锚定强度', desc: 'Norm 参数均方漂移权重。推荐范围： 0.01 小锚定。', defaultValue: 0.01, min: 0, step: 0.001, visibleWhen: (c) => c.lulynx_ln_guard },
   { key: 'fera_enabled', type: 'boolean', label: 'FERA 探测', desc: 'FERA 特征探测分支。建议实验性开启观察。', defaultValue: false },
-  { key: 'fera_gate_init', type: 'number', label: 'FERA gate 初值', desc: 'FERA 门控初值。推荐范围： 0。', defaultValue: 0.0, step: 0.01, visibleWhen: (c) => c.fera_enabled },
+  { key: 'fera_gate_init', type: 'number', label: 'FERA gate 初值', desc: 'FERA 门控初值（后端默认 1.0，configs_training_methods.py:300；0 会被注入器归一回 1.0）。推荐范围： 1.0。', defaultValue: 1.0, min: 0, step: 0.01, visibleWhen: (c) => c.fera_enabled },
   { key: 'fim_scan_enabled', type: 'boolean', label: 'FIM 扫描', desc: 'Fisher 信息矩阵扫描：估计各层敏感度辅助 rank 分配。建议调 rank 布局前跑一次。', defaultValue: false },
   { key: 'fim_scan_calib_steps', type: 'number', label: 'FIM 校准步数', desc: '反传校准步数。推荐范围： 8（默认）。', defaultValue: 8, min: 1, step: 1, visibleWhen: (c) => c.fim_scan_enabled },
   { key: 'fim_scan_r_min', type: 'number', label: 'FIM 最小 rank', desc: '扫描建议 rank 下界。推荐范围： 8。', defaultValue: 8, min: 1, step: 1, visibleWhen: (c) => c.fim_scan_enabled },

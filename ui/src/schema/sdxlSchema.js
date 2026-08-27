@@ -95,6 +95,9 @@ export const SDXL_LORA_SECTIONS = [
   // dim/alpha 上限对齐后端（sdxl_lora.py:102-111 max=1024）；LoRA+/RS-LoRA 自 optimizer 页迁入。
   sec('network-settings', 'network', '网络设置', 'LoRA / LyCORIS 参数。', netLora('networks.lora', 32, 32, 1024, [
     { key: 'tlora_min_rank', type: 'number', label: 'T-LoRA 最小 Rank', title: 'tlora_min_rank', desc: 'T-LoRA 动态 rank 下界。推荐范围：保持 1。', defaultValue: 1, min: 1, visibleWhen: when('network_module', 'networks.tlora') },
+    // tlora_total_steps 不暴露：注入器（lora_injector.py:78）虽消费，但无后端 config
+    // 字段——值由 trainer_prepare 以 max_train_steps 派生（max(x,1000) 兜底），用户
+    // 键无处落地，注册表 family_fields 列它是虚键（后端注册表清理待办）。
     { key: 'tlora_orthogonal_init', type: 'boolean', label: 'T-LoRA 正交初始化', title: 'tlora_orthogonal_init', desc: '对 lora_down 用正交初始化提升早期稳定。建议默认关闭，不稳定时试开。', defaultValue: false, visibleWhen: when('network_module', 'networks.tlora') },
     { key: 'pissa_init', type: 'boolean', label: '启用 PiSSA 初始化', title: 'pissa_init', desc: 'PiSSA 用 SVD 主奇异分量初始化 LoRA，收敛更快更好。建议中大数据集开启；导出兼容性见导出模式选项。', defaultValue: false, visibleWhen: when('network_module', 'networks.lora') },
     { key: 'pissa_method', type: 'select', label: 'PiSSA 分解方式', title: 'pissa_method', desc: 'PiSSA 分解算法：rsvd 随机化快，svd 精确慢。建议保持 rsvd。', defaultValue: 'rsvd', options: ['rsvd', 'svd'], visibleWhen: all(when('network_module', 'networks.lora'), pissaInitSelected) },

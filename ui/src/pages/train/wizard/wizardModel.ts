@@ -163,6 +163,11 @@ const GLOBAL_OWNERSHIP_OVERRIDES: Record<string, BucketId> = {
   tag_group_separator: 'dataset',
   ip_image_encoder_path: 'files',
   ip_num_tokens: 'controlnet',
+  // lycoris_preset 钉进 adapter：GOAL 启发式（/intent|purpose|goal|preset/i）先于
+  // adapter 分支命中键名里的 'preset'，把 LyCORIS 家族参数抢进 goal 步。preset 是
+  // 选中 LyCORIS 家族后就地可调的结构参数，语义归属 adapter —— 在单一事实源覆盖
+  // 表里钉死，而不是收窄 goal 正则（后者会影响其它真正含 preset 的目标键）。
+  lycoris_preset: 'adapter',
 }
 
 // Anima 族分桶修正（2026-08 ANIMA 桶）：分组 LR 与 Flow/时间步参数同属一张卡，
@@ -365,15 +370,21 @@ const ADAPTER_EXACT_KEYS = new Set([
   'gdlokr_mode',
   'gdlokr_alpha',
   'tensorring_factor',
+  // TensorRing TRM/residual rank（2026-08 全算法参数审计）：键名不含 ADAPTER_TOKEN
+  // 词根（tensorring 无 lora/lokr 字样），靠精确表钉进 adapter 步。
+  'tensorring_trm_rank',
+  'tensorring_tr_rank',
   'krona_factor_in',
   'krona_factor_out',
   'cdka_factor_in',
   'cdka_factor_out',
 ])
 
-// 这些家族子参数住在 expert 的 lora-variants section；向导选中家族卡后需要就地
-// 暴露（visibleWhen 已保证仅选中该家族时可见），故从 expert 跳过中按键白名单豁免。
-const WIZARD_ADAPTER_EXPERT_KEYS = new Set([
+// 这些家族子参数住在 expert 的 lora-variants section（fera_gate_init 住 frontier 的
+// experimental-probes）；向导选中家族卡后需要就地暴露（visibleWhen 已保证仅选中该
+// 家族时可见），故从 expert/frontier 跳过中按键白名单豁免。清单覆盖后端
+// adapter_family_registry 各家族的全部可调子参数（不含选择键与 hidden 幻影键）。
+const WIZARD_ADAPTER_FAMILY_PARAM_KEYS = new Set([
   'dokr_factor_in',
   'dokr_factor_out',
   'dokr_decompose_factor',
@@ -387,6 +398,29 @@ const WIZARD_ADAPTER_EXPERT_KEYS = new Set([
   'krona_factor_out',
   'cdka_factor_in',
   'cdka_factor_out',
+  // Kronecker 之外的实体注入器家族子参数（2026-08 全算法参数审计）。
+  'vera_d_initial',
+  'vera_prng_key',
+  'fera_gate_init',
+  'reslora_mode',
+  'reslora_window',
+  'reslora_alpha_star',
+  'hydralora_num_experts',
+  'hydralora_routing',
+  'hydralora_top_k',
+  'hydralora_sparse_top_k',
+  'lora2_adaptive_r_max',
+  'lora2_adaptive_nu_init',
+  'lora2_adaptive_decay_lambda',
+  'lora2_gate_init',
+  'tensorring_trm_rank',
+  'tensorring_tr_rank',
+  'cdka_alpha',
+  'cdka_allora',
+  'cdka_weight_decompose',
+  'krona_allora',
+  'krona_allora_eta',
+  'krona_weight_decompose',
 ])
 
 const ADAPTER_TOKEN = /(lora|lokr|glora|lycoris|adapter|network_|dora|vera|tlora|flexrank|hydra|fera|gdlokr|reslora|dokr|cdka|krona)/i
@@ -456,10 +490,12 @@ function canonicalFields(typeId: string, config: Record<string, unknown>) {
     // them out of the beginner path so the first screen stays focused — except
     // adapter family sub-params, which must be tunable right after picking the
     // family card (their own visibleWhen gates display to that selection).
+    // advanced 页签仍整体跳过；frontier 页签与 expert section 同等待遇：
+    // fera_gate_init 住在 frontier 的 experimental-probes，白名单按键豁免。
     if (section.tab === 'advanced' || section.tab === 'frontier' || (section as SchemaSection & { expert?: boolean }).expert) {
-      if ((section as SchemaSection & { expert?: boolean }).expert) {
+      if (section.tab !== 'advanced') {
         for (const field of section.fields || []) {
-          if (!WIZARD_ADAPTER_EXPERT_KEYS.has(field.key)) continue
+          if (!WIZARD_ADAPTER_FAMILY_PARAM_KEYS.has(field.key)) continue
           if (field.type === 'hidden' || field.type === 'ui_group') continue
           if (!isFieldVisible(field, config)) continue
           const list = entries.get(field.key) || []
