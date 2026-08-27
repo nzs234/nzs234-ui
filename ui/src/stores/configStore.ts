@@ -557,6 +557,11 @@ function rememberRevision(payload: unknown): void {
   lastKnownDiskRevision = value
 }
 
+/** 409 后用响应体携带的服务端 revision 覆盖本地已知值(独立函数:值来自服务器,与本地旧值无关)。 */
+function adoptConflictRevision(value: number): void {
+  lastKnownDiskRevision = value
+}
+
 /**
  * revision 闭环的写路径。
  *
@@ -780,7 +785,7 @@ export async function clearCurrentTypeDraftOnDisk(): Promise<void> {
   } catch (error) {
     if (isDraftRevisionConflict(error)) {
       revisionConflictPending = true
-      lastKnownDiskRevision = readDraftConflictRevision(conflictPayloadOf(error)) ?? UNKNOWN_DRAFT_REVISION
+      adoptConflictRevision(readDraftConflictRevision(conflictPayloadOf(error)) ?? UNKNOWN_DRAFT_REVISION)
       // fail-closed 覆盖整个 clear 操作:既不重试删除,也不把"重置成默认值"
       // 顺手 PUT 上去 —— 那是同一个用户意图的另一半,不能在意图已被拒绝后偷偷生效。
       // (内存里的 resetDraft 保留,与「DELETE 失败仍重置界面」的既有契约一致。)

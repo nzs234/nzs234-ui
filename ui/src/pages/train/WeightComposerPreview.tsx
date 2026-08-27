@@ -78,7 +78,10 @@ export function WeightComposerPreview({
   const [job, setJob] = useState<ScoreStatus | null>(null)
   const generation = useRef(0)
   const onChangeRef = useRef(onChange)
-  onChangeRef.current = onChange
+  // 最新回调经 effect 落 ref(渲染期不写 ref);定时器/异步回调读取时总是最新值。
+  useEffect(() => {
+    onChangeRef.current = onChange
+  })
   const relevant = useMemo(
     () => JSON.stringify(Object.fromEntries(RELEVANT_KEYS.map((key) => [key, config[key]]))),
     [config],

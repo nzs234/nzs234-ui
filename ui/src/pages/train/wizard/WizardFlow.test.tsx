@@ -11,7 +11,7 @@
  * 什么"改由生产代码回答。核心链路额外在 zh / en 两种语言下各跑一遍,顺带证明
  * 流程不依赖某一语言。
  */
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import TrainPage from '../TrainPage'
@@ -32,9 +32,7 @@ import {
   uiTextOrBareKey,
   wizardCategoryLabelPrefix,
 } from '@/test/i18n'
-import { adapterCardLabel, adapterCardName, adapterCategoryButtonName, fieldLabelRegex, wizardStepButtonName } from '@/test/wizardQueries'
-import { textPrefix } from '@/test/i18n'
-import { typeCardName } from '@/test/wizardQueries'
+import { adapterCardLabel, adapterCategoryButtonName, fieldLabelRegex, wizardStepButtonName, typeCardName } from '@/test/wizardQueries'
 import { currentDraft, resetStores, seedTrainApiDefaults } from '@/test/trainPageFixture'
 import { resolveTypeNote } from '@/i18n/useI18n'
 import type { UiLanguage } from '@/stores/localeStore'
@@ -500,7 +498,11 @@ describe('WizardFlow: primary flows', () => {
       element?.tagName === 'STRONG' && element.textContent === label
     expect(await screen.findByText(summaryTitle(zhLabel))).toBeInTheDocument()
 
-    setLanguage('en')
+    // 语言切换是 store 同步更新,会触发 WizardPage/HelpModal 的订阅状态更新:
+    // 包进 act,让 React 把随之而来的渲染与 effect 全部收敛在本断言之前。
+    await act(async () => {
+      setLanguage('en')
+    })
     const enLabel = adapterCardLabel(currentDraft(typeId), typeId, 'lora')
     expect(enLabel).not.toBe(zhLabel)
     expect(await screen.findByText(summaryTitle(enLabel))).toBeInTheDocument()

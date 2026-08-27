@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { trainApi } from '@/api/trainApi'
 import { unwrap } from '@/api/transport'
 import { Button } from '@/components/primitives'
@@ -70,13 +70,16 @@ export function TrainingIntentProfilePreview({
   const [error, setError] = useState('')
   const [appliedCount, setAppliedCount] = useState(0)
 
-  useEffect(() => {
+  // 用途切换时重置预览:渲染期 props→state 调整模式,setState 不在 effect 体内同步触发。
+  const [prevIntent, setPrevIntent] = useState(intent)
+  if (prevIntent !== intent) {
+    setPrevIntent(intent)
     setPreview(null)
     setError('')
     setAppliedCount(0)
-  }, [intent])
+  }
 
-  const applicable = preview?.applicable_suggestions || {}
+  const applicable = useMemo(() => preview?.applicable_suggestions || {}, [preview])
   const applicableKeys = useMemo(() => Object.keys(applicable), [applicable])
   const skipped = preview?.skipped_explicit_fields || []
   const diffByField = useMemo(

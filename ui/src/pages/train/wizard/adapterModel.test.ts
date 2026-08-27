@@ -33,7 +33,6 @@ import {
   doraToggleState,
   groupAdapterOptionsByCategory,
   normalizeAdapterFamily,
-  type AdapterCategoryKey,
   type AdapterOption,
 } from './adapterModel'
 import { useLocaleStore } from '@/stores/localeStore'

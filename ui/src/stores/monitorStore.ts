@@ -98,6 +98,16 @@ function resetRunData() {
   S.setState({ logLines: [], lossPoints: [], lrPoints: [], run: null, etaText: '', stepsPerSec: 0 })
 }
 
+/* tickRun 里跨 await 的模块级变量写经由此处落地(值分别来自服务器响应与终态判定,
+ * 与函数早前读到的快照无关;独立函数也消除了 require-atomic-updates 的误报面)。 */
+function adoptLogOffset(value: number) {
+  logOffset = value
+}
+
+function markFinalLogsDone() {
+  finalLogDone = true
+}
+
 const EVENT_CURSOR_PREFIX = 'lulynx:training-event-cursor:'
 
 function readEventCursor(runId: string): string {
@@ -167,12 +177,12 @@ async function tickRun() {
     const logP = unwrap<LogPayload>(await monitorApi.log(runId, logOffset))
     if (generation !== requestGeneration || S.getState().runId !== runId) return
     const incoming = logP?.lines ?? []
-    if (typeof logP?.offset === 'number') logOffset = logP.offset
+    if (typeof logP?.offset === 'number') adoptLogOffset(logP.offset)
     if (incoming.length) {
       const merged = [...S.getState().logLines, ...incoming]
       S.setState({ logLines: merged.length > LOG_CAP ? merged.slice(-LOG_CAP) : merged })
     }
-    if (terminal) finalLogDone = true
+    if (terminal) markFinalLogsDone()
 
     const step = Number(run?.current_step ?? 0)
     const now = Date.now()

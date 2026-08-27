@@ -1284,7 +1284,7 @@ export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], ext
     { key: 'lokr_no_materialize_strategy', type: 'select', label: '免实体化前向实现', title: 'lokr_no_materialize_strategy', desc: '免实体化前向的实现选择：auto 按启发式选路，legacy 旧行为。建议 auto。', defaultValue: 'legacy', options: ['auto', 'legacy', 'matmul'], visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'), when('lokr_no_materialize_forward', true)) },
     // GLoKr 与 LoKr 同族（Kronecker 副产物）：顶层键 configs_monitoring.py:456（-1=自动平衡），
     // config_adapter.py 归一化消费；仅 lycoris.kohya+glokr 生效（lycoris_types.py:67）。
-    { key: 'glokr_factor', type: 'number', label: 'GLoKr 系数', title: 'glokr_factor', desc: 'GLoKr 共享 Kronecker 分解因子：越大越省参数越弱表达。-1 表示自动平衡（推荐保持）。', defaultValue: -1, min: -1, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'glokr')) },
+    { key: 'glokr_factor', type: 'number', label: 'GLoKr 系数', title: 'glokr_factor', desc: 'GLoKr 共享 Kronecker 分解因子：越大越省参数越弱表达。推荐范围：保持 -1（自动平衡）。', defaultValue: -1, min: -1, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'glokr')) },
   ] : []),
   { key: 'enable_base_weight', type: 'boolean', label: '启用基础权重', title: 'enable_base_weight', desc: '差异炼丹：叠加一个基础权重参照网络。建议实验性玩法，常规训练关闭。', defaultValue: false },
   { key: 'base_weights', type: 'textarea', label: '基础权重路径', title: 'base_weights', desc: '合并入底模的 LoRA 路径，一行一个路径', defaultValue: '', visibleWhen: when('enable_base_weight', true) },
@@ -1294,7 +1294,7 @@ export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], ext
   // （contracts/training_recipe.py:99-101/118-125）从顶层消费两键；此前 UI 零键，
   // target_modules 只能借 network_args_custom 间接传、rank_strategy 恒走默认。
   { key: 'target_modules', type: 'textarea', label: '目标模块列表', title: 'target_modules', desc: '覆盖默认目标层：逗号或换行分隔的模块名（如 to_q,to_v,to_out.0）。留空 = 按训练类型默认预设。后端只收数组，提交层负责切分。', defaultValue: '' },
-  { key: 'rank_strategy', type: 'select', label: 'Rank 分配策略', title: 'rank_strategy', desc: 'rank 分配策略（module_group_registry.py:328 硬校验）：uniform 全模块同 rank（默认）；module_group/module 按模块组预设；auto_static/dynamic 按结构自动。非 uniform 属实验路线，需配合模块组数据。', defaultValue: 'uniform', options: ['uniform', 'module_group', 'module', 'auto_static', 'dynamic'] },
+  { key: 'rank_strategy', type: 'select', label: 'Rank 分配策略', title: 'rank_strategy', desc: 'rank 分配策略（module_group_registry.py:328 硬校验）：uniform 全模块同 rank（默认）；module_group/module 按模块组预设；auto_static/dynamic 按结构自动。非 uniform 属实验路线，需配合模块组数据。建议保持 uniform（默认）。', defaultValue: 'uniform', options: ['uniform', 'module_group', 'module', 'auto_static', 'dynamic'] },
   ...extra,
 ];
 

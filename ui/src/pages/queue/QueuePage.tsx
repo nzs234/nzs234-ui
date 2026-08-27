@@ -317,9 +317,13 @@ export default function QueuePage() {
   }, [queueInfo])
 
   useEffect(() => {
-    void refresh()
+    // 首拉延后一拍:setState 发生在 refresh 的 await 之后,避免 effect 同步级联渲染。
+    const kick = window.setTimeout(() => void refresh(), 0)
     const t = window.setInterval(() => void refresh(), 8000)
-    return () => window.clearInterval(t)
+    return () => {
+      window.clearTimeout(kick)
+      window.clearInterval(t)
+    }
   }, [])
 
   const doClear = async () => {

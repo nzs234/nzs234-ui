@@ -49,12 +49,20 @@ export function PreflightModal({
   const [warningConfirmed, setWarningConfirmed] = useState(false)
   const snapshotRef = useRef<PreflightSnapshot | null>(null)
 
+  // 打开时重置上一次的检查状态:渲染期 props→state 调整模式,setState 不在 effect 体内同步触发。
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) {
+      setState('running')
+      setReport(null)
+      setError('')
+      setWarningConfirmed(false)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-    setState('running')
-    setReport(null)
-    setError('')
-    setWarningConfirmed(false)
     let alive = true
     const payload = buildPayload()
     void trainApi
@@ -235,7 +243,12 @@ export function SavedConfigsModal({
   }
 
   useEffect(() => {
-    if (open) void refresh()
+    if (!open) return
+    // 首拉延后一拍:setState 发生在 refresh 的 await 之后;refresh 闭包持有当次渲染
+    // 的语言文案,仅在 open 变化时拉取一次,与原行为一致。
+    const kick = window.setTimeout(() => void refresh(), 0)
+    return () => window.clearTimeout(kick)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const schemaId = () => useTrainConfigStore.getState().typeId

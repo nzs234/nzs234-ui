@@ -611,6 +611,7 @@
   "full_matrix": "LoKr Full Matrix",
   "fused_projection_memory_mode": "Fused Projection VRAMmode",
   "gdlokr_alpha": "GDLoKr alpha",
+  "gdlokr_enabled": "GDLoKr (generalized DoRA + LoKr)",
   "gdlokr_factor": "GDLoKr Kronecker",
   "gdlokr_mode": "GDLoKr Mode",
   "gemma2": "Gemma2 Model Path (gemma2)",

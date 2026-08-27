@@ -23,9 +23,9 @@ import {
   COMPILE_SHAPE_STRATEGY_OPTIONS, COMPILE_TARGET_STRATEGY_OPTIONS,
   CACHED_COLLATE_MODE_OPTIONS, DATA_BACKEND_OPTIONS, CHECKPOINT_POLICY_OPTIONS,
   LORA_RECOMPUTE_OPTIONS, DIT_BLOCK_RESIDENCY_OPTIONS,
-  PCIE_TRANSFER_FORMAT_FIELD, sparseSwapFields, pcieDeltaCacheField, pcieDeltaCacheModeFields, vortexRuntimeFields,
+  PCIE_TRANSFER_FORMAT_FIELD, pcieDeltaCacheField, pcieDeltaCacheModeFields, vortexRuntimeFields,
   FUSED_PROJECTION_MEMORY_MODE_OPTIONS, BLOCK_SWAP_STRATEGY_OPTIONS,
-  SAFEGUARD_GRADIENT_SCAN_OPTIONS, IMAGE_DECODE_BACKEND_OPTIONS,
+  IMAGE_DECODE_BACKEND_OPTIONS,
 } from './schemaCommon.js';
 
 // 专家模式且顶栏 TurboCore(CUDA) 关闭时才显示优化器后端 / Lulynx Triton。
@@ -100,8 +100,8 @@ export const S_EXECUTION_BACKEND = [
   { key: 'thunder_jit_cache_root', type: 'string', label: 'Thunder 缓存目录', title: 'thunder_jit_cache_root', desc: 'Thunder 编译缓存根目录。建议指向快盘独立目录。', defaultValue: 'backend/cache/compile', visibleWhen: all(executionBackendIs('thunder'), when('thunder_jit_cache_enabled', true)) },
   { key: 'thunder_jit_warmup_enabled', type: 'boolean', label: 'Thunder 预编译', title: 'thunder_jit_warmup_enabled', desc: '训练前用代表 shape 预编译。建议首训开一次，命中缓存后可关。', defaultValue: false, visibleWhen: executionBackendIs('thunder') },
   { key: 'thunder_jit_progress_enabled', type: 'boolean', label: 'Thunder 编译进度', title: 'thunder_jit_progress_enabled', desc: '显示编译进度/缓存命中/局部回退状态。建议保持 true 便于观察。', defaultValue: true, visibleWhen: executionBackendIs('thunder') },
-  { key: 'thunder_jit_enabled', type: 'boolean', label: '旧版 Thunder 开关', title: 'thunder_jit_enabled', desc: '仅保留旧配置迁移。', defaultValue: false, visibleWhen: LEGACY_BACKEND_FIELD_HIDDEN },
-  { key: 'torch_compile', type: 'boolean', label: '旧版 torch.compile 开关', title: 'torch_compile', desc: '仅保留旧配置迁移。', defaultValue: false, visibleWhen: LEGACY_BACKEND_FIELD_HIDDEN },
+  { key: 'thunder_jit_enabled', type: 'boolean', label: '旧版 Thunder 开关', title: 'thunder_jit_enabled', desc: '旧版 Thunder 总开关，仅为旧配置迁移保留；新配置请用执行后端下拉（execution_backend）。建议保持 false。', defaultValue: false, visibleWhen: LEGACY_BACKEND_FIELD_HIDDEN },
+  { key: 'torch_compile', type: 'boolean', label: '旧版 torch.compile 开关', title: 'torch_compile', desc: '旧版 torch.compile 开关，仅为旧配置迁移保留；新配置请用执行后端下拉（execution_backend）。建议保持 false。', defaultValue: false, visibleWhen: LEGACY_BACKEND_FIELD_HIDDEN },
   ...torchCompileExtras()
 ];
 
@@ -297,23 +297,23 @@ export const ANIMA_BLOCK_RESIDENCY_FIELDS = [
 
 // Krea-2 block/layer offload 全套（仅 krea2-lora 挂载）
 export const KREA2_OFFLOAD_FIELDS = [
-  { key: 'krea2_block_residency', type: 'select', label: 'Krea2 Block 驻留', title: 'krea2_block_residency', desc: 'Krea2 Block 驻留', defaultValue: 'block_offload', options: [
+  { key: 'krea2_block_residency', type: 'select', label: 'Krea2 Block 驻留', title: 'krea2_block_residency', desc: 'Krea-2 block 驻留策略：resident 全驻留 GPU；block_offload 按整块自适应流式；layer_offload 逐层卸载，显存最省。建议保持 block_offload（默认）。', defaultValue: 'block_offload', options: [
     { value: 'resident', label: 'resident（全驻留 GPU）' },
     { value: 'block_offload', label: 'block_offload（自适应卸载）' },
     // 下方 krea2_layer_offload_* 全组以此值为可见性锚点；缺了它那组字段永久隐藏。
     { value: 'layer_offload', label: 'layer_offload（逐层卸载）' }
   ]},
-  { key: 'krea2_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'krea2_block_offload_min_param_mb', desc: '小于该体积的 block 不 offload。', defaultValue: 100.0, min: 0, step: 1, visibleWhen: when('krea2_block_residency', 'block_offload') },
-  { key: 'krea2_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'krea2_block_offload_gpu_slots', desc: '同时保留在 GPU 的 block 数。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('krea2_block_residency', 'block_offload') },
-  { key: 'krea2_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'krea2_block_offload_prefetch_depth', desc: '异步预取后续 block 数', defaultValue: 2, min: 0, max: 8, step: 1, visibleWhen: when('krea2_block_residency', 'block_offload') },
-  { key: 'krea2_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'krea2_block_offload_pin_memory', desc: 'CPU 侧 pinned 缓冲，加速 H2D。', defaultValue: true, visibleWhen: when('krea2_block_residency', 'block_offload') },
-  { key: 'krea2_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'krea2_block_offload_ratio', desc: '参与 block offload 的比例（0–100）。100 表示尽可能多 block 走 offload。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('krea2_block_residency', 'block_offload') },
-  { key: 'krea2_resident_block_count', type: 'number', label: '常驻 Block 数', title: 'krea2_resident_block_count', desc: '始终留在 GPU 的 block 数；0=按策略自动。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.krea2_block_residency !== 'resident' },
-  { key: 'krea2_layer_offload_ratio', type: 'number', label: 'Layer Offload 比例 %', title: 'krea2_layer_offload_ratio', desc: '参与 layer offload 的比例。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('krea2_block_residency', 'layer_offload') },
-  { key: 'krea2_layer_offload_min_param_mb', type: 'number', label: 'Layer Offload 最小参数 MB', title: 'krea2_layer_offload_min_param_mb', desc: '小于该体积不 offload', defaultValue: 0.0, min: 0, step: 0.5, visibleWhen: when('krea2_block_residency', 'layer_offload') },
-  { key: 'krea2_layer_offload_prefetch_depth', type: 'number', label: 'Layer Offload 预取深度', title: 'krea2_layer_offload_prefetch_depth', desc: 'layer 路径预取深度', defaultValue: 1, min: 0, max: 8, step: 1, visibleWhen: when('krea2_block_residency', 'layer_offload') },
-  { key: 'krea2_layer_offload_pin_memory', type: 'boolean', label: 'Layer Offload Pin Memory', title: 'krea2_layer_offload_pin_memory', desc: 'layer 路径是否 pin CPU 缓冲。', defaultValue: false, visibleWhen: when('krea2_block_residency', 'layer_offload') },
-  { key: 'krea2_layer_offload_resident_ratio', type: 'number', label: 'Layer 常驻比例 %', title: 'krea2_layer_offload_resident_ratio', desc: '始终驻留 GPU 的层比例', defaultValue: 0, min: 0, max: 100, step: 1, visibleWhen: when('krea2_block_residency', 'layer_offload') },
+  { key: 'krea2_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'krea2_block_offload_min_param_mb', desc: '小于该体积（MiB）的 block 不参与 offload，避免小块传输开销。推荐范围：保持 100（默认）。', defaultValue: 100.0, min: 0, step: 1, visibleWhen: when('krea2_block_residency', 'block_offload') },
+  { key: 'krea2_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'krea2_block_offload_gpu_slots', desc: 'block_offload 下同时保留在 GPU 的 block 数。推荐范围：保持 4（默认）；显存吃紧时一次降 1 档。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('krea2_block_residency', 'block_offload') },
+  { key: 'krea2_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'krea2_block_offload_prefetch_depth', desc: '异步预取的后续 block 数。推荐范围：保持 2（默认）；调大更耗 CPU 内存。', defaultValue: 2, min: 0, max: 8, step: 1, visibleWhen: when('krea2_block_residency', 'block_offload') },
+  { key: 'krea2_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'krea2_block_offload_pin_memory', desc: 'CPU 侧 staging 缓冲 pin 内存，加速 H2D 拷贝。建议保持 true（默认）；仅主机内存紧张时关闭。', defaultValue: true, visibleWhen: when('krea2_block_residency', 'block_offload') },
+  { key: 'krea2_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'krea2_block_offload_ratio', desc: '参与 block offload 的比例（0–100），100 表示尽可能多 block 走流式。推荐范围：100 或 0（关闭）；中间值收益有限。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('krea2_block_residency', 'block_offload') },
+  { key: 'krea2_resident_block_count', type: 'number', label: '常驻 Block 数', title: 'krea2_resident_block_count', desc: '无论 offload 策略如何都钉在 GPU 的 block 数；0=按策略自动。推荐范围：保持 0 交由策略决定，步时被传输卡住时再每次加几块。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.krea2_block_residency !== 'resident' },
+  { key: 'krea2_layer_offload_ratio', type: 'number', label: 'Layer Offload 比例 %', title: 'krea2_layer_offload_ratio', desc: '参与 layer offload 的层比例（0–100）。推荐范围：100 全部参与，或 0 关闭。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('krea2_block_residency', 'layer_offload') },
+  { key: 'krea2_layer_offload_min_param_mb', type: 'number', label: 'Layer Offload 最小参数 MB', title: 'krea2_layer_offload_min_param_mb', desc: '小于该体积（MiB）的层不参与 offload。推荐范围：保持 0（默认）覆盖所有层。', defaultValue: 0.0, min: 0, step: 0.5, visibleWhen: when('krea2_block_residency', 'layer_offload') },
+  { key: 'krea2_layer_offload_prefetch_depth', type: 'number', label: 'Layer Offload 预取深度', title: 'krea2_layer_offload_prefetch_depth', desc: 'layer 路径异步预取的层数。推荐范围：保持 1（默认）。', defaultValue: 1, min: 0, max: 8, step: 1, visibleWhen: when('krea2_block_residency', 'layer_offload') },
+  { key: 'krea2_layer_offload_pin_memory', type: 'boolean', label: 'Layer Offload Pin Memory', title: 'krea2_layer_offload_pin_memory', desc: 'layer 路径是否 pin CPU 缓冲。建议保持 false（默认）；层传输成为瓶颈时再开启。', defaultValue: false, visibleWhen: when('krea2_block_residency', 'layer_offload') },
+  { key: 'krea2_layer_offload_resident_ratio', type: 'number', label: 'Layer 常驻比例 %', title: 'krea2_layer_offload_resident_ratio', desc: '始终驻留 GPU 的层比例（%）。推荐范围：保持 0（默认）交由策略决定。', defaultValue: 0, min: 0, max: 100, step: 1, visibleWhen: when('krea2_block_residency', 'layer_offload') },
   { key: 'krea2_layer_offload_include_patterns', type: 'string', label: 'Layer Offload 包含模式', title: 'krea2_layer_offload_include_patterns', desc: '逗号分隔模块名模式，默认 blocks.*。', defaultValue: 'blocks.*', visibleWhen: when('krea2_block_residency', 'layer_offload') },
   { key: 'krea2_layer_offload_exclude_patterns', type: 'string', label: 'Layer Offload 排除模式', title: 'krea2_layer_offload_exclude_patterns', desc: '逗号分隔排除模式', defaultValue: '', visibleWhen: when('krea2_block_residency', 'layer_offload') }
 ];
@@ -321,41 +321,41 @@ export const KREA2_OFFLOAD_FIELDS = [
 // FLUX.2 Klein block offload（仅 flux2-lora；无 layer_offload / vram_preset）
 // 默认 slots=4 / prefetch=3 / pin=true（16G@1024 真机验证）；低显存可降 slots。
 export const FLUX2_OFFLOAD_FIELDS = [
-  { key: 'flux2_block_residency', type: 'select', label: 'FLUX.2 Block 驻留', title: 'flux2_block_residency', desc: 'FLUX.2 Block 驻留', defaultValue: 'block_offload', options: [
+  { key: 'flux2_block_residency', type: 'select', label: 'FLUX.2 Block 驻留', title: 'flux2_block_residency', desc: 'FLUX.2 transformer block 驻留策略：resident 全驻留 GPU；block_offload 自适应流式卸载。建议保持 block_offload（默认）；仅显存充裕时切 resident。', defaultValue: 'block_offload', options: [
     { value: 'resident', label: 'resident（全驻留 GPU）' },
     { value: 'block_offload', label: 'block_offload（自适应卸载）' }
   ]},
-  { key: 'flux2_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'flux2_block_offload_min_param_mb', desc: '小于该体积的 block 不 offload。', defaultValue: 50.0, min: 0, step: 1, visibleWhen: when('flux2_block_residency', 'block_offload') },
-  { key: 'flux2_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'flux2_block_offload_gpu_slots', desc: '同时保留在 GPU 的 block 数。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('flux2_block_residency', 'block_offload') },
-  { key: 'flux2_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'flux2_block_offload_prefetch_depth', desc: '异步预取后续 block 数。默认 3（与 slots=4 配对）。', defaultValue: 3, min: 0, max: 8, step: 1, visibleWhen: when('flux2_block_residency', 'block_offload') },
-  { key: 'flux2_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'flux2_block_offload_pin_memory', desc: 'CPU 侧 pinned 缓冲，加速 H2D', defaultValue: true, visibleWhen: when('flux2_block_residency', 'block_offload') },
-  { key: 'flux2_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'flux2_block_offload_ratio', desc: '参与 block offload 的比例（0–100）。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('flux2_block_residency', 'block_offload') }
+  { key: 'flux2_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'flux2_block_offload_min_param_mb', desc: '小于该体积（MiB）的 block 不参与 offload，避免小块传输开销。推荐范围：保持 50（默认）。', defaultValue: 50.0, min: 0, step: 1, visibleWhen: when('flux2_block_residency', 'block_offload') },
+  { key: 'flux2_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'flux2_block_offload_gpu_slots', desc: 'block_offload 下同时保留在 GPU 的 block 数。推荐范围：保持 4（默认，16 GB/1024px 真机验证）；显存吃紧时一次降 1 档。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('flux2_block_residency', 'block_offload') },
+  { key: 'flux2_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'flux2_block_offload_prefetch_depth', desc: '异步预取的后续 block 数，默认 3（与 slots=4 配对）。推荐范围：保持 3。', defaultValue: 3, min: 0, max: 8, step: 1, visibleWhen: when('flux2_block_residency', 'block_offload') },
+  { key: 'flux2_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'flux2_block_offload_pin_memory', desc: 'CPU 侧 staging 缓冲 pin 内存，加速 H2D 拷贝。建议保持 true（默认）；仅主机内存紧张时关闭。', defaultValue: true, visibleWhen: when('flux2_block_residency', 'block_offload') },
+  { key: 'flux2_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'flux2_block_offload_ratio', desc: '参与 offload 的 block 比例（0–100）。推荐范围：100 全部流式，或 0 关闭。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('flux2_block_residency', 'block_offload') }
 ];
 
 // Boogu-Image block offload（默认 resident / Layer Offload OFF，对齐 RunComfy）
 // Z-Image block offload (default block_offload for large DiT)
 export const ZIMAGE_OFFLOAD_FIELDS = [
-  { key: 'zimage_block_residency', type: 'select', label: 'Z-Image Block 驻留', title: 'zimage_block_residency', desc: 'Z-Image Block 驻留', defaultValue: 'block_offload', options: [
+  { key: 'zimage_block_residency', type: 'select', label: 'Z-Image Block 驻留', title: 'zimage_block_residency', desc: 'Z-Image block 驻留策略：resident 全驻留 GPU；block_offload 自适应流式卸载。6B 底座建议保持 block_offload（默认）。', defaultValue: 'block_offload', options: [
     { value: 'resident', label: 'resident（全驻留 GPU）' },
     { value: 'block_offload', label: 'block_offload（自适应卸载）' }
   ]},
-  { key: 'zimage_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'zimage_block_offload_min_param_mb', desc: '小于该参数量 block 不 offload。', defaultValue: 50.0, min: 0, step: 1, visibleWhen: when('zimage_block_residency', 'block_offload') },
-  { key: 'zimage_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'zimage_block_offload_gpu_slots', desc: '同时驻留在 GPU 的 block 数。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('zimage_block_residency', 'block_offload') },
-  { key: 'zimage_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'zimage_block_offload_prefetch_depth', desc: '异步预取后续 block 数', defaultValue: 2, min: 0, max: 8, step: 1, visibleWhen: when('zimage_block_residency', 'block_offload') },
-  { key: 'zimage_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'zimage_block_offload_pin_memory', desc: 'CPU 侧 pinned 缓存，加速 H2D。', defaultValue: true, visibleWhen: when('zimage_block_residency', 'block_offload') },
-  { key: 'zimage_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'zimage_block_offload_ratio', desc: '参与 block offload 的比例（0–100）。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('zimage_block_residency', 'block_offload') }
+  { key: 'zimage_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'zimage_block_offload_min_param_mb', desc: '小于该参数量（MiB）的 block 不参与 offload，避免小块传输开销。推荐范围：保持 50（默认）。', defaultValue: 50.0, min: 0, step: 1, visibleWhen: when('zimage_block_residency', 'block_offload') },
+  { key: 'zimage_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'zimage_block_offload_gpu_slots', desc: 'block_offload 下同时驻留在 GPU 的 block 数。推荐范围：保持 4（默认）；显存吃紧时一次降 1 档。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('zimage_block_residency', 'block_offload') },
+  { key: 'zimage_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'zimage_block_offload_prefetch_depth', desc: '异步预取的后续 block 数。推荐范围：保持 2（默认）；调大更耗 CPU 内存。', defaultValue: 2, min: 0, max: 8, step: 1, visibleWhen: when('zimage_block_residency', 'block_offload') },
+  { key: 'zimage_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'zimage_block_offload_pin_memory', desc: 'CPU 侧 staging 缓冲 pin 内存，加速 H2D 拷贝。建议保持 true（默认）；仅主机内存紧张时关闭。', defaultValue: true, visibleWhen: when('zimage_block_residency', 'block_offload') },
+  { key: 'zimage_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'zimage_block_offload_ratio', desc: '参与 offload 的 block 比例（0–100）。推荐范围：100 或 0（关闭）；中间值收益有限。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('zimage_block_residency', 'block_offload') }
 ];
 
 export const WAN22_OFFLOAD_FIELDS = [
-  { key: 'wan22_block_residency', type: 'select', label: 'Wan2.2 Block 驻留', title: 'wan22_block_residency', desc: 'Wan2.2 Block 驻留', defaultValue: 'block_offload', options: [
+  { key: 'wan22_block_residency', type: 'select', label: 'Wan2.2 Block 驻留', title: 'wan22_block_residency', desc: 'Wan2.2 transformer block 驻留策略：resident 全驻留 GPU；block_offload 自适应流式卸载。更大的塔（14B/A14B）建议保持 block_offload（默认）。', defaultValue: 'block_offload', options: [
     { value: 'resident', label: 'resident' },
     { value: 'block_offload', label: 'block_offload' }
   ]},
-  { key: 'wan22_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'wan22_block_offload_ratio', desc: '参与 offload 的 block 比例（0-100）。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('wan22_block_residency', 'block_offload') },
-  { key: 'wan22_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'wan22_block_offload_min_param_mb', desc: '小于该参数量 block 不 offload。', defaultValue: 50.0, min: 0, step: 1, visibleWhen: when('wan22_block_residency', 'block_offload') },
-  { key: 'wan22_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'wan22_block_offload_gpu_slots', desc: '同时驻留在 GPU 的 block 数。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('wan22_block_residency', 'block_offload') },
-  { key: 'wan22_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'wan22_block_offload_prefetch_depth', desc: '异步预取后续 block 数量', defaultValue: 2, min: 0, max: 8, step: 1, visibleWhen: when('wan22_block_residency', 'block_offload') },
-  { key: 'wan22_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'wan22_block_offload_pin_memory', desc: 'CPU 侧 pinned 缓存，加速 H2D。', defaultValue: true, visibleWhen: when('wan22_block_residency', 'block_offload') }
+  { key: 'wan22_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'wan22_block_offload_ratio', desc: '参与 offload 的 block 比例（0-100）。推荐范围：100 全部流式，或 0 关闭。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('wan22_block_residency', 'block_offload') },
+  { key: 'wan22_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'wan22_block_offload_min_param_mb', desc: '小于该参数量（MiB）的 block 不参与 offload，避免小块传输开销。推荐范围：保持 50（默认）。', defaultValue: 50.0, min: 0, step: 1, visibleWhen: when('wan22_block_residency', 'block_offload') },
+  { key: 'wan22_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'wan22_block_offload_gpu_slots', desc: 'block_offload 下同时驻留在 GPU 的 block 数。推荐范围：保持 4（默认）；显存吃紧时一次降 1 档。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('wan22_block_residency', 'block_offload') },
+  { key: 'wan22_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'wan22_block_offload_prefetch_depth', desc: '异步预取的后续 block 数量。推荐范围：保持 2（默认）；显存吃紧可降到 1。', defaultValue: 2, min: 0, max: 8, step: 1, visibleWhen: when('wan22_block_residency', 'block_offload') },
+  { key: 'wan22_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'wan22_block_offload_pin_memory', desc: 'CPU 侧 staging 缓冲 pin 内存，加速 H2D 拷贝。建议保持 true（默认）；仅主机内存紧张时关闭。', defaultValue: true, visibleWhen: when('wan22_block_residency', 'block_offload') }
 ];
 
 export const LTX23_OFFLOAD_FIELDS = [
@@ -374,15 +374,15 @@ export const BOOGU_OFFLOAD_FIELDS = [
   // E1（2026-08 第 6 站桶）：默认对齐后端 configs_boogu.py:35 的 block_offload
   // （源码注释：streaming is the honest default——19GiB 常驻 16GB 卡 ≈430s/步 vs
   // 流式 175s）。前端原默认 resident 恒提交，把后端的保守默认顶掉了。
-  { key: 'boogu_block_residency', type: 'select', label: 'Boogu Block 驻留', title: 'boogu_block_residency', desc: '默认 block_offload（流式）；显存充裕可切 resident。', defaultValue: 'block_offload', options: [
+  { key: 'boogu_block_residency', type: 'select', label: 'Boogu Block 驻留', title: 'boogu_block_residency', desc: 'Boogu block 驻留策略：block_offload 流式是后端实测更稳的默认（19 GiB 常驻会拖垮 16 GB 卡）；仅显存充裕时切 resident。建议保持 block_offload（默认）。', defaultValue: 'block_offload', options: [
     { value: 'resident', label: 'resident（全驻留 GPU）' },
     { value: 'block_offload', label: 'block_offload（流式卸载，默认）' }
   ] },
-  { key: 'boogu_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'boogu_block_offload_ratio', desc: '参与 offload 的 block 比例（0-100）。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('boogu_block_residency', 'block_offload') },
-  { key: 'boogu_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'boogu_block_offload_min_param_mb', desc: '小于该体积的 block 不 offload。', defaultValue: 50.0, min: 0, step: 1, visibleWhen: when('boogu_block_residency', 'block_offload') },
-  { key: 'boogu_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'boogu_block_offload_gpu_slots', desc: '同时保留在 GPU 的 block 数。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('boogu_block_residency', 'block_offload') },
-  { key: 'boogu_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'boogu_block_offload_prefetch_depth', desc: '异步预取后续 block 数', defaultValue: 2, min: 0, max: 8, step: 1, visibleWhen: when('boogu_block_residency', 'block_offload') },
-  { key: 'boogu_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'boogu_block_offload_pin_memory', desc: 'CPU 侧 pinned 缓冲', defaultValue: true, visibleWhen: when('boogu_block_residency', 'block_offload') }
+  { key: 'boogu_block_offload_ratio', type: 'number', label: 'Block Offload 比例 %', title: 'boogu_block_offload_ratio', desc: '参与 offload 的 block 比例（0-100）。推荐范围：100 全部流式，或 0 关闭。', defaultValue: 100, min: 0, max: 100, step: 1, visibleWhen: when('boogu_block_residency', 'block_offload') },
+  { key: 'boogu_block_offload_min_param_mb', type: 'number', label: 'Block Offload 最小参数 MB', title: 'boogu_block_offload_min_param_mb', desc: '小于该体积（MiB）的 block 不参与 offload，避免小块传输开销。推荐范围：保持 50（默认）。', defaultValue: 50.0, min: 0, step: 1, visibleWhen: when('boogu_block_residency', 'block_offload') },
+  { key: 'boogu_block_offload_gpu_slots', type: 'number', label: 'Block Offload GPU 槽位', title: 'boogu_block_offload_gpu_slots', desc: 'block_offload 下同时保留在 GPU 的 block 数。推荐范围：保持 4（默认）；显存吃紧时一次降 1 档。', defaultValue: 4, min: 1, max: 32, step: 1, visibleWhen: when('boogu_block_residency', 'block_offload') },
+  { key: 'boogu_block_offload_prefetch_depth', type: 'number', label: 'Block Offload 预取深度', title: 'boogu_block_offload_prefetch_depth', desc: '异步预取的后续 block 数。推荐范围：保持 2（默认）；调大更耗 CPU 内存。', defaultValue: 2, min: 0, max: 8, step: 1, visibleWhen: when('boogu_block_residency', 'block_offload') },
+  { key: 'boogu_block_offload_pin_memory', type: 'boolean', label: 'Block Offload Pin Memory', title: 'boogu_block_offload_pin_memory', desc: 'CPU 侧 staging 缓冲 pin 内存，加速 H2D 拷贝。建议保持 true（默认）；仅主机内存紧张时关闭。', defaultValue: true, visibleWhen: when('boogu_block_residency', 'block_offload') }
 ];
 
 // 缓存 DataLoader 策略（cache-first 路线）

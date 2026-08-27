@@ -316,7 +316,12 @@ export function WizardPage(props: WizardPageProps) {
   // 「用户显式编辑过」的键集（TrainPage 会话 ref + 持久化 wizard 记录的并集）：
   // 提交层靠它区分注入默认与手填值（krea2 aggressive 预设剥除等）。
   const explicitKeySet = useMemo(() => new Set(props.explicitFields), [props.explicitFields])
-  const projection = useMemo(() => buildWizardProjection(props.typeId, props.displayDraft), [props.typeId, props.displayDraft, props.schemaRev])
+  const projection = useMemo(() => {
+    // schemaRev 是失效令牌:buildWizardProjection 读模块级 schema 缓存,schema 热更新后入参
+    // 不变也要重算 —— 在回调里消费它,依赖保持真实。
+    void props.schemaRev
+    return buildWizardProjection(props.typeId, props.displayDraft)
+  }, [props.typeId, props.displayDraft, props.schemaRev])
   const steps = projection.steps
   const validStepIds = steps.map((step) => step.id)
   const persistedActive = wizard.activeStepByType[props.typeId]
@@ -383,10 +388,11 @@ export function WizardPage(props: WizardPageProps) {
     return set
   }, [steps, props.displayDraft, props.typeId, props.validation.errors])
 
-  const currentPayload = useMemo(
-    () => buildRunConfig(props.draft, props.typeId, { explicitKeys: explicitKeySet }),
-    [props.draft, props.typeId, props.schemaRev, explicitKeySet],
-  )
+  const currentPayload = useMemo(() => {
+    // schemaRev 失效令牌,见 projection 处说明(buildRunConfig 读模块级 schema 状态)。
+    void props.schemaRev
+    return buildRunConfig(props.draft, props.typeId, { explicitKeys: explicitKeySet })
+  }, [props.draft, props.typeId, props.schemaRev, explicitKeySet])
   const defaultsConfig = useMemo(() => createDefaultConfig(props.typeId), [props.typeId])
   const storedPreflight = wizard.preflightByType[props.typeId]
   const preflightCurrent = isPreflightCurrent(storedPreflight, props.typeId, props.schemaRev, currentPayload)
@@ -399,9 +405,13 @@ export function WizardPage(props: WizardPageProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.typeId, props.schemaRev, validStepIds.join('|')])
 
-  useEffect(() => {
+  // 进入 type 步(或持久化分类/投影变化)时同步所选分类:渲染期 props→state 调整模式,
+  // setState 不在 effect 体内同步触发。
+  const [categorySync, setCategorySync] = useState(() => ({ activeId, persistedCategory, fallback: projection.category }))
+  if (categorySync.activeId !== activeId || categorySync.persistedCategory !== persistedCategory || categorySync.fallback !== projection.category) {
+    setCategorySync({ activeId, persistedCategory, fallback: projection.category })
     if (activeId === 'type') setSelectedCategory(persistedCategory || projection.category)
-  }, [activeId, persistedCategory, projection.category])
+  }
 
   // 自动复检:stale 或未完成的可见步骤重新跑校验,通过后恢复完成(不再标记 stale)。
   // 仅 markComplete,绝不 markStaleFrom,避免死循环。
@@ -556,6 +566,9 @@ export function WizardPage(props: WizardPageProps) {
   const launchDisabled = props.validation.errors.length > 0 || !allStepsComplete || !noStaleSteps || preflightBusy || !preflightCurrent || preflightErrors.length > 0 || (preflightWarnings.length > 0 && !storedPreflight?.warningConfirmed) || props.igniting
 
   const adapterChoices = useMemo(() => {
+    // language 失效令牌:adapterOptions 经 getState() 非响应式读取当前语言,
+    // memo 必须在语言切换时重算(见组件顶部说明),故在回调里消费它。
+    void language
     return activeStep?.id === 'adapter' ? adapterOptions(props.displayDraft, props.typeId) : []
   }, [activeStep?.id, props.displayDraft, props.typeId, language])
 
@@ -591,24 +604,24 @@ export function WizardPage(props: WizardPageProps) {
 
   const [activeAdapterCategory, setActiveAdapterCategory] = useState<AdapterCategoryKey>(defaultCategory)
 
-  // Sync category tab if winner changes externally (or upon entering adapter step)
-  useEffect(() => {
-    if (selectedAdapterOption) {
-      setActiveAdapterCategory(adapterCategoryForFamily(selectedAdapterOption.family))
-    }
-  }, [selectedAdapterOption?.family])
+  // Sync category tab if winner changes externally (or upon entering adapter step):
+  // 渲染期 props→state 调整模式,setState 不在 effect 体内同步触发。
+  const selectedFamily = selectedAdapterOption?.family
+  const [prevSelectedFamily, setPrevSelectedFamily] = useState(selectedFamily)
+  if (prevSelectedFamily !== selectedFamily) {
+    setPrevSelectedFamily(selectedFamily)
+    if (selectedFamily) setActiveAdapterCategory(adapterCategoryForFamily(selectedFamily))
+  }
 
   // Never leave the roving tab stop on an unavailable category.
-  useEffect(() => {
-    if (activeStep?.id !== 'adapter' || (baseGroups[activeAdapterCategory] || []).length > 0) return
-    const selected = selectedAdapterOption
-      ? adapterCategoryForFamily(selectedAdapterOption.family)
-      : undefined
+  // 同为渲染期派生状态调整:回退目标必有非空分组,下一帧条件即不成立,不会循环。
+  if (activeStep?.id === 'adapter' && (baseGroups[activeAdapterCategory] || []).length === 0) {
+    const selected = selectedFamily ? adapterCategoryForFamily(selectedFamily) : undefined
     const fallback = selected && (baseGroups[selected] || []).length > 0
       ? selected
       : ADAPTER_CATEGORIES.find((category) => (baseGroups[category.id] || []).length > 0)?.id
     if (fallback) setActiveAdapterCategory(fallback)
-  }, [activeStep?.id, activeAdapterCategory, baseGroups, selectedAdapterOption?.family])
+  }
 
   // Any schema flag represented by an adapter option is a master control. Keep
   // its full schema definition for Expert mode, but avoid a second wizard input.
@@ -620,7 +633,11 @@ export function WizardPage(props: WizardPageProps) {
   )
 
   const doraRider = useMemo(
-    () => (activeStep?.id === 'adapter' ? doraToggleState(props.displayDraft, props.typeId) : null),
+    () => {
+      // language 失效令牌,见 adapterChoices 处说明。
+      void language
+      return activeStep?.id === 'adapter' ? doraToggleState(props.displayDraft, props.typeId) : null
+    },
     [activeStep?.id, props.displayDraft, props.typeId, language],
   )
 
@@ -1117,7 +1134,7 @@ export function WizardPage(props: WizardPageProps) {
                 const diffs = step.fields
                   .filter((field) => isFieldVisible(field, props.displayDraft))
                   .map((field) => ({ field, current: props.displayDraft[field.key], def: defaultsConfig[field.key] }))
-                  .filter(({ field, current, def }) => {
+                  .filter(({ current, def }) => {
                     const nonEmpty = current !== '' && current !== null && current !== undefined
                     if (!nonEmpty) return false
                     const different = Array.isArray(current) || Array.isArray(def)

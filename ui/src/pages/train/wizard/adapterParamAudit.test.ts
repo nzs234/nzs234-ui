@@ -20,11 +20,10 @@
  *   - rs-lora：use_rslora 是选择别名，collectVisiblePayload 按 schema 收集会丢弃它，
  *     builder 真实发出的激活键是 rs_lora_enabled（schemaFieldGroups 实体旗标）；
  *   - lora-fa：network_module=networks.lora_fa → 实体 lora_fa（schemaCommon.js:883）
- *     发出 lora_fa_enabled；
- *   - lora2 / gdlokr：本类型 schema 无 enabled 字段、也无 network_module/lora_type
- *     路由可把旗标置真——提交层实体互斥表（normalizeAdapterEntityMutex）只会把键
- *     写出为 false。降级断言「键出现在 payload」（互斥表统一写出，缺失即回归），
- *     在 SELECTION_PRESENCE_ONLY 中显式登记。
+ *     发出 lora_fa_enabled。
+ *   （2026-08：gdlokr 曾因 sdxl 无 gdlokr_enabled schema 字段降级为 presence-only
+ *   断言；schemaFrontierGroups.S_LORA_VARIANTS 补上 master 后走完整激活断言，
+ *   SELECTION_PRESENCE_ONLY 与 BLIND_FLAG_ALLOWED 盲置兜底一并撤销。）
  * ── 有意不暴露清单（hidden/phantom/注册表虚键）─────────────────────────────
  * type==='hidden' 的字段只保旧草稿回显，不是 UI 旋钮，跳过可见/向导/payload 检查：
  *   - dora_wd：sdxl 有意 hideDoraWd（sdxlSchema.js，主入口收敛为
@@ -120,9 +119,6 @@ const SELECTION_ACTIVATION: Record<string, string> = {
 /** 注册表虚键：后端无 config 字段/派生量，不是用户键，全部检查豁免（清理待办见头注）。 */
 const REGISTRY_GHOST_KEYS = new Set(['tlora_total_steps'])
 
-/** 无法经 UI 路由置真的激活键：只断言互斥表把键写出（出现在 payload）。 */
-const SELECTION_PRESENCE_ONLY = new Set(['gdlokr_enabled'])
-
 // ── 多类型选择构造 ─────────────────────────────────────────────────────────────
 // 三类路由（见 adapterModel.resolveAdapterFamily / buildAdapterSelection 与
 // schemaCommon.resolveWinningAdapterEntity 的归一语义）：
@@ -142,9 +138,6 @@ const FAMILY_DROPDOWN_OPTION: Record<string, string> = {
   gdlokr: 'gdlokr',
   'rs-lora': 'rs_lora',
 }
-
-/** 无路由家族的盲置白名单：互斥表按 enabled_flag 赢家仍会写出真值（sdxl gdlokr 先例）。 */
-const BLIND_FLAG_ALLOWED = new Set(['gdlokr_enabled'])
 
 /** 类型 schema 下拉里「可选」的 option 值（剔除 disabled 项与空值）。 */
 function enabledSelectOptions(typeId: string, key: string): string[] {
@@ -220,12 +213,6 @@ function bareSelectionFor(typeId: string, spec: FamilySpec): Record<string, unkn
     return null
   }
   if (flag && hasEditableField(typeId, flag)) { cfg[flag] = true; return cfg }
-  // 盲置兜底仅当类型确实携带本家族子参数（sdxl gdlokr：S_LORA_VARIANTS 有 factor/mode/alpha），
-  // 否则会给「路由都没有」的类型虚构选中态。
-  if (flag && BLIND_FLAG_ALLOWED.has(flag) && spec.family_fields.some((key) => hasEditableField(typeId, key))) {
-    cfg[flag] = true
-    return cfg
-  }
   return null
 }
 
@@ -395,14 +382,8 @@ describe('backend adapter registry params are all reachable in the UI (multi-typ
           // 基础 lora 家族的 use_dora/use_rslora 是可选 rider（默认关闭是正确状态），
           // 不构成 lora 家族的激活条件；它们的激活已由专属 dora / rs-lora 家族审计。
           const optionalRiderOnBaseLora = spec.family === 'lora' && (key === 'use_dora' || key === 'use_rslora')
-          if (!optionalRiderOnBaseLora) {
-            if (SELECTION_PRESENCE_ONLY.has(key)) {
-              if (!(activation in selectionPayload)) {
-                gaps.push({ type: typeId, family: spec.family, key, check: 'activation', problem: `activation key ${activation} not emitted by buildRunConfig for bare selection` })
-              }
-            } else if (selectionPayload[activation] !== true) {
-              gaps.push({ type: typeId, family: spec.family, key, check: 'activation', problem: `activation key ${activation} is not true after bare selection` })
-            }
+          if (!optionalRiderOnBaseLora && selectionPayload[activation] !== true) {
+            gaps.push({ type: typeId, family: spec.family, key, check: 'activation', problem: `activation key ${activation} is not true after bare selection` })
           }
           continue
         }
@@ -463,7 +444,7 @@ describe('backend adapter registry params are all reachable in the UI (multi-typ
   })
 
   it('adapter-surface type whitelist (each type ran the full loop green before entering)', () => {
-    console.log(matrix.join('\n'))
+    console.info(matrix.join('\n'))
     expect(TYPE_IDS).toEqual(['sdxl-lora', 'anima-lora', 'anima-edit-model', 'newbie-lora', 'sd-lora', 'flux-lora'])
   })
 
@@ -473,6 +454,33 @@ describe('backend adapter registry params are all reachable in the UI (multi-typ
       .filter((id) => !TYPE_IDS.includes(id) && !EXCLUDED_TYPES[id])
     if (undocumented.length) console.error('UNDOCUMENTED EXCLUSION:', undocumented.join(','))
     expect(undocumented).toEqual([])
+  })
+})
+
+// ── GDLoKr 断链回归（2026-08）：sdxl 无 lora_type 下拉，GDLoKr 只能经实体旗标选择；
+// schema 缺 master 时 collectVisiblePayload 丢值、互斥表把 payload.gdlokr_enabled
+// 归一成 false——25 族中唯一断裂。断言「卡片选择（写 config.gdlokr_enabled=true）→
+// payload 真值」全链与子项点亮。──
+describe('gdlokr master flag survives collection on module-route types (sdxl-lora)', () => {
+  it('buildRunConfig({...default, gdlokr_enabled:true}) emits gdlokr_enabled === true', () => {
+    const config = { ...(createDefaultConfig(TYPE_ID) as Record<string, unknown>), gdlokr_enabled: true }
+    const payload = buildRunConfig(config, TYPE_ID) as Record<string, unknown>
+    expect(payload.gdlokr_enabled).toBe(true)
+  })
+
+  it('default config keeps gdlokr_enabled false in the payload (no phantom activation)', () => {
+    const payload = buildRunConfig(createDefaultConfig(TYPE_ID) as Record<string, unknown>, TYPE_ID) as Record<string, unknown>
+    expect(payload.gdlokr_enabled).toBe(false)
+  })
+
+  it('gdlokr_factor/mode/alpha light up via gdlokr_enabled (wizard card selection path)', () => {
+    const fields = fieldIndexOf(TYPE_ID)
+    for (const key of ['gdlokr_factor', 'gdlokr_mode', 'gdlokr_alpha']) {
+      const field = fields.get(key)
+      expect(field, `${key} missing from ${TYPE_ID} schema`).toBeTruthy()
+      expect(field!.visibleWhen!({ gdlokr_enabled: true } as Record<string, unknown>)).toBe(true)
+      expect(Boolean(field!.visibleWhen!({} as Record<string, unknown>))).toBe(false)
+    }
   })
 })
 

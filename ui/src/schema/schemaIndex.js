@@ -153,7 +153,6 @@ const TRAINING_INTENT_PROFILE_SECTION = {
   fields: S_TRAINING_INTENT_PROFILE,
 };
 const _profiledSectionsCache = {};
-const REGISTERED_TRAINING_TYPE_IDS = new Set(ALL_TRAINING_TYPES.map((item) => item.id));
 
 // dataset_intelligence_* 走的就是 sample_difficulty 那条权重 seam(后端
 // trainer_execution_loop_config 在 dataset_intelligence_enabled 为真时直接把

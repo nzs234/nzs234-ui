@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SchemaField } from '@/schema/schemaIndex'
 import {
   TRAINING_TYPES,
@@ -48,6 +48,10 @@ import { isPreflightCurrent, normalizePreflightReport, type PreflightSnapshot } 
 import { isRestorableTrainingType } from '@/lib/trainingTypeAccess'
 
 /* 训练配置页:类型轨 → schema 页签表单 → 预检/参数存取/启动 */
+
+/** 稳定空值:store/Map 未命中时返回同一实例,避免渲染期派生数组/集合身份抖动。 */
+const EMPTY_STRING_ARRAY: string[] = []
+const EMPTY_STRING_SET: ReadonlySet<string> = new Set<string>()
 
 let optionsLoaded = false
 /** 会话内只静默 seed 一次,避免与用户编辑抢写 */
@@ -170,7 +174,7 @@ export default function TrainPage() {
   const navigate = useRouteStore((s) => s.navigate)
   const wizardMode = useWizardStore((s) => s.mode)
   const setWizardMode = useWizardStore((s) => s.setMode)
-  const persistedWizardExplicitFields = useWizardStore((s) => s.explicitFieldsByType[typeId]) || []
+  const persistedWizardExplicitFields = useWizardStore((s) => s.explicitFieldsByType[typeId] ?? EMPTY_STRING_ARRAY)
 
   const [tab, setTab] = useState('model')
   const [search, setSearch] = useState('')
@@ -200,7 +204,7 @@ export default function TrainPage() {
         { message: tt('turbocore.global_override_warning'), fields: [...TURBOCORE_OVERRIDE_KEYS] },
       ],
     }
-  }, [validation, turboGlobal.enabled, turbocoreOverrideMessage, tt])
+  }, [validation, turboGlobal.enabled, tt])
 
   useEffect(() => {
     if (validation.autoFixes) {
@@ -236,15 +240,19 @@ export default function TrainPage() {
     }
   }, [])
 
-  const explicitFieldsByType = useRef(new Map<string, Set<string>>())
-  const explicitFields = explicitFieldsByType.current.get(typeId) || new Set<string>()
-  if (!explicitFieldsByType.current.has(typeId)) explicitFieldsByType.current.set(typeId, explicitFields)
+  // 「用户显式编辑过」的会话级键集(按 type 分桶)。渲染期需要读(标准化模式展开
+  // 传给 SectionCard、与持久化 wizard 记录取并集),所以用 state 而非 ref ——
+  // hooks 规则禁止渲染期读 ref;写路径全部在事件回调里走函数式更新。
+  const [explicitFieldsByType, setExplicitFieldsByType] = useState(() => new Map<string, Set<string>>())
+  const explicitFields = explicitFieldsByType.get(typeId) ?? EMPTY_STRING_SET
 
   const markExplicit = useCallback((keys: Iterable<string>) => {
-    const fields = explicitFieldsByType.current.get(typeId) || new Set<string>()
     const list = [...keys]
-    for (const key of list) fields.add(key)
-    explicitFieldsByType.current.set(typeId, fields)
+    setExplicitFieldsByType((prev) => {
+      const fields = new Set(prev.get(typeId) ?? [])
+      for (const key of list) fields.add(key)
+      return new Map(prev).set(typeId, fields)
+    })
     useWizardStore.getState().markExplicit(typeId, list)
   }, [typeId])
 
@@ -253,7 +261,7 @@ export default function TrainPage() {
     markExplicit([key])
     useWizardStore.getState().clearPreflight(typeId)
     setValue(key, raw)
-  }, [managedKeys, markExplicit, setValue])
+  }, [managedKeys, markExplicit, setValue, typeId])
 
   const applySuggestedValues = useCallback((values: Record<string, unknown>) => {
     const allowed = Object.fromEntries(Object.entries(values).filter(([key]) => !managedKeys.has(key)))
@@ -263,14 +271,18 @@ export default function TrainPage() {
       useWizardStore.getState().markStaleFrom(typeId, 'files')
     }
   }, [applyValues, managedKeys, typeId])
-  const tabs = useMemo(() => getAvailableTabs(typeId, displayDraft), [typeId, displayDraft, schemaRev])
+  const tabs = useMemo(() => {
+    // schemaRev 是失效令牌:getAvailableTabs 读模块级 schema 缓存,schema 热更新
+    // 后入参不变也要重算 —— 故在回调里消费它,依赖保持真实。
+    void schemaRev
+    return getAvailableTabs(typeId, displayDraft)
+  }, [typeId, displayDraft, schemaRev])
   const activeTab = tabs.some((t) => t.key === tab) ? tab : (tabs[0]?.key ?? 'model')
   const expertMode = !!displayDraft.performance_expert_mode
 
-  // 切到标准后 advanced/frontier 被藏：把 state tab 同步回合法页签，避免残留
-  useEffect(() => {
-    if (tab !== activeTab) setTab(activeTab)
-  }, [tab, activeTab])
+  // 切到标准后 advanced/frontier 被藏：把 state tab 同步回合法页签，避免残留。
+  // 渲染期派生状态调整(setState during render):同步于当帧生效,等价于原 effect 写法。
+  if (tab !== activeTab) setTab(activeTab)
 
   const setExpertMode = useCallback(
     (on: boolean) => {
@@ -281,6 +293,8 @@ export default function TrainPage() {
   )
 
   const sections = useMemo(() => {
+    // schemaRev 失效令牌,见上方 tabs 的说明。
+    void schemaRev
     if (search.trim()) {
       // 搜索时跨页签全局匹配,但不越过 expertOnly 页签的可见性
       const allowed = new Set(tabs.map((t) => t.key))
@@ -305,7 +319,7 @@ export default function TrainPage() {
     // 「用户显式编辑过」的键集（会话 ref + 持久化 wizard 记录取并集）：
     // 提交层靠它区分注入默认与手填值（krea2 aggressive 预设剥除等）。
     const explicitKeys = new Set<string>([
-      ...(explicitFieldsByType.current.get(state.typeId) ?? []),
+      ...(explicitFieldsByType.get(state.typeId) ?? []),
       ...(useWizardStore.getState().explicitFieldsByType[state.typeId] ?? []),
     ])
     return buildRunConfig(state.drafts[state.typeId] ?? {}, state.typeId, { explicitKeys })
@@ -364,7 +378,7 @@ export default function TrainPage() {
   const doReset = () => {
     if (window.confirm(tt('train.reset_confirm', { type: typeLabel }))) {
       resetDraft()
-      explicitFields.clear()
+      setExplicitFieldsByType((prev) => new Map(prev).set(typeId, new Set<string>()))
       useWizardStore.getState().resetType(typeId)
       toast.info(tt('train.reset_ok'), 'RESET')
     }
@@ -383,7 +397,7 @@ export default function TrainPage() {
     if (!window.confirm(tt('train.clear_draft_confirm', { type: typeLabel }))) return
     try {
       await clearCurrentTypeDraftOnDisk()
-      explicitFields.clear()
+      setExplicitFieldsByType((prev) => new Map(prev).set(typeId, new Set<string>()))
       useWizardStore.getState().resetType(typeId)
       toast.ok(tt('train.clear_draft_ok'), 'CLEAR')
     } catch (e) {
@@ -427,7 +441,7 @@ export default function TrainPage() {
       }
 
       const restoredTypeId = result.typeId
-      explicitFieldsByType.current.set(restoredTypeId, new Set(result.appliedKeys))
+      setExplicitFieldsByType((prev) => new Map(prev).set(restoredTypeId, new Set(result.appliedKeys)))
       const src = last.source === 'last-training' ? tt('train.last_source') : 'saved_params'
       toast.ok(`${tt('train.restored', { source: src })}${last.runId ? ` · ${last.runId}` : ''}`, 'LAST')
     } catch (e) {
@@ -505,7 +519,7 @@ export default function TrainPage() {
               source: 'saved_params',
             })
             if (result.ok) {
-              explicitFieldsByType.current.set(result.typeId, new Set(result.appliedKeys))
+              setExplicitFieldsByType((prev) => new Map(prev).set(result.typeId, new Set(result.appliedKeys)))
               toast.ok(tt('train.restored', { source: 'saved_params' }), 'PRESETS')
             } else {
               toast.err(tt('train.last_none'), 'PRESETS')
@@ -717,7 +731,7 @@ export default function TrainPage() {
             source: 'saved_params',
           })
           if (result.ok) {
-            explicitFieldsByType.current.set(result.typeId, new Set(result.appliedKeys))
+            setExplicitFieldsByType((prev) => new Map(prev).set(result.typeId, new Set(result.appliedKeys)))
             toast.ok(tt('train.restored', { source: 'saved_params' }), 'PRESETS')
           } else {
             toast.err(tt('train.last_none'), 'PRESETS')

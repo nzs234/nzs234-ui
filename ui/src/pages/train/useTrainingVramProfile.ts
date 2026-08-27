@@ -82,17 +82,25 @@ export function useTrainingVramProfile(typeId: string, draft: JsonBag) {
   const latestDraft = useRef(draft)
   const generation = useRef(0)
   const [resolution, setResolution] = useState<ManagedResolution>(EMPTY_RESOLUTION)
-  latestDraft.current = draft
+
+  // 最新 draft 经 effect 落 ref(渲染期不写 ref);放在主 effect 之前保证其先执行。
+  useEffect(() => {
+    latestDraft.current = draft
+  })
+
+  // 档位/类型/变体变化时立即清空旧托管值:渲染期 props→state 调整模式,
+  // setState 不在 effect 体内同步触发;挂载首帧与初始 EMPTY 无异,行为不变。
+  const resolveKey = `${profile}\u0000${typeId}\u0000${variant}`
+  const [lastResolveKey, setLastResolveKey] = useState(resolveKey)
+  if (lastResolveKey !== resolveKey) {
+    setLastResolveKey(resolveKey)
+    setResolution(EMPTY_RESOLUTION)
+  }
 
   useEffect(() => {
     const requestGeneration = ++generation.current
-    if (profile === OFF) {
-      setResolution(EMPTY_RESOLUTION)
-      return
-    }
+    if (profile === OFF) return
 
-    // Never keep a previous tier locked while a new tier/variant is resolving.
-    setResolution(EMPTY_RESOLUTION)
     const config = {
       ...latestDraft.current,
       model_train_type: typeId,

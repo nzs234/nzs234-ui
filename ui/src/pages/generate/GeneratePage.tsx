@@ -102,6 +102,8 @@ export default function GeneratePage() {
       const { items, last_id } = await generateApi.logs(lastLogId.current)
       if (generation !== pollGeneration.current) return
       if (items.length) {
+        // 值来自服务器响应而非 ref 旧读;并发由 pollGeneration 守卫,写入不会基于过期状态。
+        // eslint-disable-next-line require-atomic-updates
         lastLogId.current = last_id
         setLogs((prev) => [...prev, ...items].slice(-400))
       }
@@ -115,8 +117,11 @@ export default function GeneratePage() {
     }
   }, [])
 
+  // 挂载即对时一次任务状态(可能后端已在跑);setState 发生在 poll 的 await 之后,
+  // 延后一拍启动以避免同步级联渲染。
   useEffect(() => {
-    void poll()
+    const kick = window.setTimeout(() => void poll(), 0)
+    return () => window.clearTimeout(kick)
   }, [poll])
 
   useEffect(() => {

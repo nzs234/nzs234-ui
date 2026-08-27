@@ -215,13 +215,12 @@ describe('outputConflictCheck: 失败与缓存', () => {
     mocks.checkOutputConflict.mockResolvedValue({ conflict: true })
     await checkOutputConflictStatus(dir, 'n')
     // 12s TTL：把 Date.now 往后推 13s 而不是真的等。
-    const realNow = Date.now
+    const nowSpy = vi.spyOn(Date, 'now')
     try {
-      const shifted = realNow() + 13_000
-      Date.now = () => shifted
+      nowSpy.mockReturnValue(Date.now() + 13_000)
       await checkOutputConflictStatus(dir, 'n')
     } finally {
-      Date.now = realNow
+      nowSpy.mockRestore()
     }
     expect(mocks.checkOutputConflict).toHaveBeenCalledTimes(2)
   })

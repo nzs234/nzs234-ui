@@ -133,7 +133,6 @@ function PathFieldRow({
   const [recentPaths, setRecentPaths] = useState<string[]>([])
   const [pathStatus, setPathStatus] = useState<PathCheckStatus>('idle')
   const [pathHint, setPathHint] = useState('')
-  const [multiHint, setMultiHint] = useState('')
   const rootRef = useRef<HTMLDivElement | null>(null)
   const checkGen = useRef(0)
 
@@ -149,17 +148,29 @@ function PathFieldRow({
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open, recentOpen])
 
-  /* 非空非占位路径: debounce 校验存在性(不阻断编辑) */
+  /* 非空非占位路径: debounce 校验存在性(不阻断编辑)。
+   * 状态重置走渲染期同步(React 认可的 props→state 调整模式):外部值一变,
+   * 下一帧立即回到 checking/idle,与原 effect 版语义一致且无闪烁。 */
+  const pathSyncKey = [
+    String(value ?? ''),
+    field.key,
+    field.type,
+    String(field.defaultValue ?? ''),
+    String(field.pickerType ?? ''),
+    String(field.allowModelDirectory ?? ''),
+  ].join('\u0000')
+  const [lastPathSyncKey, setLastPathSyncKey] = useState(pathSyncKey)
+  if (lastPathSyncKey !== pathSyncKey) {
+    setLastPathSyncKey(pathSyncKey)
+    const text = String(value ?? '').trim()
+    setPathStatus(text ? 'checking' : 'idle')
+    setPathHint('')
+  }
+
   useEffect(() => {
     const gen = ++checkGen.current
     const text = String(value ?? '').trim()
-    if (!text) {
-      setPathStatus('idle')
-      setPathHint('')
-      return
-    }
-    setPathStatus('checking')
-    setPathHint('')
+    if (!text) return
     const t = window.setTimeout(() => {
       void checkPathStatus(text, {
         type: field.type,
@@ -176,31 +187,33 @@ function PathFieldRow({
     return () => window.clearTimeout(t)
   }, [value, field.key, field.type, field.defaultValue, field.pickerType, field.allowModelDirectory])
 
-  /* 空/占位 + 可扫描: 多候选灰字提示(复用 inventory 缓存) */
+  /* 空/占位 + 可扫描: 多候选灰字提示(复用 inventory 缓存)。
+   * 状态里只存「候选数 + 采样键」,文案在渲染期用当前语言拼 —— 提示语随语言切换
+   * 立即更新,也把 t 从 effect 依赖里拿掉;键不匹配即视为空提示,等价于旧的同步清空。 */
+  const multiScanKey = showScan
+    ? [typeId, field.key, field.type, String(field.pickerType ?? ''), String(field.defaultValue ?? ''), String(value ?? '')].join('\u0000')
+    : ''
+  const multiScanEmpty = showScan && isPathEmptyForAutofill(value, {
+    key: field.key,
+    type: field.type,
+    pickerType: field.pickerType,
+    defaultValue: field.defaultValue,
+  })
+  const [multiScan, setMultiScan] = useState<{ key: string; n: number } | null>(null)
   useEffect(() => {
-    if (!showScan) {
-      setMultiHint('')
-      return
-    }
-    const empty = isPathEmptyForAutofill(value, {
-      key: field.key,
-      type: field.type,
-      pickerType: field.pickerType,
-      defaultValue: field.defaultValue,
-    })
-    if (!empty) {
-      setMultiHint('')
-      return
-    }
+    if (!multiScanEmpty) return
     let cancelled = false
     void countCandidatesForField(typeId, field.key).then((n) => {
       if (cancelled) return
-      setMultiHint(n >= 2 ? t('field.multi_hint', { n }) : '')
+      setMultiScan({ key: multiScanKey, n })
     })
     return () => {
       cancelled = true
     }
-  }, [showScan, value, typeId, field.key, field.type, field.pickerType, field.defaultValue])
+  }, [multiScanEmpty, multiScanKey, typeId, field.key])
+  const multiHint = multiScan && multiScan.key === multiScanKey && multiScan.n >= 2
+    ? t('field.multi_hint', { n: multiScan.n })
+    : ''
 
   const openScan = async (refresh = false) => {
     setRecentOpen(false)
@@ -364,12 +377,18 @@ function OutputNameField({
   const [hint, setHint] = useState('')
   const gen = useRef(0)
 
+  /* 外部值变化且当前不适用检查时,渲染期同步清掉旧提示(props→state 调整模式);
+   * 适用检查时提示保留到 debounce 结果返回,与原 effect 版一致。 */
+  const outputSyncKey = `${outputDir}\u0000${String(value ?? '')}`
+  const [lastOutputSyncKey, setLastOutputSyncKey] = useState(outputSyncKey)
+  if (lastOutputSyncKey !== outputSyncKey) {
+    setLastOutputSyncKey(outputSyncKey)
+    if (!shouldCheckOutputConflict(outputDir, value)) setHint('')
+  }
+
   useEffect(() => {
     const id = ++gen.current
-    if (!shouldCheckOutputConflict(outputDir, value)) {
-      setHint('')
-      return
-    }
+    if (!shouldCheckOutputConflict(outputDir, value)) return
     const t = window.setTimeout(() => {
       void checkOutputConflictStatus(outputDir, String(value ?? '')).then((r) => {
         if (gen.current !== id) return
@@ -446,11 +465,13 @@ function PreviewGroupsEditor({
   const items = normalizePreviewGroups(value) as Record<string, unknown>[]
   const [drafts, setDrafts] = useState<string[]>(() => items.map((it) => JSON.stringify(it, null, 2)))
 
-  useEffect(() => {
+  // 外部值变化才重同步;用户输入非法 JSON 不触发 onChange,草稿保留错误样式。
+  // 用渲染期 props→state 调整替代 effect:setState 不再发生在 effect 体内。
+  const [lastExternalValue, setLastExternalValue] = useState(value)
+  if (lastExternalValue !== value) {
+    setLastExternalValue(value)
     setDrafts(items.map((it) => JSON.stringify(it, null, 2)))
-    // 外部值变化才重同步;用户输入非法 JSON 不触发 onChange,草稿保留错误样式
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value])
+  }
 
   const handleEdit = (index: number, text: string) => {
     const next = drafts.slice()

@@ -15,7 +15,6 @@ import {
   streamingBlockMode,
   DIT_BLOCK_RESIDENCY_OPTIONS,
   PCIE_TRANSFER_FORMAT_FIELD,
-  sparseSwapFields,
   pcieDeltaCacheField,
   pcieDeltaCacheModeFields,
   vortexRuntimeFields,
@@ -50,9 +49,6 @@ import {
   WAN22_OFFLOAD_FIELDS,
   S_SAVE,
   S_CAPTION,
-  S_LR,
-  S_LR_TARGET,
-  S_LR_FT,
   S_LR_DIT,
   S_LR_TARGET_DIT,
   S_LR_FT_DIT,
@@ -63,7 +59,6 @@ import {
   S_SPEED_FLOW,
   S_DISTRIBUTED,
   S_LULYNX_SDXL,
-  S_ADV,
   S_ADV_DIT,
   S_NOISE,
   S_DATA_AUG,
@@ -75,7 +70,6 @@ import {
   cnTrainFields,
   cnLR,
   S_COMPILE_EXPERT,
-  S_MODULE_OFFLOAD_CORE,
   S_MODULE_OFFLOAD_EXPERT,
 } from './schemaFieldGroups.js';
 import {
@@ -704,7 +698,7 @@ export const KREA2_LORA_SECTIONS = [
       key: 'krea2_text_fusion_mode',
       type: 'select',
       label: '文本融合模式',
-      desc: '决定缓存与 DiT 装载：fusion_frozen 缓存 txtfusion 后输出（默认，塔不参训）；fusion_trainable 缓存 12 层原始 stack 并装回 343M txtfusion 塔参训。两种模式的缓存互不兼容，切换需重建缓存',
+      desc: '决定缓存与 DiT 装载：fusion_frozen 缓存 txtfusion 后输出（默认，塔不参训）；fusion_trainable 缓存 12 层原始 stack 并装回 343M txtfusion 塔参训。两种模式的缓存互不兼容，切换需重建缓存。建议保持 fusion_frozen（默认）。',
       defaultValue: 'fusion_frozen',
       options: [
         { value: 'fusion_frozen', label: 'Fusion Frozen（默认；缓存融合后文本，塔冻结）' },
@@ -788,9 +782,9 @@ export const KREA2_LORA_SECTIONS = [
 ];
 
 const KREA2_DEPTH_EXPANSION_FIELDS = [
-  { key: 'krea2_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'krea2_depth_expansion_enabled', desc: '交错复制 Krea-2 block，并以恒等残差初始化新增层。最终保存完整新底座。', defaultValue: false },
-  { key: 'krea2_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'krea2_depth_expansion_target_layers', desc: '扩层后的 Transformer block 总数。', defaultValue: 40, min: 2, step: 1, visibleWhen: when('krea2_depth_expansion_enabled', true) },
-  { key: 'krea2_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'krea2_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。', defaultValue: 'new_layers', visibleWhen: when('krea2_depth_expansion_enabled', true), options: [
+  { key: 'krea2_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'krea2_depth_expansion_enabled', desc: '交错复制 Krea-2 block，并以恒等残差初始化新增层。最终保存完整新底座。建议仅全参微调时有意识地扩容量再开启。', defaultValue: false },
+  { key: 'krea2_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'krea2_depth_expansion_target_layers', desc: '扩层后的 Transformer block 总数，须超过 Krea-2 底座原生 28 层。推荐范围：40（默认）作适度增量。', defaultValue: 40, min: 2, step: 1, visibleWhen: when('krea2_depth_expansion_enabled', true) },
+  { key: 'krea2_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'krea2_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。建议保持 new_layers（保守默认）。', defaultValue: 'new_layers', visibleWhen: when('krea2_depth_expansion_enabled', true), options: [
     { value: 'new_layers', label: '只训练新增层' },
     { value: 'new_layers_periphery', label: '新增层 + 外围模块' },
     { value: 'all', label: '全部参数' },
@@ -860,7 +854,7 @@ export const FLUX2_LORA_SECTIONS = [
       key: 'flux2_model_version',
       type: 'select',
       label: '模型版本',
-      desc: 'Flux2 版本声明，决定缓存与结构分支。必须与底模一致。',
+      desc: 'Flux2 版本声明，决定缓存与结构分支。必须与底模一致。建议保持与 checkpoint 匹配的默认值（klein-base-9b）。',
       defaultValue: 'klein-base-9b',
       options: [
         { value: 'klein-base-9b', label: 'klein-base-9b（推荐）' }
@@ -923,13 +917,13 @@ export const ZIMAGE_LORA_SECTIONS = [
     { key: 'pretrained_model_name_or_path', type: 'folder', pickerType: 'folder', label: 'Z-Image 模型目录', title: 'pretrained_model_name_or_path', desc: 'diffusers 目录，含 transformer/', defaultValue: '' },
     { key: 'output_dir', type: 'folder', pickerType: 'folder', label: '输出目录', title: 'output_dir', desc: '模型输出目录。建议指向专用盘的 models/lora 类目录，避免系统盘；训练缓存与数据集分开存放。', defaultValue: './output/zimage' },
     { key: 'output_name', type: 'string', label: '输出名称', title: 'output_name', desc: '输出文件名（不含扩展名）。建议用「概念名+版本」命名（如 lulu_v2），同一目录多次训练勿重名以免覆盖。', defaultValue: 'zimage-lora' },
-    { key: 'zimage_max_text_length', type: 'number', label: '最大文本长度', title: 'zimage_max_text_length', desc: 'Qwen3 TE 序列长度，默认 512。', defaultValue: 512, min: 64, max: 2048 },
+    { key: 'zimage_max_text_length', type: 'number', label: '最大文本长度', title: 'zimage_max_text_length', desc: 'Qwen3 TE 序列长度。推荐范围：保持 512（默认）；仅超长标注再调高。', defaultValue: 512, min: 64, max: 2048 },
     { key: 'zimage_timestep_sampling', type: 'select', label: '时间步采样', title: 'zimage_timestep_sampling', desc: 'ZImage 时间步采样分布。建议保持默认。', defaultValue: 'shift', options: [
       { value: 'shift', label: 'shift（推荐）' },
       { value: 'uniform', label: 'uniform' },
       { value: 'sigmoid', label: 'sigmoid' }
     ] },
-    { key: 'zimage_discrete_flow_shift', type: 'number', label: 'Flow shift', title: 'zimage_discrete_flow_shift', desc: 'discrete flow shift，默认 2.0。', defaultValue: 2.0, min: 0.1, step: 0.1 }
+    { key: 'zimage_discrete_flow_shift', type: 'number', label: 'Flow shift', title: 'zimage_discrete_flow_shift', desc: 'Z-Image discrete flow shift 采样偏移。推荐范围：保持 2.0 默认，除非 checkpoint 文档另有说明。', defaultValue: 2.0, min: 0.1, step: 0.1 }
   ]),
   sec('dataset-settings', 'dataset', '数据集设置', '训练图片与分辨率。cache 后缀 *_zimage.npz（读/写契约与 manifest 校验均已落地）。', [
     { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '训练图片目录', title: 'train_data_dir', desc: '训练数据集根目录：每个子文件夹是一个概念，文件夹名 = 重复次数@概念名（如 10_lulu）。建议图片统一存放于此盘，SSD 更快。', defaultValue: './output/lulynx' },
@@ -983,10 +977,10 @@ export const ZIMAGE_LORA_SECTIONS = [
 
 const WAN22_A14B_OFFLOAD_FIELDS = WAN22_OFFLOAD_FIELDS.map((field) => {
   if (field.key === 'wan22_block_offload_gpu_slots') {
-    return { ...field, defaultValue: 2, desc: 'A14B 每次只加载 high/low 中所选单塔；显存安全基线同时驻留 2 个 block。' };
+    return { ...field, defaultValue: 2, desc: 'A14B 每次只加载 high/low 中所选单塔；显存安全基线同时驻留 2 个 block。推荐范围：保持 2（默认）。' };
   }
   if (field.key === 'wan22_block_offload_prefetch_depth') {
-    return { ...field, defaultValue: 1, desc: 'A14B 显存安全基线只异步预取后续 1 个 block。' };
+    return { ...field, defaultValue: 1, desc: 'A14B 显存安全基线只异步预取后续 1 个 block。推荐范围：保持 1（默认）。' };
   }
   return field;
 });
@@ -996,9 +990,9 @@ const WAN22_A14B_OFFLOAD_FIELDS = WAN22_OFFLOAD_FIELDS.map((field) => {
 // trainer_cache_build_runtime.py:198-206（cache build options + fingerprint）。
 // 后端默认 F=1（configs_boogu.py:71-73），与产品单图训练默认一致。
 const WAN22_VIDEO_FIELDS = [
-  { key: 'wan22_target_frames', type: 'number', label: '目标帧数', title: 'wan22_target_frames', desc: '训练 clip 目标帧数；单图训练保持 1。', defaultValue: 1, min: 1, step: 1 },
-  { key: 'wan22_frame_stride', type: 'number', label: '帧采样步长', title: 'wan22_frame_stride', desc: '相邻采样帧之间的源视频帧间隔。', defaultValue: 1, min: 1, step: 1 },
-  { key: 'wan22_fps', type: 'number', label: 'FPS', title: 'wan22_fps', desc: '元数据帧率，写入缓存指纹；不影响采样步长。', defaultValue: 16, min: 1, step: 1 },
+  { key: 'wan22_target_frames', type: 'number', label: '目标帧数', title: 'wan22_target_frames', desc: '训练 clip 目标帧数。推荐范围：单图训练保持 1（默认）；多帧 clip 按源视频长度设定。', defaultValue: 1, min: 1, step: 1 },
+  { key: 'wan22_frame_stride', type: 'number', label: '帧采样步长', title: 'wan22_frame_stride', desc: '相邻采样帧之间的源视频帧间隔。推荐范围：保持 1（默认）；大于 1 时每 N 帧采一帧。', defaultValue: 1, min: 1, step: 1 },
+  { key: 'wan22_fps', type: 'number', label: 'FPS', title: 'wan22_fps', desc: '元数据帧率，写入缓存指纹；不影响采样步长。推荐范围：保持 16（默认）。', defaultValue: 16, min: 1, step: 1 },
 ];
 
 // C⑦（登记为「有意不暴露」）：wan22_sigma_stage_routing / sigma_stage_boundary
@@ -1044,13 +1038,13 @@ const wan22Sections = ({
       { value: 'high', label: '强制 high 区间' },
       { value: 'low', label: '强制 low 区间' }
     ], visibleWhen: when('wan22_model_variant', 't2v-a14b') },
-    { key: 'wan22_max_text_length', type: 'number', label: '最大文本长度', title: 'wan22_max_text_length', desc: 'umT5 序列长度，默认 512。', defaultValue: 512, min: 64, max: 1024 },
+    { key: 'wan22_max_text_length', type: 'number', label: '最大文本长度', title: 'wan22_max_text_length', desc: 'umT5 序列长度。推荐范围：保持 512（默认）；仅超长标注再调高。', defaultValue: 512, min: 64, max: 1024 },
     { key: 'wan22_timestep_sampling', type: 'select', label: '时间步采样', title: 'wan22_timestep_sampling', desc: 'Wan2.2 时间步采样分布。建议保持默认 shift 族。', defaultValue: 'shift', options: [
       { value: 'shift', label: 'shift（推荐）' },
       { value: 'uniform', label: 'uniform' },
       { value: 'sigmoid', label: 'sigmoid' }
     ] },
-    { key: 'wan22_discrete_flow_shift', type: 'number', label: 'Flow shift', title: 'wan22_discrete_flow_shift', desc: 'TI2V/I2V 倾向 5.0；T2V 常见 12.0。', defaultValue: flowShiftDefault, min: 0.1, step: 0.1 }
+    { key: 'wan22_discrete_flow_shift', type: 'number', label: 'Flow shift', title: 'wan22_discrete_flow_shift', desc: 'Wan2.2 discrete flow shift 采样偏移。推荐范围：TI2V/I2V 取 5.0 附近，T2V 常见 12.0，跟随 checkpoint 族。', defaultValue: flowShiftDefault, min: 0.1, step: 0.1 }
   ]),
   sec('dataset-settings', 'dataset', '数据集设置', '首版支持图像当 1 帧（F=1）或短 clip 潜空间；推荐合成/缓存 text embeds。', [
     { key: 'train_data_dir', type: 'folder', pickerType: 'folder', label: '训练图片目录', title: 'train_data_dir', desc: '训练数据集根目录：每个子文件夹是一个概念，文件夹名 = 重复次数@概念名（如 10_lulu）。建议图片统一存放于此盘，SSD 更快。', defaultValue: './output/lulynx' },
@@ -1136,7 +1130,7 @@ export const BOOGU_LORA_SECTIONS = [
       key: 'boogu_model_version',
       type: 'select',
       label: '模型版本',
-      desc: 'Boogu 底模版本声明。必须与实际文件匹配否则权重错载。',
+      desc: 'Boogu 底模版本声明，决定权重装载布局；与实际文件不匹配会权重错载。建议保持与所载 checkpoint 匹配的默认版本（Base 用 base-0.1，Edit 用 edit-0.1）。',
       defaultValue: 'base-0.1',
       options: [
         { value: 'base-0.1', label: 'base-0.1（推荐）' }
@@ -1223,7 +1217,7 @@ export const BOOGU_EDIT_LORA_SECTIONS = [
       key: 'boogu_model_version',
       type: 'select',
       label: '模型版本',
-      desc: 'Boogu 底模版本声明。必须与实际文件匹配否则权重错载。',
+      desc: 'Boogu 底模版本声明，决定权重装载布局；与实际文件不匹配会权重错载。建议保持与所载 checkpoint 匹配的默认版本（Base 用 base-0.1，Edit 用 edit-0.1）。',
       defaultValue: 'edit-0.1',
       options: [
         { value: 'edit-0.1', label: 'edit-0.1' },
@@ -1296,9 +1290,9 @@ export const BOOGU_EDIT_LORA_SECTIONS = [
 ];
 
 const BOOGU_DEPTH_EXPANSION_FIELDS = [
-  { key: 'boogu_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'boogu_depth_expansion_enabled', desc: '交错复制 Boogu 单流 block，并以恒等残差初始化新增层。最终保存完整新底座。', defaultValue: false },
-  { key: 'boogu_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'boogu_depth_expansion_target_layers', desc: '扩层后的单流 Transformer block 总数（Base 原生 32）。', defaultValue: 40, min: 2, step: 1, visibleWhen: when('boogu_depth_expansion_enabled', true) },
-  { key: 'boogu_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'boogu_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。', defaultValue: 'new_layers', visibleWhen: when('boogu_depth_expansion_enabled', true), options: [
+  { key: 'boogu_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'boogu_depth_expansion_enabled', desc: '交错复制 Boogu 单流 block，并以恒等残差初始化新增层。最终保存完整新底座。建议仅全参微调时有意识地扩容量再开启。', defaultValue: false },
+  { key: 'boogu_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'boogu_depth_expansion_target_layers', desc: '扩层后的单流 Transformer block 总数（Base 原生 32）。推荐范围：40（默认）作适度增量。', defaultValue: 40, min: 2, step: 1, visibleWhen: when('boogu_depth_expansion_enabled', true) },
+  { key: 'boogu_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'boogu_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。建议保持 new_layers（默认，经典深度上采样的安全选择）。', defaultValue: 'new_layers', visibleWhen: when('boogu_depth_expansion_enabled', true), options: [
     { value: 'new_layers', label: '只训练新增层' },
     { value: 'new_layers_periphery', label: '新增层 + 外围模块' },
     { value: 'all', label: '全部参数' },
@@ -1324,9 +1318,9 @@ export const BOOGU_FT_SECTIONS = dropDuplicateFieldKeys(BOOGU_LORA_SECTIONS
   }));
 
 const FLUX2_DEPTH_EXPANSION_FIELDS = [
-  { key: 'flux2_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'flux2_depth_expansion_enabled', desc: '交错复制 FLUX.2 单流 block（并行块，注意力/MLP 融合输出投影归零），以恒等残差初始化新增层。最终保存完整新底座。', defaultValue: false },
-  { key: 'flux2_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'flux2_depth_expansion_target_layers', desc: '扩层后的单流 Transformer block 总数（Klein-9B 原生 48；双流 8 层不参与扩层）。', defaultValue: 60, min: 2, step: 1, visibleWhen: when('flux2_depth_expansion_enabled', true) },
-  { key: 'flux2_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'flux2_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。', defaultValue: 'new_layers', visibleWhen: when('flux2_depth_expansion_enabled', true), options: [
+  { key: 'flux2_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'flux2_depth_expansion_enabled', desc: '交错复制 FLUX.2 单流 block（并行块，注意力/MLP 融合输出投影归零），以恒等残差初始化新增层。最终保存完整新底座。建议仅全参微调时有意识地扩容量再开启。', defaultValue: false },
+  { key: 'flux2_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'flux2_depth_expansion_target_layers', desc: '扩层后的单流 Transformer block 总数（双流 8 层不参与扩层）。推荐范围：高于 Klein-9B 原生 48，例如 60（默认）。', defaultValue: 60, min: 2, step: 1, visibleWhen: when('flux2_depth_expansion_enabled', true) },
+  { key: 'flux2_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'flux2_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。建议保持 new_layers（保守默认）。', defaultValue: 'new_layers', visibleWhen: when('flux2_depth_expansion_enabled', true), options: [
     { value: 'new_layers', label: '只训练新增层' },
     { value: 'new_layers_periphery', label: '新增层 + 外围模块' },
     { value: 'all', label: '全部参数' },
@@ -1351,9 +1345,9 @@ export const FLUX2_FT_SECTIONS = dropDuplicateFieldKeys(FLUX2_LORA_SECTIONS
   }));
 
 const ZIMAGE_DEPTH_EXPANSION_FIELDS = [
-  { key: 'zimage_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'zimage_depth_expansion_enabled', desc: '交错复制 Z-Image 主干 layers block（attention 输出投影与 FFN w2 归零），以恒等残差初始化新增层。refiner 层不参与扩层。最终保存完整新底座。', defaultValue: false },
-  { key: 'zimage_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'zimage_depth_expansion_target_layers', desc: '扩层后的主干 Transformer block 总数（Z-Image 6B 原生 30）。', defaultValue: 38, min: 2, step: 1, visibleWhen: when('zimage_depth_expansion_enabled', true) },
-  { key: 'zimage_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'zimage_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。', defaultValue: 'new_layers', visibleWhen: when('zimage_depth_expansion_enabled', true), options: [
+  { key: 'zimage_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'zimage_depth_expansion_enabled', desc: '交错复制 Z-Image 主干 layers block（attention 输出投影与 FFN w2 归零），以恒等残差初始化新增层。refiner 层不参与扩层。最终保存完整新底座。建议仅全参微调时有意识地扩容量再开启。', defaultValue: false },
+  { key: 'zimage_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'zimage_depth_expansion_target_layers', desc: '扩层后的主干 Transformer block 总数（Z-Image 6B 原生 30）。推荐范围：高于 30，例如 38（默认）。', defaultValue: 38, min: 2, step: 1, visibleWhen: when('zimage_depth_expansion_enabled', true) },
+  { key: 'zimage_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'zimage_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。建议保持 new_layers（保守默认）。', defaultValue: 'new_layers', visibleWhen: when('zimage_depth_expansion_enabled', true), options: [
     { value: 'new_layers', label: '只训练新增层' },
     { value: 'new_layers_periphery', label: '新增层 + 外围模块' },
     { value: 'all', label: '全部参数' },
@@ -1383,9 +1377,9 @@ export const ZIMAGE_FT_SECTIONS = dropDuplicateFieldKeys(ZIMAGE_LORA_SECTIONS
 const wan22DepthExpansionAllowed = (c) => String(c.wan22_model_variant || 'ti2v-5b') !== 't2v-a14b';
 
 const WAN22_DEPTH_EXPANSION_FIELDS = [
-  { key: 'wan22_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'wan22_depth_expansion_enabled', desc: '交错复制 Wan2.2 TI2V-5B block（自注意/交叉注意/FFN 三个输出投影归零），以恒等残差初始化新增层。仅支持 TI2V-5B 单塔；A14B 双塔不支持。最终保存完整新底座。', defaultValue: false, visibleWhen: wan22DepthExpansionAllowed },
-  { key: 'wan22_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'wan22_depth_expansion_target_layers', desc: '扩层后的 Transformer block 总数（TI2V-5B 原生 30）。', defaultValue: 38, min: 2, step: 1, visibleWhen: all(when('wan22_depth_expansion_enabled', true), wan22DepthExpansionAllowed) },
-  { key: 'wan22_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'wan22_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。', defaultValue: 'new_layers', visibleWhen: all(when('wan22_depth_expansion_enabled', true), wan22DepthExpansionAllowed), options: [
+  { key: 'wan22_depth_expansion_enabled', type: 'boolean', label: '扩展 Transformer 深度', title: 'wan22_depth_expansion_enabled', desc: '交错复制 Wan2.2 TI2V-5B block（自注意/交叉注意/FFN 三个输出投影归零），以恒等残差初始化新增层。仅支持 TI2V-5B 单塔；A14B 双塔不支持。最终保存完整新底座。建议仅 TI2V-5B 全参微调时有意识地扩容量再开启。', defaultValue: false, visibleWhen: wan22DepthExpansionAllowed },
+  { key: 'wan22_depth_expansion_target_layers', type: 'number', label: '目标层数', title: 'wan22_depth_expansion_target_layers', desc: '扩层后的 Transformer block 总数（TI2V-5B 原生 30）。推荐范围：高于 30，例如 38（默认）。', defaultValue: 38, min: 2, step: 1, visibleWhen: all(when('wan22_depth_expansion_enabled', true), wan22DepthExpansionAllowed) },
+  { key: 'wan22_depth_expansion_train_scope', type: 'select', label: '训练范围', title: 'wan22_depth_expansion_train_scope', desc: '选择只训练新增层、同时训练外围模块，或训练全部参数。建议保持 new_layers（保守默认）。', defaultValue: 'new_layers', visibleWhen: all(when('wan22_depth_expansion_enabled', true), wan22DepthExpansionAllowed), options: [
     { value: 'new_layers', label: '只训练新增层' },
     { value: 'new_layers_periphery', label: '新增层 + 外围模块' },
     { value: 'all', label: '全部参数' },

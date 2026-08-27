@@ -53,7 +53,13 @@ export default function ResourceCenterPage() {
       setLoading(false)
     }
   }
-  useEffect(() => { void load() }, [])
+  // 挂载拉取一次目录;load 闭包持有挂载时语言文案,与原行为一致,故不入依赖。
+  useEffect(() => {
+    // setState 发生在 load 的 await 之后,延后一拍启动避免同步级联渲染。
+    const kick = window.setTimeout(() => void load(), 0)
+    return () => window.clearTimeout(kick)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const visible = useMemo(() => items.filter((item) => {
     const haystack = `${item.title} ${item.key} ${item.provider_id} ${item.model_id}`.toLowerCase()
     return (!query || haystack.includes(query.toLowerCase())) && (!role || item.provider_role === role) && (!status || item.adapter_status === status)

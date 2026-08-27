@@ -90,12 +90,11 @@ describe('inventoryAutofill: loadInventoryItems', () => {
   test('并发调用共享同一次飞行请求（单飞）', async () => {
     // 注意顺序：缓存判定在单飞判定之前，所以必须先让 TTL 过期，
     // 两次无 refresh 的调用才会真的落到同一个 inflight 上。
-    const realNow = Date.now
     let release: (value: unknown) => void = () => {}
     mocks.listLocalResources.mockReturnValue(new Promise((resolve) => { release = resolve }))
+    const nowSpy = vi.spyOn(Date, 'now')
     try {
-      const shifted = realNow() + 25_000
-      Date.now = () => shifted
+      nowSpy.mockReturnValue(Date.now() + 25_000)
       const a = loadInventoryItems()
       const b = loadInventoryItems()
       release({ items: [sdxlBase()] })
@@ -104,20 +103,19 @@ describe('inventoryAutofill: loadInventoryItems', () => {
       expect(rb).toBe(ra)
       expect(ra.map((i) => i.path)).toEqual(['D:/models/sdxl-base.safetensors'])
     } finally {
-      Date.now = realNow
+      nowSpy.mockRestore()
     }
   })
 
   test('TTL 过期后重新拉取', async () => {
     mocks.listLocalResources.mockResolvedValue({ items: [sdxlBase()] })
     await loadInventoryItems({ refresh: true })
-    const realNow = Date.now
+    const nowSpy = vi.spyOn(Date, 'now')
     try {
-      const shifted = realNow() + 25_000
-      Date.now = () => shifted
+      nowSpy.mockReturnValue(Date.now() + 25_000)
       await loadInventoryItems()
     } finally {
-      Date.now = realNow
+      nowSpy.mockRestore()
     }
     expect(mocks.listLocalResources).toHaveBeenCalledTimes(2)
   })

@@ -237,10 +237,16 @@ export function TrainingQualityReportPanel({ runId, runStatus }: { runId: string
   }, [runId])
 
   useEffect(() => {
-    setReport(null)
     statusRef.current = runStatus
-    void load()
-    return () => controllerRef.current?.abort()
+    // 报告重置与拉取延后一拍:setState 不在 effect 体内同步触发;abort 清理保持原语义。
+    const kick = window.setTimeout(() => {
+      setReport(null)
+      void load()
+    }, 0)
+    return () => {
+      window.clearTimeout(kick)
+      controllerRef.current?.abort()
+    }
     // runStatus 由下一段 effect 处理，避免普通状态轮询触发报告请求。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId, load])

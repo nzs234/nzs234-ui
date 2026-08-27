@@ -275,7 +275,8 @@ export const S_LORA_VARIANTS = [
   { key: 'dokr_decompose_factor', type: 'number', label: 'DoKr w2 低秩', desc: 'w2 低秩分解 rank，0 表示完整 w2。推荐范围： 0。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.dokr_enabled },
   { key: 'dokr_mode', type: 'select', label: 'DoKr 模式', desc: 'DoKr 训练门控：full 全训；style 仅幅度；structure 仅方向。建议 full 起步。', defaultValue: 'full', options: [{ value: 'full', label: 'full (完整)' }, { value: 'style', label: 'style (magnitude only)' }, { value: 'structure', label: 'structure (方向 only)' }], visibleWhen: (c) => c.dokr_enabled },
   { key: 'dokr_alpha', type: 'number', label: 'DoKr alpha', desc: 'DoKr Kronecker 缩放分子。推荐范围：保持 1.0。', defaultValue: 1.0, min: 0, step: 0.1, visibleWhen: (c) => c.dokr_enabled },
-  // GDLoKr 主入口在 lora_type/adapter_type 下拉；此处仅补子项，不重复 master 开关
+  // GDLoKr 子项点亮条件含 c.gdlokr_enabled：anima/newbie 走 lora_type/adapter_type
+  // 下拉（互斥表物化旗标），sdxl 等 module 路由类型用下方 gdlokr_enabled master。
   { key: 'gdlokr_factor', type: 'number', label: 'GDLoKr Kronecker 因子', desc: 'GDLoKr 共享 Kronecker 因子，0 自动平衡。推荐范围： 0。', defaultValue: 0, min: 0, step: 1, visibleWhen: (c) => c.lora_type === 'gdlokr' || c.adapter_type === 'gdlokr' || c.gdlokr_enabled },
   { key: 'gdlokr_mode', type: 'select', label: 'GDLoKr 模式', desc: 'GDLoKr 广义方向模式选择。建议保持 full 与 DoKr 一致对照。', defaultValue: 'full', options: [{ value: 'full', label: 'full (完整)' }, { value: 'style', label: 'style (magnitude only)' }, { value: 'structure', label: 'structure (方向 only)' }], visibleWhen: (c) => c.lora_type === 'gdlokr' || c.adapter_type === 'gdlokr' || c.gdlokr_enabled },
   { key: 'gdlokr_alpha', type: 'number', label: 'GDLoKr alpha', desc: 'GDLoKr 缩放分子。推荐范围：保持 1.0。', defaultValue: 1.0, min: 0, step: 0.1, visibleWhen: (c) => c.lora_type === 'gdlokr' || c.adapter_type === 'gdlokr' || c.gdlokr_enabled },
@@ -330,6 +331,12 @@ export const S_LORA_VARIANTS = [
   // （schemaCommon.js:825 已登记）才会物化，gate_init 的可见性随之生效。
   { key: 'lora2_enabled', type: 'boolean', label: 'LoRA2 (门控合成)', desc: 'LoRA2：两条可学习门控支路合成增量（gate_init 控制初值），与 LoRA2 Adaptive 分族互斥。建议实验路线。', defaultValue: false },
   { key: 'lora2_gate_init', type: 'number', label: 'LoRA2 gate 初值', desc: 'LoRA2 门控 nu 初值（FP32 sigmoid 门控，step 0 保持 parity）。推荐范围： 8.0（后端默认）。', defaultValue: 8, min: 0, step: 0.1, visibleWhen: (c) => c.lora2_enabled },
+  // GDLoKr master（2026-08 断链修复）：25 实体族中此前唯一没有 schema master 的——
+  // sdxl/sd 等 module 路由类型既无 lora_type 下拉也无本字段，向导卡/全页写入的
+  // gdlokr_enabled=true 在 collectVisiblePayload 被丢弃，实体互斥表随后把全部旗标
+  // 归一成 false（payload.gdlokr_enabled 恒 false，GDLoKr 静默失效）。补上字段后
+  // 「选择 → 收集 → 互斥归一」链路打通；anima/newbie 的 lora_type 路由不受影响。
+  { key: 'gdlokr_enabled', type: 'boolean', label: 'GDLoKr (广义 DoRA + LoKr)', desc: 'GDLoKr 用门控组合 LoKr 的 Kronecker 分解与广义 DoRA 方向更新；与 DoKr（幅度分解叠加）分属两个互斥实体族，同层只能二选一。实验路线，建议与 DoKr/LoKr 同参数小规模对照后再采用。', defaultValue: false },
   // 幻影键（2026-08 第 3 站审计 C）：configs_training_methods.py:303 声明后全仓零读者；
   // 注入器只读 r_max/nu_init/decay_lambda。hidden 保旧草稿回显，提交层剥除。
   { key: 'lora2_adaptive_rank_threshold', type: 'hidden', defaultValue: 0.01 },

@@ -221,12 +221,18 @@ function OptionsBlock({
 export function HelpModal({ field, onClose }: { field: SchemaField | null; onClose: () => void }) {
   const { t } = useI18n()
   const [entry, setEntry] = useState<WikiEntry | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(() => field != null)
+
+  // field 变化时重置读取状态:渲染期 props→state 调整模式,setState 不在 effect 体内同步触发。
+  const [prevField, setPrevField] = useState(field)
+  if (prevField !== field) {
+    setPrevField(field)
+    setEntry(null)
+    setLoading(field != null)
+  }
 
   useEffect(() => {
     if (!field) return
-    setLoading(true)
-    setEntry(null)
     let alive = true
     void loadTrainingWikiEntry(field.key)
       .then((wiki) => {

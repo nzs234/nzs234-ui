@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Input, Select, Textarea } from '@/components/form'
 import { Button } from '@/components/primitives'
 
@@ -205,10 +205,13 @@ export function ProgressivePhaseEditor({
   const [jsonDraft, setJsonDraft] = useState(() => typeof value === 'string' ? value : scheduleText(parsed))
   const [jsonError, setJsonError] = useState('')
 
-  useEffect(() => {
+  // 外部 value 变化时重同步草稿:渲染期 props→state 调整模式,替代原 effect 写法。
+  const [lastSync, setLastSync] = useState(() => ({ parsed, value }))
+  if (lastSync.parsed !== parsed || lastSync.value !== value) {
+    setLastSync({ parsed, value })
     setJsonDraft(parsed.invalid ? String(value ?? '') : scheduleText(parsed))
     setJsonError('')
-  }, [parsed, value])
+  }
 
   const commit = (phases: Phase[]) => {
     const next = parsed.wasArray ? phases : { ...(parsed.root ?? {}), phases }
