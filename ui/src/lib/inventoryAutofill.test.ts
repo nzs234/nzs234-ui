@@ -236,15 +236,35 @@ describe('inventoryAutofill: autofillEmptyModelPaths', () => {
     expect(draftOf().network_weights).toBe('')
   })
 
-  test('现状记录：type=file 的 text-file 字段也会被模型权重填上', async () => {
-    // modelFileFields 只看 f.type === 'file' / pickerType 含 model-file，pickerType
-    // 为 'text-file' 的 LUT/manifest 路径同样进入候选，而 roleFilter 的兜底分支
-    // 只排除 LoRA → 一个 .safetensors 底模会被写进「LUT/JSON 路径」字段。
-    // 这里如实记录当前行为(不是期望行为)，实现修复后本条需要跟着更新。
+  test('type=file 的 text-file 字段不会被模型权重填上', async () => {
+    // modelFileFields 收集端与 applyUniqueAutofill 双重防线:
+    // pickerType 为 'text-file' 的 LUT/manifest 路径不是模型权重输入,
+    // 唯一候选的 .safetensors 底模不得被写进这类 JSON 路径字段。
     mocks.listLocalResources.mockResolvedValue({ items: [sdxlBase()] })
     setDraft('sdxl-lora', { timestep_weighting_lut_path: '' })
     await autofillEmptyModelPaths({ refresh: true })
-    expect(draftOf().timestep_weighting_lut_path).toBe('D:/models/sdxl-base.safetensors')
+    expect(draftOf().timestep_weighting_lut_path).toBe('')
+  })
+
+  test('text-file 字段为空时不计入自动填数量', async () => {
+    // 修复前:sdxl-lora 草稿这些字段为空 + inventory 只有一个 sdxl
+    // checkpoint → autofillEmptyModelPaths() 返回 4(把底模写进 4 个
+    // LUT/JSON 字段);修复后只填主模,返回 1。
+    mocks.listLocalResources.mockResolvedValue({ items: [sdxlBase()] })
+    setDraft('sdxl-lora', {
+      pretrained_model_name_or_path: '',
+      timestep_weighting_lut_path: '',
+      dataset_intelligence_manifest_path: '',
+      sample_difficulty_metadata_path: '',
+      adaptive_rank_profile_path: '',
+    })
+    const n = await autofillEmptyModelPaths({ refresh: true })
+    expect(n).toBe(1)
+    expect(draftOf().pretrained_model_name_or_path).toBe('D:/models/sdxl-base.safetensors')
+    expect(draftOf().timestep_weighting_lut_path).toBe('')
+    expect(draftOf().dataset_intelligence_manifest_path).toBe('')
+    expect(draftOf().sample_difficulty_metadata_path).toBe('')
+    expect(draftOf().adaptive_rank_profile_path).toBe('')
   })
 
   test('当前 type 没有草稿时按空草稿处理，不抛', async () => {

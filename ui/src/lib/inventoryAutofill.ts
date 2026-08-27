@@ -43,7 +43,11 @@ function modelFileFields(typeId: string): SchemaFieldLike[] {
   for (const sec of sections) {
     for (const f of sec.fields || []) {
       if (!f?.key || seen.has(f.key)) continue
-      if (f.type === 'file' || f.pickerType === 'model-file' || f.pickerType === 'output-model-file') {
+      // text-file(LUT/manifest)/image-file(参考图)不是模型权重输入,
+      // 不能因为 type === 'file' 就进自动填候选(见 modelPathMatch 双重防线)
+      const pt = f.pickerType
+      if (pt === 'text-file' || pt === 'image-file') continue
+      if (f.type === 'file' || pt === 'model-file' || pt === 'output-model-file') {
         seen.add(f.key)
         out.push({
           key: f.key,

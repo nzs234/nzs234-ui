@@ -17,10 +17,12 @@ export interface SavedConfigBundle {
 export function safeFileStem(name: string): string {
   const cleaned = Array.from(String(name || 'preset').trim())
     .map((ch) => {
+      // 空白(含 \t \n)统一先折成连字符,剩余控制字符才用下划线——
+      // 与「空白 → 连字符」的注释意图一致
+      if (/\s/.test(ch)) return '-'
       const code = ch.charCodeAt(0)
       if (code < 32) return '_'
       if ('<>:"/\\|?*'.includes(ch)) return '_'
-      if (/\s/.test(ch)) return '-'
       return ch
     })
     .join('')

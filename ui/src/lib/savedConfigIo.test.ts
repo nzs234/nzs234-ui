@@ -69,11 +69,12 @@ describe('savedConfigIo: safeFileStem', () => {
     expect(safeFileStem('my   cool preset')).toBe('my-cool-preset')
   })
 
-  it('控制字符（含制表/换行）换成下划线，先于空白规则命中', () => {
-    // code < 32 的判断排在 /\s/ 前面，所以 \t \n 走下划线而不是连字符。
+  it('所有空白（含制表/换行）统一折成连字符，其余控制字符才用下划线', () => {
+    // /\s/ 先于 code < 32 判定：\t \n 属于空白走连字符，与注释意图一致；
+    // \u0001 这类不可见控制字符仍用下划线占位。
     expect(safeFileStem('a\u0001b')).toBe('a_b')
-    expect(safeFileStem('tab\there')).toBe('tab_here')
-    expect(safeFileStem('line\nbreak')).toBe('line_break')
+    expect(safeFileStem('tab\there')).toBe('tab-here')
+    expect(safeFileStem('line\nbreak')).toBe('line-break')
   })
 
   it('连续连字符折叠为一个', () => {

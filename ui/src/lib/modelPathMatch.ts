@@ -129,7 +129,15 @@ export function fieldAllowsAutofill(fieldKey: string): boolean {
   const key = fieldKey.toLowerCase()
   if (key === 'network_weights') return false
   if (key === 'resume') return false
+  // output_path 是「写出 sidecar/LoRA」的落盘目标,自动填已有权重路径
+  // 会让训练尝试覆写 inventory 里的模型,必须手动选
+  if (key === 'output_path') return false
   return true
+}
+
+/** 纯文本/图片类文件字段(LUT/manifest/参考图)不参与模型权重自动填 */
+function isNonModelFilePicker(field: SchemaFieldLike): boolean {
+  return field.pickerType === 'text-file' || field.pickerType === 'image-file'
 }
 
 export function normalizeResourceItems(raw: unknown[]): PathCandidate[] {
@@ -196,6 +204,9 @@ export function applyUniqueAutofill(
 ): Record<string, string> {
   const updates: Record<string, string> = {}
   for (const field of fields) {
+    // LUT/manifest/参考图等非权重文件字段不自动填:
+    // roleFilter 兜底分支只排除 LoRA,放进来会把底模写进 JSON 路径字段
+    if (isNonModelFilePicker(field)) continue
     if (field.type !== 'file' && field.pickerType !== 'model-file') continue
     if (!fieldAllowsAutofill(field.key)) continue
     if (!isPathEmptyForAutofill(draft[field.key], field)) continue

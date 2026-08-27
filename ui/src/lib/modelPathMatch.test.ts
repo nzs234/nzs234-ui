@@ -131,6 +131,13 @@ describe('modelPathMatch: fieldAllowsAutofill', () => {
     expect(fieldAllowsAutofill('resume')).toBe(false)
   })
 
+  test('output_path 是落盘目标,自动填等于指向已有模型去覆写', () => {
+    // lab 路线 output_path(type:file + output-model-file)若被自动填,
+    // 训练会尝试把产物写进 inventory 里的既有权重文件,必须手动选。
+    expect(fieldAllowsAutofill('output_path')).toBe(false)
+    expect(fieldAllowsAutofill('OUTPUT_PATH')).toBe(false)
+  })
+
   test('其余模型字段允许自动填', () => {
     expect(fieldAllowsAutofill('pretrained_model_name_or_path')).toBe(true)
     expect(fieldAllowsAutofill('vae')).toBe(true)
@@ -449,6 +456,31 @@ describe('modelPathMatch: applyUniqueAutofill', () => {
       { key: 'resume', type: 'file' },
     ]
     expect(applyUniqueAutofill({ network_weights: '', resume: '' }, 'sdxl-lora', [lora], fields)).toEqual({})
+  })
+
+  test('text-file / image-file 字段即使 type=file 也跳过', () => {
+    // LUT/manifest/参考图是「读数据」字段,roleFilter 兜底分支只排除 LoRA,
+    // 放进来唯一候选的底模会被写进 JSON 路径字段(lab 路线同样适用)
+    const fields: SchemaFieldLike[] = [
+      { key: 'timestep_weighting_lut_path', type: 'file', pickerType: 'text-file' },
+      { key: 'dataset_intelligence_manifest_path', type: 'file', pickerType: 'text-file' },
+      { key: 'original_image_path', type: 'file', pickerType: 'image-file' },
+      { key: 'target_image_path', type: 'file', pickerType: 'image-file' },
+    ]
+    const draft = {
+      timestep_weighting_lut_path: '',
+      dataset_intelligence_manifest_path: '',
+      original_image_path: '',
+      target_image_path: '',
+    }
+    expect(applyUniqueAutofill(draft, 'sdxl-lora', [ckpt], fields)).toEqual({})
+  })
+
+  test('output_path 落盘目标即使为空也跳过', () => {
+    const fields: SchemaFieldLike[] = [
+      { key: 'output_path', type: 'file', pickerType: 'output-model-file' },
+    ]
+    expect(applyUniqueAutofill({ output_path: '' }, 'sdxl-lora', [ckpt], fields)).toEqual({})
   })
 
   test('多候选的字段不出现在 updates 里', () => {
