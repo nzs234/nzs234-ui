@@ -919,6 +919,8 @@
   "network_alpha": "Network Alpha",
   "network_alpha_map_json": "Layer Alpha map",
   "network_args_custom": "Custom Network Args",
+  "target_modules": "Target Modules",
+  "rank_strategy": "Rank Strategy",
   "network_dim": "Network",
   "network_dropout": "Network Dropout",
   "network_module": "Networkblock (network_module)",

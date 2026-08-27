@@ -1266,10 +1266,13 @@ export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], ext
   ] : []),
   uiGroup('dora_variant_common', 'DoRA 权重分解（叠加增强）', 'DoRA 不是独立算法，而是叠加在标准 LoRA 路线上的增强：把权重分解为方向与幅度分别训练。后端注入链中 LyCORIS 分支先于 DoRA 分派，因此 LyCORIS 算法路线上的叠加开关不会生效。', doraWdVisible),
   { key: 'dora_wd', type: opts.hideDoraWd ? 'hidden' : 'boolean', label: '启用 DoRA 权重分解', title: 'dora_wd', desc: opts.hideDoraWd ? DORA_WD_DESC_ALIAS : DORA_WD_DESC_MASTER, defaultValue: false, visibleWhen: opts.hideDoraWd ? undefined : doraWdVisible },
-  { key: 'adapter_init_strategy', type: 'select', label: 'LoRA 初始化策略', title: 'adapter_init_strategy', desc: '统一初始化入口：default 标准 LoRA；pissa/olora/loftq 特殊初始化（仍走请求管线，不加新入口）。建议 default，需要快速收敛换 pissa。', defaultValue: 'default', options: ADAPTER_INIT_STRATEGY_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), (c) => !doraEnabled(c)) },
-  { key: 'adapter_init_export_mode', type: 'select', label: '初始化导出模式', title: 'adapter_init_export_mode', desc: '特殊初始化产物的导出方式：auto 在最终保存时转成可直接加载到原底模的 LoRA。建议 auto。', defaultValue: 'auto', options: ADAPTER_INIT_EXPORT_MODE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), nativeLoraInitSelected) },
-  { key: 'loftq_bits', type: 'number', label: 'LoftQ 量化位宽', title: 'loftq_bits', desc: 'LoftQ 量化位宽（fake-quant 初始化，不是持久 4bit 底座）。推荐范围：4（默认）或 8。', defaultValue: 4, min: 2, max: 8, step: 1, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
-  { key: 'loftq_quant_type', type: 'select', label: 'LoftQ 量化粒度', title: 'loftq_quant_type', desc: '量化粒度：rowwise 按输出通道，tensorwise 整张量。建议 rowwise（默认，精度更好）。', defaultValue: 'rowwise', options: LOFTQ_QUANT_TYPE_OPTIONS, visibleWhen: all(when('network_module', 'networks.lora'), loftqInitSelected) },
+  // 初始化策略 4 字段锚定工厂的 mod（而非写死 networks.lora）：flux 等模块路由类型
+  // 的唯一入口是自己的 networks.lora_<arch>，写死会让 PiSSA/LoftQ 全家在该类型上
+  // 永不可见（2026-08 全算法参数审计 flux 死锚修复；消费 configs_validators.py:274-306）。
+  { key: 'adapter_init_strategy', type: 'select', label: 'LoRA 初始化策略', title: 'adapter_init_strategy', desc: '统一初始化入口：default 标准 LoRA；pissa/olora/loftq 特殊初始化（仍走请求管线，不加新入口）。建议 default，需要快速收敛换 pissa。', defaultValue: 'default', options: ADAPTER_INIT_STRATEGY_OPTIONS, visibleWhen: all(when('network_module', mod), (c) => !doraEnabled(c)) },
+  { key: 'adapter_init_export_mode', type: 'select', label: '初始化导出模式', title: 'adapter_init_export_mode', desc: '特殊初始化产物的导出方式：auto 在最终保存时转成可直接加载到原底模的 LoRA。建议 auto。', defaultValue: 'auto', options: ADAPTER_INIT_EXPORT_MODE_OPTIONS, visibleWhen: all(when('network_module', mod), nativeLoraInitSelected) },
+  { key: 'loftq_bits', type: 'number', label: 'LoftQ 量化位宽', title: 'loftq_bits', desc: 'LoftQ 量化位宽（fake-quant 初始化，不是持久 4bit 底座）。推荐范围：4（默认）或 8。', defaultValue: 4, min: 2, max: 8, step: 1, visibleWhen: all(when('network_module', mod), loftqInitSelected) },
+  { key: 'loftq_quant_type', type: 'select', label: 'LoftQ 量化粒度', title: 'loftq_quant_type', desc: '量化粒度：rowwise 按输出通道，tensorwise 整张量。建议 rowwise（默认，精度更好）。', defaultValue: 'rowwise', options: LOFTQ_QUANT_TYPE_OPTIONS, visibleWhen: all(when('network_module', mod), loftqInitSelected) },
   ...(includeLycoris ? [
     uiGroup('lokr_params', 'LoKr 专属参数', '这组只会在 LoKr 下出现，包含 Kronecker 分解方式、双侧分解和 full matrix 等更重口味的结构控制。', all(lycorisNetworkSelected, when('lycoris_algo', 'lokr'))),
     { key: 'lokr_factor', type: 'number', label: 'LoKr 系数', title: 'lokr_factor', desc: 'LoKr Kronecker 分解因子：越大越省参数越弱表达。-1 表示无穷大因子（最省）。推荐范围：4（常用起点）～8；-1 极限压缩。', defaultValue: -1, min: -1, visibleWhen: all(lycorisNetworkSelected, when('lycoris_algo', 'lokr')) },
@@ -1287,6 +1290,11 @@ export const netLora = (mod, dim = 32, alpha = 32, maxDim = 512, extra = [], ext
   { key: 'base_weights', type: 'textarea', label: '基础权重路径', title: 'base_weights', desc: '合并入底模的 LoRA 路径，一行一个路径', defaultValue: '', visibleWhen: when('enable_base_weight', true) },
   { key: 'base_weights_multiplier', type: 'textarea', label: '基础权重比例', title: 'base_weights_multiplier', desc: '合并入底模的 LoRA 权重，一行一个数字', defaultValue: '', visibleWhen: when('enable_base_weight', true) },
   { key: 'network_args_custom', type: 'textarea', label: '自定义 network_args', title: 'network_args_custom', desc: '自定义 network_args，每行一个参数', defaultValue: '' },
+  // 25 族共享 common_field 补暴露（2026-08 全算法参数审计）：后端 recipe 契约
+  // （contracts/training_recipe.py:99-101/118-125）从顶层消费两键；此前 UI 零键，
+  // target_modules 只能借 network_args_custom 间接传、rank_strategy 恒走默认。
+  { key: 'target_modules', type: 'textarea', label: '目标模块列表', title: 'target_modules', desc: '覆盖默认目标层：逗号或换行分隔的模块名（如 to_q,to_v,to_out.0）。留空 = 按训练类型默认预设。后端只收数组，提交层负责切分。', defaultValue: '' },
+  { key: 'rank_strategy', type: 'select', label: 'Rank 分配策略', title: 'rank_strategy', desc: 'rank 分配策略（module_group_registry.py:328 硬校验）：uniform 全模块同 rank（默认）；module_group/module 按模块组预设；auto_static/dynamic 按结构自动。非 uniform 属实验路线，需配合模块组数据。', defaultValue: 'uniform', options: ['uniform', 'module_group', 'module', 'auto_static', 'dynamic'] },
   ...extra,
 ];
 

@@ -168,6 +168,273 @@ const GLOBAL_OWNERSHIP_OVERRIDES: Record<string, BucketId> = {
   // 选中 LyCORIS 家族后就地可调的结构参数，语义归属 adapter —— 在单一事实源覆盖
   // 表里钉死，而不是收窄 goal 正则（后者会影响其它真正含 preset 的目标键）。
   lycoris_preset: 'adapter',
+
+  // ── 2026-08 全类型路由审计（40 可见类型 × 默认 config + 家族选中 config 两档，
+  // 期望桶 = 字段所属 section 语义）。以下按目标步骤分组，修复「正则抢键」与
+  // 「无词根命中回落 other-settings」两类错分桶；每行括注 section 语义证据。 ──
+
+  // adapter 步：网络结构参数（schema 的 network-settings / adapter-settings /
+  // head-settings 等「网络」页签 section，键名无 ADAPTER_TOKEN 词根才回落错桶）。
+  scale_weight_norms: 'adapter', // network-settings：LoRA 权重谱正则
+  enable_base_weight: 'adapter', // network-settings：底模权重残差开关
+  pissa_init: 'adapter', // network-settings：PiSSA SVD 初始化
+  train_norm: 'adapter', // network-settings：Norm 层纳入训练
+  bypass_mode: 'adapter', // anima network-settings：旁路注入模式
+  layered_alpha_enabled: 'adapter', // layered-alpha-settings：按模块分层 alpha
+  alpha_self_attn: 'adapter', // 同上节子参数（启用后才可见）
+  alpha_cross_attn: 'adapter',
+  alpha_mlp: 'adapter',
+  alpha_adaln: 'adapter',
+  mora_enabled: 'adapter', // adapter-settings：MoRA 家族卡
+  newbie_target_modules: 'adapter', // adapter-settings：目标模块列表
+  target_modules: 'adapter', // turbo-network-settings：LyCORIS 目标模块
+  hidden_dims: 'adapter', // aesthetic head-settings：融合头结构
+  freeze_extractors: 'adapter', // aesthetic head-settings：特征提取器冻结
+  include_waifu_score: 'adapter', // aesthetic head-settings：评分头分支
+
+  // files 步：模型/权重文件选择与获取方式（model-settings / lab-model-settings）。
+  ae: 'files', // flux model-settings：AE(VAE) 权重路径
+  v2: 'files', // sd model-settings：声明 SD 2.x 底模架构
+  llm_path: 'files', // lab model-settings：蒸馏教师 LLM 路径
+  projector_path: 'files', // lab model-settings：projector 权重路径
+  boogu_model_version: 'files', // model-settings：底模版本选择
+  flux2_model_version: 'files', // model-settings：底模版本选择
+  wan22_model_variant: 'files', // model-settings：变体选择（决定权重结构）
+  wan22_noise_stage: 'files', // model-settings：A14B 高/低噪塔（底模配对）
+  h3_partition: 'files', // model-settings：模型剪裁变体选择
+  universal_dit_allow_remote_download: 'files', // model-settings：底模远程获取
+  universal_dit_trust_remote_code: 'files', // model-settings：底模自定义代码
+
+  // dataset 步：caption/数据读取族。TI_TOKEN 的 'token' 与 CORE_TOKEN 的
+  // 'resolution'/'frame' 先于 dataset 兜底命中，把这组键抢离数据集步。
+  keep_tokens: 'dataset', // caption-settings：caption 保留 token 数
+  keep_tokens_separator: 'dataset', // caption-settings：保留分隔符
+  max_token_length: 'dataset', // caption-settings：caption 截断长度
+  random_triggers: 'dataset', // caption-settings：随机触发词
+  random_triggers_position: 'dataset',
+  random_triggers_probability: 'dataset',
+  nl_dropout_rate: 'dataset', // caption-dropout-settings：自然语言丢弃率
+  oom_skip_batch_enabled: 'dataset', // caption-structured-settings：坏批跳过
+  oom_skip_batch_max_consecutive: 'dataset',
+  albumentations_enabled: 'dataset', // data-aug-settings：在线增强
+  dataloader_num_workers: 'dataset', // dataset-settings：数据加载 worker
+  enable_mixed_resolution_training: 'dataset', // dataset-settings：混合分辨率（与 enable_bucket 同族）
+  resolution_aware_batch_enabled: 'dataset', // data-aug-settings：按分辨率组 batch
+  h3_frame_count: 'dataset', // dataset-settings：视频帧数
+  h3_fps: 'dataset', // dataset-settings：帧率
+  ltx23_frame_stride: 'dataset', // dataset-settings：帧采样步长
+  ltx23_target_frames: 'dataset', // dataset-settings：目标帧数
+  wan22_frame_stride: 'dataset',
+  wan22_target_frames: 'dataset',
+  wan22_fps: 'dataset',
+
+  // core 步：优化器/损失/时间步/训练范围（optimizer-settings / training-settings /
+  // noise-settings / anima-params / h3-flow-training 等训练页签 section）。
+  unet_lr: 'core', // optimizer-settings：UNet 学习率（CORE_TOKEN 只认 lr_ 前缀）
+  text_encoder_lr: 'core', // optimizer-settings：TE 学习率（同上）
+  min_snr_gamma: 'core', // optimizer-settings：Min-SNR 损失加权
+  huber_c: 'core', // optimizer-settings：Huber 损失族参数
+  huber_schedule: 'core',
+  huber_scale: 'core',
+  gradient_guard_strategy: 'core', // optimizer-settings：梯度守护
+  max_grad_norm: 'core', // optimizer-settings：梯度裁剪上限
+  train_length_mode: 'core', // training-settings：训练长度模式
+  v_parameterization: 'core', // v-parameterization-settings：v-pred 训练目标
+  loss_type: 'core', // flux-params：损失函数类型（anima 已有 typed 钉先行）
+  guidance_scale: 'core', // flux-params：CFG 引导（蒸馏类型已有 typed 钉先行）
+  discrete_flow_shift: 'core', // flux-params：Flow Shift（anima typed 钉先行）
+  t5xxl_max_token_length: 'core', // flux-params：TE token 截断（同 qwen3/t5_max_token_length 先例）
+  flow_model: 'core', // rf-settings：Rectified Flow 目标开关
+  masked_loss: 'core', // training-misc：蒙版损失
+  alpha_mask: 'core', // training-misc：alpha 通道作 loss mask
+  initial_step: 'core', // training-misc：续训起始步
+  skip_until_initial_step: 'core', // training-misc：跳过起步步数
+  adaptive_noise_scale: 'core', // noise-settings：自适应噪声
+  ip_noise_gamma: 'core', // noise-settings：IP 噪声
+  ip_noise_gamma_random_strength: 'core', // noise-settings（OPTIONAL_TOKEN 的 random 抢键）
+  multires_noise_discount: 'core', // noise-settings：多分辨率噪声
+  multires_noise_iterations: 'core',
+  immiscible_diffusion_enabled: 'core', // noise-settings：不可混扩散
+  p2_weighting_mode: 'core', // noise-settings：P2 加权
+  stepped_loss_enabled: 'core', // noise-settings：阶梯损失
+  smart_noise_enabled: 'core', // timestep-sampling-settings：logSNR 聚焦噪声
+  smart_noise_logsnr_focus: 'core', // 同上节子参数
+  smart_noise_focus_strength: 'core',
+  smart_noise_focus_spread: 'core',
+  lulynx_weight_noise_enabled: 'core', // noise-settings：权重噪声正则
+  lulynx_weight_noise_mode: 'core', // 同上节子参数
+  lulynx_weight_noise_sigma: 'core',
+  lulynx_weight_noise_bound_norm: 'core',
+  lulynx_weight_noise_log_every: 'core',
+  anima_faithful_forward: 'core', // training-settings：原生前向保真
+  anima_faithful_degrade_policy: 'core', // training-settings：降级策略
+  flow_uncertainty_weighting_enabled: 'core', // anima-params：流不确定性加权
+  newbie_sigma_schedule: 'core', // training-settings：sigma 调度
+  anima_text_token_limit: 'core', // 缓存系统：TE 截断（与 qwen3/t5_max_token_length 同族）
+  anima_cached_text_token_limit: 'core',
+  anima_depth_expansion_enabled: 'core', // depth-expansion-settings：模型扩层训练
+  anima_depth_expansion_target_layers: 'core',
+  anima_depth_expansion_train_scope: 'core',
+  krea2_depth_expansion_enabled: 'core', // model-settings：扩层训练（训练容量参数）
+  krea2_depth_expansion_target_layers: 'core',
+  krea2_depth_expansion_train_scope: 'core',
+  flux2_depth_expansion_enabled: 'core',
+  zimage_depth_expansion_enabled: 'core',
+  wan22_depth_expansion_enabled: 'core',
+  boogu_depth_expansion_enabled: 'core',
+  h3_depth_expansion_enabled: 'core',
+  krea2_training_mode: 'core', // model-settings：训练模式配方（De-Turbo/Standard 等）
+  krea2_text_fusion_mode: 'core', // model-settings：文本塔是否参训（train_text_encoder 同族）
+  wan22_expert_timestep_preset: 'core', // model-settings：按塔填时间步先验（GOAL 正则抢键）
+  ltx23_discrete_flow_shift: 'core', // ltx23-flow-matching：Flow Shift
+  ltx23_isolate_modalities: 'core', // ltx23-flow-matching：只训视觉分支
+  wan22_discrete_flow_shift: 'core', // model-settings：Flow Shift（timestep 采样族）
+  zimage_discrete_flow_shift: 'core',
+  wan22_max_text_length: 'core', // model-settings：umT5 序列上限（TE 截断族）
+  zimage_max_text_length: 'core',
+  ltx23_max_text_length: 'core',
+  h3_audio_loss_weight: 'core', // h3-flow-training：音频损失权重
+  h3_audio_sigma_shift: 'core', // h3-flow-training：音频 sigma shift
+  h3_cfg_preservation_enabled: 'core', // h3-flow-training：CFG 保持
+  h3_cfg_scale: 'core',
+  h3_cfg_schedule: 'core',
+  h3_condition_noise_clean: 'core', // h3-flow-training：条件噪声清理
+  h3_unconditional_prompt: 'core', // h3-flow-training：CFG 空条件提示
+  h3_video_only: 'core', // h3-flow-training：只训视频分支
+  h3_video_sigma_shift: 'core',
+
+  // preview 步：验证/评估节奏（validation-settings / preview-settings）。
+  // CORE_TOKEN 的 batch_size/steps/epochs 抢键把这组验证调度字段扣在 core 步。
+  eval_batch_size: 'preview', // validation-settings：验证批大小
+  eval_data_dir: 'preview', // validation-settings：验证集目录
+  validate_every_n_steps: 'preview', // validation-settings：验证频率
+  validate_every_n_epochs: 'preview',
+  max_validation_steps: 'preview',
+  quality_evaluation_enabled: 'preview', // preview-settings：质量评估
+  quality_evaluation_xy_grid: 'preview', // 同上节子参数
+  quality_evaluation_num_samples: 'preview',
+  quality_evaluation_suite_id: 'preview',
+  quality_evaluation_validation_seeds: 'preview',
+  quality_evaluation_compare_base: 'preview',
+  quality_evaluation_metric_weights: 'preview',
+  quality_evaluation_metrics: 'preview',
+  quality_evaluation_validation_prompts: 'preview',
+  fid_real_image_dir: 'preview', // preview-settings：FID 真实图目录
+  preference_scoring_enabled: 'preview', // preview-settings：偏好打分
+  preference_models: 'preview',
+
+  // performance 步：显存/加速/缓存/精度/量化/散热（speed 页签各族 section）。
+  // GOAL 正则 'preset' 抢键（与 lycoris_preset 同类）：
+  weight_compression_preset: 'performance', // speed-settings：权重压缩档位
+  train_quant_preset: 'performance', // speed-settings：训练量化档位
+  krea2_vram_preset: 'performance', // krea2 offload：显存档位
+  // OUTPUT 正则 '_output' 抢键——TE 输出缓存不是「输出与保存」：
+  cache_text_encoder_outputs: 'performance', // cache-settings：TE 输出缓存
+  cache_text_encoder_outputs_to_disk: 'performance',
+  h3_cache_text_encoder_outputs: 'performance', // h3-memory-settings：同上
+  h3_cache_max_samples: 'performance', // h3-memory-settings（PREVIEW 'sample' 抢键）
+  // 精度/后端（speed-settings，无词根回落 other-settings）：
+  full_fp16: 'performance',
+  full_bf16: 'performance',
+  no_half_vae: 'performance',
+  fp8_base: 'performance',
+  fp8_base_unet: 'performance',
+  sdxl_unet_backend: 'performance', // UNet 注意力后端
+  attn_mode: 'performance', // anima/hunyuan：注意力实现（'attn' 不含 'attention' 词根）
+  disable_mmap_load_safetensors: 'performance', // 低内存模式相关
+  // 显存/offload（speed-settings 与各族 offload-settings）：
+  lowram: 'performance',
+  pytorch_cuda_expandable_segments: 'performance',
+  gradient_release_enabled: 'performance',
+  gradient_release_mode: 'performance',
+  gradient_release_grad_clip_mode: 'performance',
+  gradient_release_downgrade_reason: 'performance',
+  memory_reclaim_interval_steps: 'performance', // CORE_TOKEN 'steps' 抢键
+  optimizer_state_paging_enabled: 'performance', // CORE_TOKEN 'optimizer' 抢键：优化器状态分页
+  vram_smart_sensing_baseline_steps: 'performance',
+  vram_smart_sensing_window_steps: 'performance',
+  model_to_condition_enabled: 'performance', // ModelToCondition 按需加载协议
+  activation_compression_enabled: 'performance', // 激活压缩省显存
+  split_attn: 'performance', // 分头 attention 省显存
+  vae_chunk_size: 'performance', // VAE 分块省显存
+  lora_activation_recompute_mode: 'performance', // ADAPTER_TOKEN 'lora' 抢键：激活重算
+  h3_int8_gemm_mode: 'performance', // h3-memory-settings
+  h3_load_direct_to_device: 'performance',
+  h3_te_layer_streaming: 'performance',
+  h3_prune_adaln_on_load: 'performance',
+  h3_preserve_lora_master_dtype: 'performance', // ADAPTER_TOKEN 'lora' 抢键：dtype 保持
+  // 批处理/缓存管线：
+  vae_batch_size: 'performance', // speed-settings：VAE 编码批（CORE_TOKEN 'batch_size' 抢键）
+  text_encoder_batch_size: 'performance', // TE 编码批
+  persistent_data_loader_workers: 'performance',
+  quant_train_mode: 'performance', // speed-settings：量化训练
+  quant_requantize_policy: 'performance',
+  weight_compression_enabled: 'performance',
+  // TurboCore / Lulynx / Vortex（turbocore-settings / cache-runtime-settings）：
+  lulynx_optimization_enabled: 'performance',
+  lulynx_steady_accel: 'performance',
+  performance_expert_mode: 'performance', // 顶栏「高级」开关，住 speed 页签
+  enhanced_protection_mode: 'performance',
+  vortex_enabled: 'performance', // Vortex 显存管理总开关
+  pcie_transfer_format: 'performance',
+  newbie_safe_fallback: 'performance', // OOM 安全回退
+  // 散热与功耗（thermal-settings，32 类型共用；字段无词根/被 epoch 抢键）：
+  cooldown_every_n_epochs: 'performance', // CORE_TOKEN 'epochs' 抢键
+  cooldown_minutes: 'performance',
+  cooldown_until_temp_c: 'performance',
+  cooldown_poll_seconds: 'performance',
+  gpu_power_limit_w: 'performance',
+  gpu_duty_cycle: 'performance',
+  gpu_target_temp_c: 'performance',
+  gpu_lock_clocks_mhz: 'performance',
+  gpu_circuit_enabled: 'performance', // 功耗保护回路（子参数启用后才可见）
+  gpu_circuit_poll_interval_steps: 'performance',
+  gpu_circuit_temp_c: 'performance',
+  gpu_circuit_temp_warn_c: 'performance',
+  gpu_circuit_vram_util_pct: 'performance',
+  gpu_circuit_trip_on_throttle: 'performance',
+  gpu_circuit_trip_on_ecc: 'performance',
+  gpu_circuit_device_index: 'performance',
+  // Block residency（各族 offload-settings 的驻留块控制）：
+  anima_block_residency: 'performance',
+  newbie_block_residency: 'performance',
+  newbie_block_residency_min_params: 'performance',
+  krea2_block_residency: 'performance',
+  krea2_resident_block_count: 'performance',
+  flux2_block_residency: 'performance',
+  zimage_block_residency: 'performance',
+  wan22_block_residency: 'performance',
+  ltx23_block_residency: 'performance',
+  // 其余 speed 页签散键：
+  triton_ops_enabled: 'performance', // ltx：Triton 算子注入
+  model_fused_qkv: 'performance', // ltx：QKV/KV 权重合并加载
+  anima_vram_optimizer: 'performance', // anima speed-settings：显存优化器
+  anima_progressive_full_finetune_enabled: 'performance', // anima speed-settings：渐进解冻省显存
+  anima_rematerializable_block_enabled: 'performance', // 重物化块（OPTIONAL_TOKEN 'ema' 抢键）
+  anima_cache_build_batch_size: 'performance', // cache-system-settings：缓存构建批
+  anima_cache_target_resolution: 'performance',
+  newbie_cache_build_batch_size: 'performance', // cache-runtime-settings
+  newbie_clip_max_token_length: 'performance', // 缓存路径 TE 截断
+  newbie_gemma_max_token_length: 'performance',
+  newbie_caption_length_bucket_size: 'performance', // DATASET_TOKEN 'bucket' 抢键：缓存分桶
+
+  // output 步：产物元数据（training-misc 的保存元数据组，OUTPUT 正则不含这些词根）。
+  metadata_note: 'output', // turbo 输出：写入 sidecar 的备注
+  no_metadata: 'output', // 不在产物写元数据
+  training_comment: 'output', // 写入模型元数据的训练备注
+
+  // controlnet 步：LLLite 结构参数（lllite-settings；OUTPUT '_output' 抢键）。
+  lllite_skip_output_blocks: 'controlnet',
+
+  // distiller 步：lab 蒸馏运行参数（lab-run-settings；TI_TOKEN 'token' 抢键）。
+  allow_tokenizer_only_clip: 'distiller',
+
+  // fewstep 步：蒸馏采样调度（turbo/few-step distill-settings；CORE_TOKEN
+  // 'steps'/'scheduler' 抢键把它们扣在 core，与 distill_method 等既有钉分离）。
+  student_steps: 'fewstep',
+  teacher_steps: 'fewstep',
+  teacher_scheduler: 'fewstep',
+  student_scheduler: 'fewstep',
 }
 
 // Anima 族分桶修正（2026-08 ANIMA 桶）：分组 LR 与 Flow/时间步参数同属一张卡，
@@ -207,6 +474,13 @@ const TYPE_OWNERSHIP_OVERRIDES: Record<string, Record<string, BucketId>> = {
     device: 'core',
     cls_loss_weight: 'core',
     cls_pos_weight: 'core',
+    // 2026-08 路由审计补钉：训练页签的 loss/worker 与数据集页签的切分键。
+    loss: 'core', // training-settings：损失配置
+    num_workers: 'core', // training-settings：加载进程数
+    target_dims: 'dataset', // dataset-settings：回归目标维度
+    train_split: 'dataset', // dataset-settings：训练切分
+    val_split: 'dataset', // dataset-settings：验证切分
+    val_ratio: 'dataset', // dataset-settings：验证占比
   },
   yolo: {
     batch: 'yolo',
@@ -225,6 +499,9 @@ const TYPE_OWNERSHIP_OVERRIDES: Record<string, Record<string, BucketId>> = {
     seed: 'distiller',
     dtype: 'distiller',
     dry_run: 'distiller',
+    // 路由审计补钉：lab-run-settings 的蒸馏步数被 CORE_TOKEN 'steps' 扣在 core，
+    // 与本类型既有钉（batch_size/learning_rate→distiller）同批。
+    steps: 'distiller',
   },
   'sdxl-turbo-lora': {
     batch_size: 'fewstep',
@@ -237,6 +514,9 @@ const TYPE_OWNERSHIP_OVERRIDES: Record<string, Record<string, BucketId>> = {
     sigma_schedule: 'fewstep',
     teacher_lora_scope: 'fewstep',
     dry_run: 'fewstep',
+    // 路由审计补钉：turbo-distill-settings 的训练步数上限与 batch_size/learning_rate
+    // 既有钉同批（CORE_TOKEN 'max_train' 抢回 core 步）。
+    max_train_steps: 'fewstep',
   },
   // Lab 探针契约页真实存在的键才进 fewstep 步。曾为它路由 batch_size /
   // learning_rate / distillation_loss_weight / teacher_lora_scope —— 这四个键在

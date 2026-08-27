@@ -1009,6 +1009,8 @@
   "network_alpha": "Scaling factor: effective LR is about lr x alpha/rank. Recommended: alpha = rank or rank/2 (e.g. 16-32 when rank=32); lower the ratio at high rank.",
   "network_alpha_map_json": "By Target Module LoRA alpha",
   "network_args_custom": "Extra network/LoRA kwargs. One key=value per line.",
+  "target_modules": "Override the default target layers: comma- or newline-separated module names (e.g. to_q,to_v,to_out.0). Empty = per-type default preset. The submit layer splits this into an array for the backend.",
+  "rank_strategy": "Rank allocation strategy (module_group_registry.py:328): uniform applies the same rank everywhere (default); module_group/module follow module-group presets; auto_static/dynamic infer from structure. Non-uniform strategies are experimental.",
   "network_dim": "LoRA rank: low-rank subspace size driving capacity and file size. Recommended: 4-128; start at 32-64 for characters/styles, 8-16 for simple concepts.",
   "network_dropout": "Randomly zeroes LoRA output units as regularization. Recommended: 0 (default) or at most 0.1.",
   "network_module": "Network module picks the adapter implementation. networks.lora has the best compatibility; lora_fa/vera/tlora/flexrank are experimental; lycoris.kohya is the legacy entry.",

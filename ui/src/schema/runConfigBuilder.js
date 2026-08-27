@@ -149,6 +149,27 @@ function normalizeOptimizerArgs(payload) {
   // 里的残值也在 mergeConfigPatch 的 `if (!field) continue` 处就被丢掉。写在这里的
   // 迁移分支恒不执行，只会让人以为迁移做过了 —— 真要迁移得落在草稿加载那一层。
 
+  // opt_* 专属字段 → optimizer_args 行（OPT_FIELD_ARG_KEYS 展开）。plugin/generic
+  // 路线的第一层 opt_* 字段同样对用户可见（isOpt 含 pytorch_optimizer.* 门控），
+  // 值必须折进 optimizer_args，否则是「可见但提交即弃」的假旋钮（2026-08 透传审计
+  // 修复）；不在 OPT_FIELD_ARG_KEYS 里的 opt_*（如提示字段）仍被剥除。
+  const collectSpecificArgs = () => {
+    const specificArgs = [];
+    for (const [fieldKey, argName] of Object.entries(OPT_FIELD_ARG_KEYS)) {
+      const val = payload[fieldKey];
+      if (val != null && val !== '') specificArgs.push(`${argName}=${val}`);
+    }
+    return specificArgs;
+  };
+  // opt_* 临时字段统一剥除（尾部清理的提前版）：plugin/generic 早退分支原本
+  // 跳过尾部清理，isOpt('…','pytorch_optimizer.x') 点亮的第一层 opt_* 专属字段
+  // 会原样漏进出站 payload（后端 extra=ignore 静默丢弃 = 垃圾键）。
+  const purgeOptFields = () => {
+    for (const key of Object.keys(payload)) {
+      if (key.startsWith('opt_')) delete payload[key];
+    }
+  };
+
   const rawOptimizerType = String(payload.optimizer_type || '').trim();
   const pluginOptimizerMatch = rawOptimizerType.match(/^PytorchOptimizer[:/](.+)$/i)
     || rawOptimizerType.match(/^pytorch_optimizer\.(.+)$/i);
@@ -157,10 +178,12 @@ function normalizeOptimizerArgs(payload) {
     payload.optimizer_type = 'PytorchOptimizer';
     const lines = argLines(payload.optimizer_args_custom);
     const hasNameArg = lines.some((line) => /^\s*(name|optimizer_name|optimizer)\s*=/.test(line));
-    payload.optimizer_args = hasNameArg ? lines : ['name=' + pluginOptimizerName, ...lines];
+    const base = hasNameArg ? lines : ['name=' + pluginOptimizerName, ...lines];
+    payload.optimizer_args = [...base, ...collectSpecificArgs()];
     delete payload.prodigy_d0;
     delete payload.prodigy_d_coef;
     delete payload.optimizer_args_custom;
+    purgeOptFields();
     return;
   }
 
@@ -171,10 +194,12 @@ function normalizeOptimizerArgs(payload) {
     payload.optimizer_type = 'GenericOptimizer';
     const lines = argLines(payload.optimizer_args_custom);
     const hasNameArg = lines.some((line) => /^\s*(name|optimizer_name|optimizer)\s*=/.test(line));
-    payload.optimizer_args = hasNameArg ? lines : ['name=' + genericOptimizerName, ...lines];
+    const base = hasNameArg ? lines : ['name=' + genericOptimizerName, ...lines];
+    payload.optimizer_args = [...base, ...collectSpecificArgs()];
     delete payload.prodigy_d0;
     delete payload.prodigy_d_coef;
     delete payload.optimizer_args_custom;
+    purgeOptFields();
     return;
   }
 
@@ -194,7 +219,15 @@ function normalizeOptimizerArgs(payload) {
     if (d0 && d0 !== '' && d0 !== '0') args.push('d0=' + d0);
     payload.optimizer_args = appendCustomArgs(args, payload.optimizer_args_custom);
   } else if (payload.optimizer_type && ['DAdaptation', 'DAdaptAdam', 'DAdaptLion'].includes(payload.optimizer_type)) {
-    payload.optimizer_args = appendCustomArgs(['decouple=True'], payload.optimizer_args_custom);
+    // DAdapt 系 UI 旋钮（opt_dadapt_d0 / opt_dadapt_growth_rate，OPT_FIELD_ARG_KEYS
+    // 展开）随 decouple 一起折进 optimizer_args：后端 DAdaptation 只从 optimizer_args
+    // 读参，此前只发 decouple=True 等于这两个旋钮静默失效（2026-08 透传审计修复）。
+    const specificArgs = [];
+    for (const [fieldKey, argName] of Object.entries(OPT_FIELD_ARG_KEYS)) {
+      const val = payload[fieldKey];
+      if (val != null && val !== '') specificArgs.push(`${argName}=${val}`);
+    }
+    payload.optimizer_args = appendCustomArgs(['decouple=True', ...specificArgs], payload.optimizer_args_custom);
   } else {
     // 收集 opt_* 专属字段组装 args
     const specificArgs = [];
@@ -211,9 +244,7 @@ function normalizeOptimizerArgs(payload) {
   delete payload.prodigy_d_coef;
   delete payload.optimizer_args_custom;
   // 清理所有 opt_* 临时字段
-  for (const key of Object.keys(payload)) {
-    if (key.startsWith('opt_')) delete payload[key];
-  }
+  purgeOptFields();
 }
 
 function normalizeLycorisNetworkArgs(payload, typeId) {
@@ -317,6 +348,14 @@ function normalizeLycorisNetworkArgs(payload, typeId) {
 }
 
 function normalizeListTextareas(payload) {
+  // target_modules：后端 recipe 契约只收数组（contracts/training_recipe.py:118
+  // _string_list 对字符串按单元素包裹、不切分）——提交层负责把 textarea 切成数组；
+  // 空值不出站（空 = 按训练类型的默认目标预设）。
+  if (typeof payload.target_modules === 'string') {
+    const modules = payload.target_modules.split(/[\s,]+/).map((item) => item.trim()).filter(Boolean);
+    if (modules.length > 0) payload.target_modules = modules;
+    else delete payload.target_modules;
+  }
   if (payload.enable_base_weight) {
     if (payload.base_weights && typeof payload.base_weights === 'string') {
       const lines = payload.base_weights.split(/[\n\r]+/).map((line) => line.trim()).filter(Boolean);
@@ -642,6 +681,14 @@ function removeUiOnlyFields(payload) {  // F-purge: evo legacy draft key wan22_t
     delete payload.up_lr_weight;
     delete payload.block_lr_zero_threshold;
   }
+  // BlockWeight 激活键出站（2026-08 透传审计修复）：后端训练器硬门在
+  // bw_enable（trainer/trainer_prepare_block_weight_mixin.py:37
+  // getattr(self.config,'bw_enable',False)），而 bw_enable 只能由 payload 的
+  // enable_block_weights / lulynx_block_weight_enabled 折算
+  // （config_adapter_training_shared.py:175-178、training_route_service.py:387
+  // copy_first）——这两个 UI 键又被本函数剥除，导致分层学习率配好权重也永远
+  // 静默失效。提交层直接写后端规范键 bw_enable（configs_monitoring.py:392）。
+  if (blockWeightOn) payload.bw_enable = true;
   delete payload.enable_block_weights;
   delete payload.train_length_mode;
   delete payload.enable_inference_accel;
