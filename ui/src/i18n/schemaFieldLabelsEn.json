@@ -749,6 +749,7 @@
   "log_with": "Block (log_with)",
   "logging_dir": "Save (logging_dir)",
   "lokr_factor": "LoKr Factor",
+  "glokr_factor": "GLoKr Factor",
   "lokr_module_dropout": "LoKr Module Dropout",
   "lokr_rank_dropout": "LoKr Rank Dropout",
   "lokr_train_norm": "LoKr Training Norm (lokr_train_norm)",

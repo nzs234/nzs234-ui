@@ -807,6 +807,7 @@
   "log_with": "Metric reporting backend. tensorboard recommended; wandb needs network and an API key.",
   "logging_dir": "TensorBoard log directory. Keep default or a dedicated logs folder for run comparison.",
   "lokr_factor": "LoKr Kronecker factor: larger means fewer parameters and less expressivity; -1 = infinity (smallest). Recommended: 4 to start, up to 8; -1 for extreme compression.",
+  "glokr_factor": "Shared GLoKr Kronecker factor: larger means fewer parameters and less expressivity; -1 auto-balances (recommended).",
   "lokr_module_dropout": "LoKr whole-module dropout. Recommended: default 0.",
   "lokr_no_materialize_forward": "Compute LoKr forward from factors without materializing full weights: saves VRAM, may be slower. Worth trying when VRAM-bound on LoKr.",
   "lokr_no_materialize_strategy": "Implementation for non-materialized LoKr forward. auto heuristic recommended over legacy.",

@@ -340,6 +340,7 @@ const ADAPTER_EXACT_KEYS = new Set([
   'adapter_type',
   'lycoris_algo',
   'lokr_factor',
+  'glokr_factor',
   'decompose_both',
   'full_matrix',
   'unbalanced_factorization',
@@ -354,6 +355,38 @@ const ADAPTER_EXACT_KEYS = new Set([
   'loftq_bits',
   'loftq_quant_type',
   'dim_from_weights',
+  // Kronecker 家族子参数（LoKr 副产物）：选中对应家族卡后就地调节。
+  'dokr_factor_in',
+  'dokr_factor_out',
+  'dokr_decompose_factor',
+  'dokr_mode',
+  'dokr_alpha',
+  'gdlokr_factor',
+  'gdlokr_mode',
+  'gdlokr_alpha',
+  'tensorring_factor',
+  'krona_factor_in',
+  'krona_factor_out',
+  'cdka_factor_in',
+  'cdka_factor_out',
+])
+
+// 这些家族子参数住在 expert 的 lora-variants section；向导选中家族卡后需要就地
+// 暴露（visibleWhen 已保证仅选中该家族时可见），故从 expert 跳过中按键白名单豁免。
+const WIZARD_ADAPTER_EXPERT_KEYS = new Set([
+  'dokr_factor_in',
+  'dokr_factor_out',
+  'dokr_decompose_factor',
+  'dokr_mode',
+  'dokr_alpha',
+  'gdlokr_factor',
+  'gdlokr_mode',
+  'gdlokr_alpha',
+  'tensorring_factor',
+  'krona_factor_in',
+  'krona_factor_out',
+  'cdka_factor_in',
+  'cdka_factor_out',
 ])
 
 const ADAPTER_TOKEN = /(lora|lokr|glora|lycoris|adapter|network_|dora|vera|tlora|flexrank|hydra|fera|gdlokr|reslora|dokr|cdka|krona)/i
@@ -420,8 +453,22 @@ function canonicalFields(typeId: string, config: Record<string, unknown>) {
   const entries = new Map<string, Array<{ field: SchemaField; section: SchemaSection }>>()
   for (const section of sections) {
     // Advanced/frontier fields remain available in expert mode. The wizard keeps
-    // them out of the beginner path so the first screen stays focused.
-    if (section.tab === 'advanced' || section.tab === 'frontier' || (section as SchemaSection & { expert?: boolean }).expert) continue
+    // them out of the beginner path so the first screen stays focused — except
+    // adapter family sub-params, which must be tunable right after picking the
+    // family card (their own visibleWhen gates display to that selection).
+    if (section.tab === 'advanced' || section.tab === 'frontier' || (section as SchemaSection & { expert?: boolean }).expert) {
+      if ((section as SchemaSection & { expert?: boolean }).expert) {
+        for (const field of section.fields || []) {
+          if (!WIZARD_ADAPTER_EXPERT_KEYS.has(field.key)) continue
+          if (field.type === 'hidden' || field.type === 'ui_group') continue
+          if (!isFieldVisible(field, config)) continue
+          const list = entries.get(field.key) || []
+          list.push({ field, section })
+          entries.set(field.key, list)
+        }
+      }
+      continue
+    }
     for (const field of section.fields || []) {
       if (field.type === 'hidden' || field.type === 'ui_group') continue
       if (!isFieldVisible(field, config)) continue

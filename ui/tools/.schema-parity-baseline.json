@@ -1944,6 +1944,16 @@
        "visibleWhen": "ƒ"
       },
       {
+       "key": "glokr_factor",
+       "type": "number",
+       "label": "GLoKr 系数",
+       "title": "glokr_factor",
+       "desc": "GLoKr 共享 Kronecker 分解因子：越大越省参数越弱表达。-1 表示自动平衡（推荐保持）。",
+       "defaultValue": -1,
+       "min": -1,
+       "visibleWhen": "ƒ"
+      },
+      {
        "key": "enable_base_weight",
        "type": "boolean",
        "label": "启用基础权重",
@@ -11782,6 +11792,7 @@
     "unbalanced_factorization": false,
     "lokr_no_materialize_forward": false,
     "lokr_no_materialize_strategy": "legacy",
+    "glokr_factor": -1,
     "enable_base_weight": false,
     "base_weights": "",
     "base_weights_multiplier": "",
@@ -121497,6 +121508,16 @@
        "visibleWhen": "ƒ"
       },
       {
+       "key": "glokr_factor",
+       "type": "number",
+       "label": "GLoKr 系数",
+       "title": "glokr_factor",
+       "desc": "GLoKr 共享 Kronecker 分解因子：越大越省参数越弱表达。-1 表示自动平衡（推荐保持）。",
+       "defaultValue": -1,
+       "min": -1,
+       "visibleWhen": "ƒ"
+      },
+      {
        "key": "enable_base_weight",
        "type": "boolean",
        "label": "启用基础权重",
@@ -126005,6 +126026,7 @@
     "unbalanced_factorization": false,
     "lokr_no_materialize_forward": false,
     "lokr_no_materialize_strategy": "legacy",
+    "glokr_factor": -1,
     "enable_base_weight": false,
     "base_weights": "",
     "base_weights_multiplier": "",

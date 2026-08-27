@@ -394,3 +394,50 @@ describe('wizardModel unmapped coverage', () => {
     expect(stepIds(sdxlLora)).not.toContain('controlnet')
   })
 })
+
+describe('wizard adapter step surfaces Kronecker family factor params', () => {
+  function adapterKeys(config: Record<string, unknown>): Set<string> {
+    const projection = buildWizardProjection('sdxl-lora', config)
+    const step = projection.steps.find((s) => s.id === 'adapter')
+    return new Set((step?.fields || []).map((field) => field.key))
+  }
+
+  test('dokr selection brings factor/decompose/mode params into the adapter step', () => {
+    const keys = adapterKeys({ dokr_enabled: true })
+    for (const key of ['dokr_factor_in', 'dokr_factor_out', 'dokr_decompose_factor', 'dokr_mode', 'dokr_alpha']) {
+      expect(keys.has(key), key).toBe(true)
+    }
+  })
+
+  test('gdlokr selection brings gdlokr_factor/mode/alpha', () => {
+    const keys = adapterKeys({ gdlokr_enabled: true })
+    for (const key of ['gdlokr_factor', 'gdlokr_mode', 'gdlokr_alpha']) {
+      expect(keys.has(key), key).toBe(true)
+    }
+  })
+
+  test('lycoris glokr algo brings glokr_factor beside the lokr siblings', () => {
+    const keys = adapterKeys({ network_module: 'lycoris.kohya', lycoris_algo: 'glokr' })
+    expect(keys.has('glokr_factor')).toBe(true)
+  })
+
+  test('tensorring/krona/cdka selections bring their factor params', () => {
+    const tensorring = adapterKeys({ tensorring_lora_enabled: true })
+    expect(tensorring.has('tensorring_factor')).toBe(true)
+    const krona = adapterKeys({ krona_enabled: true })
+    expect(krona.has('krona_factor_in')).toBe(true)
+    expect(krona.has('krona_factor_out')).toBe(true)
+    const cdka = adapterKeys({ cdka_enabled: true })
+    expect(cdka.has('cdka_factor_in')).toBe(true)
+    expect(cdka.has('cdka_factor_out')).toBe(true)
+  })
+
+  test('default draft keeps the family params out of the wizard', () => {
+    const projection = buildWizardProjection('sdxl-lora', createDefaultConfig('sdxl-lora'))
+    const all = new Set(projection.visibleFields.map((field) => field.key))
+    expect(all.has('dokr_factor_in')).toBe(false)
+    expect(all.has('gdlokr_factor')).toBe(false)
+    expect(all.has('glokr_factor')).toBe(false)
+    expect(all.has('tensorring_factor')).toBe(false)
+  })
+})

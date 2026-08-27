@@ -143,6 +143,31 @@ describe('new backend capabilities exposed in the UI (P1 follow-ups)', () => {
   })
 })
 
+describe('glokr_factor exposes the LyCORIS GLoKr Kronecker factor (LoKr sibling)', () => {
+  it('ships beside lokr_factor with -1 auto default, gated on algo=glokr', () => {
+    const field = fieldOf('sdxl-lora', 'glokr_factor')
+    expect(field, 'sdxl-lora should expose glokr_factor').toBeTruthy()
+    expect(field!.type).toBe('number')
+    expect(field!.defaultValue).toBe(-1)
+    expect(field!.min).toBe(-1)
+    expect(typeof field!.visibleWhen).toBe('function')
+    expect(field!.visibleWhen!({ network_module: 'lycoris.kohya', lycoris_algo: 'glokr' })).toBe(true)
+    expect(field!.visibleWhen!({ network_module: 'lycoris.kohya', lycoris_algo: 'lokr' })).toBe(false)
+    expect(field!.visibleWhen!({ network_module: 'networks.lora', lycoris_algo: 'glokr' })).toBe(false)
+  })
+
+  it('reaches the payload unchanged on the lycoris glokr route', () => {
+    const config = {
+      ...createDefaultConfig('sdxl-lora'),
+      network_module: 'lycoris.kohya',
+      lycoris_algo: 'glokr',
+      glokr_factor: 4,
+    } as Record<string, unknown>
+    const payload = buildRunConfig(config, 'sdxl-lora')
+    expect(payload.glokr_factor).toBe(4)
+  })
+})
+
 describe('ui_group factory ids are explicit and collision-free', () => {
   it('the four shared factories emit distinct ascii keys and keep EN packs resolvable', () => {
     const expectedKeys = [
