@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-PolyFormNoncommercial-1.0.0
 import { useEffect, useRef, useState } from 'react'
-import { ROUTES, useRouteStore, type RouteId } from '@/stores/routeStore'
+import { ROUTES, isRouteAvailable, useRouteStore, type RouteId } from '@/stores/routeStore'
 import { THEME_META, useThemeStore } from '@/stores/themeStore'
 import type { MotionMode, ThemeId } from '@/stores/themeStore'
 import { Dot } from '@/components/primitives'
@@ -107,8 +107,8 @@ export function Topbar() {
     setDrawerOpen(false)
   }
 
-  // 统一路由可见性：dev 路由在导航中仅当当前正处于该页面时可见
-  const visibleRoutes = ROUTES.filter((r) => !r.dev || route === r.id)
+  // 统一路由可见性：dev 路由在生产构建下彻底不可达，开发下也仅当前正处于该页面时可见
+  const visibleRoutes = ROUTES.filter((r) => isRouteAvailable(r.id) && (!r.dev || route === r.id))
 
   const getRouteIcon = (id: RouteId) => {
     switch (id) {

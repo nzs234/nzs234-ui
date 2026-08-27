@@ -3,11 +3,15 @@ import { useCallback } from 'react'
 import { useLocaleStore } from '@/stores/localeStore'
 import zh from './zh.json'
 import en from './en.json'
-import schemaFieldLabelsEn from './schemaFieldLabelsEn.json'
-import schemaFieldDescsEn from './schemaFieldDescsEn.json'
-import schemaFieldOptionsEn from './schemaFieldOptionsEn.json'
 import schemaTabsEn from './schemaTabsEn.json'
 import schemaGroupsEn from './schemaGroupsEn.json'
+
+/*
+ * 按 field.key 索引的三份大 EN 包(labels/descs/options,合计 ~300KB)不在这里 ——
+ * 它们只被 schema 字段渲染读到,留在本模块会随启动链(main → AppShell → Topbar →
+ * useI18n)静态进入口 chunk,让每个路由的首屏都先下 300KB 训练字段文案。
+ * 见 ./schemaFieldI18n.ts(resolveFieldLabel / resolveFieldDesc / resolveOptionLabel)。
+ */
 
 const bundles: Record<string, Record<string, string>> = { zh, en }
 
@@ -44,23 +48,6 @@ export function useI18n() {
   return { t, language }
 }
 
-/** Schema field label/desc resolver (label_zh/label_en with label fallback). */
-export function resolveFieldLabel(
-  field: { key?: string; label?: string; label_zh?: string; label_en?: string; [k: string]: unknown },
-  language: string,
-): string {
-  const preferEn = language === 'en'
-  const primary = preferEn ? field.label_en : field.label_zh
-  const secondary = preferEn ? field.label_zh : field.label_en
-  if (typeof primary === 'string' && primary.trim()) return primary
-  if (preferEn && field.key && typeof (schemaFieldLabelsEn as Record<string, string>)[field.key] === 'string') {
-    return (schemaFieldLabelsEn as Record<string, string>)[field.key]
-  }
-  if (typeof secondary === 'string' && secondary.trim()) return secondary
-  if (typeof field.label === 'string' && field.label.trim()) return field.label
-  return String(field.key ?? '')
-}
-
 /** Resolve training UI tab label (UI_TABS). */
 export function resolveTabLabel(tab: { key: string; label?: string }, language: string): string {
   if (language === 'en') {
@@ -76,55 +63,6 @@ export function resolveGroupLabel(group: string, language: string): string {
     if (en) return en
   }
   return group
-}
-
-export function resolveFieldDesc(
-  field: {
-    key?: string
-    desc?: string
-    desc_zh?: string
-    desc_en?: string
-    title?: string
-    [k: string]: unknown
-  },
-  language: string,
-): string {
-  const preferEn = language === 'en'
-  const primary = preferEn ? field.desc_en : field.desc_zh
-  const secondary = preferEn ? field.desc_zh : field.desc_en
-  if (typeof primary === 'string' && primary.trim()) return primary
-  if (
-    preferEn &&
-    field.key &&
-    typeof (schemaFieldDescsEn as Record<string, string>)[field.key] === 'string'
-  ) {
-    return (schemaFieldDescsEn as Record<string, string>)[field.key]
-  }
-  if (typeof secondary === 'string' && secondary.trim()) return secondary
-  if (typeof field.desc === 'string' && field.desc.trim()) return field.desc
-  if (typeof field.title === 'string' && field.title.trim()) return field.title
-  return ''
-}
-
-/** Resolve select/multiSelect option label for current language. */
-export function resolveOptionLabel(
-  fieldKey: string | undefined,
-  option: { value?: string | number; label?: string; label_en?: string; label_zh?: string },
-  language: string,
-): string {
-  const preferEn = language === 'en'
-  const value = option.value == null ? '' : String(option.value)
-  if (preferEn) {
-    if (typeof option.label_en === 'string' && option.label_en.trim()) return option.label_en
-    if (fieldKey && value) {
-      const hit = (schemaFieldOptionsEn as Record<string, string>)[`${fieldKey}|${value}`]
-      if (typeof hit === 'string' && hit.trim()) return hit
-    }
-  } else if (typeof option.label_zh === 'string' && option.label_zh.trim()) {
-    return option.label_zh
-  }
-  if (typeof option.label === 'string' && option.label.trim()) return option.label
-  return value
 }
 
 /**
@@ -147,4 +85,23 @@ export function resolveDisabledReason(
     return target.disabledReason_en
   }
   return typeof target.disabledReason === 'string' ? target.disabledReason : ''
+}
+
+/**
+ * Resolve a training type's entry annotation (registry `note`) for current language.
+ *
+ * note 是**类型级**属性（TRAINING_TYPES 条目上的入口标注），不是 schema 字段，
+ * 所以走不了 schemaFieldDescsEn 那条按 field.key 索引的包。通道与
+ * disabledReason/disabledReason_en 同构：registry 里就地挂 note_en，EN 命中即用，
+ * 否则回落 zh 原文 —— 语言包里不需要为每个类型再造一个键。
+ */
+export function resolveTypeNote(
+  target: { note?: string; note_en?: string } | undefined,
+  language: string,
+): string {
+  if (!target) return ''
+  if (language === 'en' && typeof target.note_en === 'string' && target.note_en.trim()) {
+    return target.note_en
+  }
+  return typeof target.note === 'string' ? target.note : ''
 }

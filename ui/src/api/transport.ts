@@ -9,6 +9,7 @@
      业务字段(run 状态、report 可用性等)。把裸 payload 的 status 当信封解读会把正常响应
      误判成错误 —— 所以信封判定按路径推断(auto),并提供显式的 native/envelope helper。 */
 import { translate } from '@/i18n/useI18n'
+import { composeApiErrorMessage } from './errorMessages'
 
 const ERROR_ENDPOINT = '/api/system/webui_error'
 const MAX_TEXT = 4000
@@ -104,13 +105,31 @@ export function formatApiMessage(value: unknown): string {
   }
 }
 
+export interface ApiErrorInit {
+  /** 稳定错误码(信封 code 或 /train/** 的 detail.code);'' 表示未知。 */
+  code?: string
+  /** 后端原始消息(formatApiMessage 结果),供上报与次要展示。 */
+  rawMessage?: string
+  /** 次要展示行(EN 下后端中文原文);空串表示无。 */
+  detail?: string
+}
+
 export class ApiError extends Error {
   status?: number
   payload?: unknown
-  constructor(message: string, status?: number, payload?: unknown) {
+  /** 稳定错误码;'' 表示后端未提供可识别的码。 */
+  code: string
+  /** 后端原始消息,恒保留(展示语言无关)。 */
+  rawMessage: string
+  /** 次要展示行(EN 下后端中文原文);不丢失原始信息。 */
+  detail: string
+  constructor(message: string, status?: number, payload?: unknown, init?: ApiErrorInit) {
     super(message)
     this.status = status
     this.payload = payload
+    this.code = init?.code ?? ''
+    this.rawMessage = init?.rawMessage ?? message
+    this.detail = init?.detail ?? ''
   }
 }
 
@@ -197,10 +216,16 @@ export function isApiSuccessEnvelope<T = unknown>(payload: unknown): payload is 
 function apiBusinessError(payload: unknown, status?: number, scope: EnvelopeScope = 'auto'): ApiError | null {
   if (!isApiErrorEnvelope(payload, scope)) return null
   const obj = payload as unknown as Record<string, unknown>
+  const composed = composeApiErrorMessage(
+    formatApiMessage(obj.message ?? obj.detail ?? obj.error ?? payload),
+    payload,
+    status,
+  )
   return new ApiError(
-    formatApiMessage(obj.message ?? obj.detail ?? obj.error ?? payload) || translate('api.request_fail', { status: status ?? 200 }),
+    composed.message || translate('api.request_fail', { status: status ?? 200 }),
     status,
     payload,
+    { code: composed.code, rawMessage: composed.raw, detail: composed.detail },
   )
 }
 
@@ -320,10 +345,16 @@ export async function request<T = unknown>(path: string, options: TransportOptio
       payload = rawText ? compactText(rawText.trim(), BODY_SNIPPET) : null
     }
     const obj = plainObject(payload)
+    const composed = composeApiErrorMessage(
+      formatApiMessage(obj?.detail ?? obj?.message ?? payload),
+      payload,
+      response.status,
+    )
     const error = new ApiError(
-      formatApiMessage(obj?.detail ?? obj?.message ?? payload) || translate('api.request_fail', { status: response.status }),
+      composed.message || translate('api.request_fail', { status: response.status }),
       response.status,
       payload,
+      { code: composed.code, rawMessage: composed.raw, detail: composed.detail },
     )
     reportWebuiError('api_response_error', error, { path, status: response.status })
     throw error

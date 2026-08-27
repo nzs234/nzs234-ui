@@ -27,11 +27,14 @@ import { toast } from '@/stores/toastStore'
 import {
   useI18n,
   translate,
+  resolveDisabledReason,
+} from '@/i18n/useI18n'
+// 按 field.key 索引的 EN 大包(~300KB)只在这里被读到,单独成模块以免进启动链。
+import {
   resolveFieldLabel,
   resolveFieldDesc,
   resolveOptionLabel,
-  resolveDisabledReason,
-} from '@/i18n/useI18n'
+} from '@/i18n/schemaFieldI18n'
 
 /* schema 字段 → 控件。11 种字段类型的统一渲染入口。 */
 

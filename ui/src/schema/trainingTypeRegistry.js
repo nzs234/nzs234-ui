@@ -15,6 +15,13 @@ export const UI_TABS = [
   { key: 'advanced', label: '高级', expertOnly: true },
 ];
 
+// 第 6 站桶 12 型的入口标注（类型级 note，非字段级）：后端注册状态是
+// configurable_not_verified —— 薄壳可配置、但未经真实训练验证。文案与
+// universal-dit-lora 的实验标注同体例；EN 通道走 note_en（与 disabledReason_en
+// 同构，渲染层经 resolveTypeNote 按语言取用）。
+const WEBUI_OWNED_NOTE = '实验标注：后端注册为 webui-owned identity-only 薄壳（字段权威在 UI 侧），状态 configurable_not_verified —— 可配置但未经真实训练验证。建议先跑一次 short smoke 验证，再用于正式训练。';
+const WEBUI_OWNED_NOTE_EN = 'Experimental: the backend registers this as a webui-owned identity-only shell (field authority stays in the UI) with status configurable_not_verified — configurable, but not verified by a real run. Run a short smoke first, then use it for real training.';
+
 export const TRAINING_TYPES = [
   { id: 'sdxl-lora', group: 'LoRA', label: 'SDXL' },
   { id: 'anima-lora', group: 'LoRA', label: 'Anima' },
@@ -23,16 +30,16 @@ export const TRAINING_TYPES = [
   // launcher/api/domain/schemas/webui_owned_schemas.py 以 identity-only 薄壳
   // （field_authority=webui，字段权威在 UI 侧）补齐注册，路由表
   // training_route_catalog.py 与 arch_capability_registry 均就绪 → 入口可见。
-  { id: 'krea2-lora', group: 'LoRA', label: 'Krea-2' },
+  { id: 'krea2-lora', group: 'LoRA', label: 'Krea-2', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
   { id: 'minimax-h3-lora', group: 'LoRA', label: 'MiniMax H3' },
-  { id: 'flux2-lora', group: 'LoRA', label: 'FLUX.2 Klein' },
-  { id: 'zimage-lora', group: 'LoRA', label: 'Z-Image' },
-  { id: 'wan22-ti2v-lora', group: 'LoRA', label: 'Wan2.2 TI2V-5B' },
-  { id: 'wan22-t2v-a14b-lora', group: 'LoRA', label: 'Wan2.2 T2V-A14B' },
+  { id: 'flux2-lora', group: 'LoRA', label: 'FLUX.2 Klein', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
+  { id: 'zimage-lora', group: 'LoRA', label: 'Z-Image', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
+  { id: 'wan22-ti2v-lora', group: 'LoRA', label: 'Wan2.2 TI2V-5B', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
+  { id: 'wan22-t2v-a14b-lora', group: 'LoRA', label: 'Wan2.2 T2V-A14B', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
   { id: 'ltx23-lora', group: 'LoRA', label: 'LTX-2.3' },
   { id: 'ltx25-lora', group: 'LoRA', label: 'LTX-2.5' },
-  { id: 'boogu-lora', group: 'LoRA', label: 'Boogu-Image' },
-  { id: 'boogu-edit-lora', group: 'Edit 模型', label: 'Boogu-Image Edit' },
+  { id: 'boogu-lora', group: 'LoRA', label: 'Boogu-Image', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
+  { id: 'boogu-edit-lora', group: 'Edit 模型', label: 'Boogu-Image Edit', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
   // 后端无 anima-edit-model schema/路由（get_training_schema 会 404）；
   // 保留数据定义以兼容已存草稿，入口隐藏。
   { id: 'anima-edit-model', group: 'Edit 模型', label: 'Anima', hidden: true },
@@ -50,14 +57,14 @@ export const TRAINING_TYPES = [
   { id: 'lab-distiller', group: '专项训练', label: 'LAB Distiller' },
   // /api/lulynx-lab 探针（contracts/tools.py DitFewStepLoraRequest，lab_id=dit-few-step-lora）：
   // 普通 /train 链路无 schema/路由，经 Lab runner 产出契约产物。保留可见但标注入口属性。
-  { id: 'anima-few-step-lora', group: '专项训练', label: 'Anima Few-step LoRA', note: 'Lab 探针：经 /api/lulynx-lab (lab_id=dit-few-step-lora) 启动；本页仅生成契约产物。' },
+  { id: 'anima-few-step-lora', group: '专项训练', label: 'Anima Few-step LoRA', note: 'Lab 探针：经 /api/lulynx-lab (lab_id=dit-few-step-lora) 启动；本页仅生成契约产物。', note_en: 'Lab probe: launched through /api/lulynx-lab (lab_id=dit-few-step-lora); this page only produces the contract artifacts.' },
   // 与 anima-few-step-lora 同链路（lab runner 产出契约产物）；第 3 站补标注入口属性。
-  { id: 'newbie-few-step-lora', group: '专项训练', label: 'Newbie Few-step LoRA', note: 'Lab 探针：经 /api/lulynx-lab (lab_id=dit-few-step-lora) 启动；本页仅生成契约产物。' },
+  { id: 'newbie-few-step-lora', group: '专项训练', label: 'Newbie Few-step LoRA', note: 'Lab 探针：经 /api/lulynx-lab (lab_id=dit-few-step-lora) 启动；本页仅生成契约产物。', note_en: 'Lab probe: launched through /api/lulynx-lab (lab_id=dit-few-step-lora); this page only produces the contract artifacts.' },
   // 后端已独立注册 universal-dit-lora schema（launcher/api/domain/schemas/universal_dit_schema.py；
   // 路由表 training_route_catalog.py:50 → ("lora","universal_dit")，runtime=standard 走
   // entry_train + UnifiedTrainingConfig）。experimental=true、status=configurable_not_verified：
   // 入口可见但标注实验属性，schema 面见 universalDitFields.UNIVERSAL_DIT_LORA_SECTIONS。
-  { id: 'universal-dit-lora', group: '实验训练', label: '高级自定义 DiT', note: '实验功能：预计算张量 Universal DiT LoRA。不装配 VAE/文本编码器，需自备含 latents 的契约张量目录与 AutoModel config 模型目录；启动前务必跑预检。' },
+  { id: 'universal-dit-lora', group: '实验训练', label: '高级自定义 DiT', note: '实验功能：预计算张量 Universal DiT LoRA。不装配 VAE/文本编码器，需自备含 latents 的契约张量目录与 AutoModel config 模型目录；启动前务必跑预检。', note_en: 'Experimental: Universal DiT LoRA over precomputed tensors. No VAE or text encoder is loaded — bring your own contract tensor directory with latents plus an AutoModel config model directory, and always run preflight before launching.' },
   { id: 'flux-lora', group: 'LoRA', label: 'FLUX' },
   { id: 'lumina-lora', group: 'LoRA', label: 'Lumina', hidden: true },
   { id: 'qwen-image-lora', group: 'LoRA', label: 'Qwen Image', hidden: true },
@@ -68,13 +75,13 @@ export const TRAINING_TYPES = [
   { id: 'sd-multi-addift', group: 'LoRA 概念编辑', label: 'SD 1.5 Multi-ADDifT', hidden: true },
   { id: 'sdxl-finetune', group: 'Finetune', label: 'SDXL' },
   { id: 'anima-finetune', group: 'Finetune', label: 'Anima' },
-  { id: 'krea2-finetune', group: 'Finetune', label: 'Krea-2' },
-  { id: 'boogu-finetune', group: 'Finetune', label: 'Boogu-Image' },
+  { id: 'krea2-finetune', group: 'Finetune', label: 'Krea-2', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
+  { id: 'boogu-finetune', group: 'Finetune', label: 'Boogu-Image', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
   { id: 'ltx23-finetune', group: 'Finetune', label: 'LTX-2.3' },
   { id: 'ltx25-finetune', group: 'Finetune', label: 'LTX-2.5' },
-  { id: 'flux2-finetune', group: 'Finetune', label: 'FLUX.2 Klein' },
-  { id: 'zimage-finetune', group: 'Finetune', label: 'Z-Image' },
-  { id: 'wan22-finetune', group: 'Finetune', label: 'Wan2.2 TI2V-5B' },
+  { id: 'flux2-finetune', group: 'Finetune', label: 'FLUX.2 Klein', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
+  { id: 'zimage-finetune', group: 'Finetune', label: 'Z-Image', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
+  { id: 'wan22-finetune', group: 'Finetune', label: 'Wan2.2 TI2V-5B', note: WEBUI_OWNED_NOTE, note_en: WEBUI_OWNED_NOTE_EN },
   { id: 'minimax-h3-finetune', group: 'Finetune', label: 'MiniMax H3' },
   { id: 'lumina-finetune', group: 'Finetune', label: 'Lumina', hidden: true },
   { id: 'sd-dreambooth', group: 'Finetune', label: 'SD DreamBooth' },

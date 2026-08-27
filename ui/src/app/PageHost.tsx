@@ -7,7 +7,9 @@ const GeneratePage = lazy(() => import('@/pages/generate/GeneratePage'))
 const MonitorPage = lazy(() => import('@/pages/monitor/MonitorPage'))
 const QueuePage = lazy(() => import('@/pages/queue/QueuePage'))
 const ResourceCenterPage = lazy(() => import('@/pages/resources/ResourceCenterPage'))
-const GalleryPage = lazy(() => import('@/pages/gallery/GalleryPage'))
+// dev-only 设计实验室：生产构建下 import.meta.env.DEV 常量折叠成 false，
+// 这个分支连同 GalleryPage 的 chunk 一起被摇掉（路由层 isRouteAvailable 亦已拦死）。
+const GalleryPage = import.meta.env.DEV ? lazy(() => import('@/pages/gallery/GalleryPage')) : null
 
 export function PageHost() {
   const route = useRouteStore((s) => s.route)
@@ -18,7 +20,7 @@ export function PageHost() {
       {route === 'monitor' && <MonitorPage />}
       {route === 'queue' && <QueuePage />}
       {route === 'resources' && <ResourceCenterPage />}
-      {route === 'gallery' && <GalleryPage />}
+      {route === 'gallery' && GalleryPage ? <GalleryPage /> : null}
     </Suspense>
   )
 }

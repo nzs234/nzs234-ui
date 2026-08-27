@@ -9,7 +9,6 @@ import { useRouteStore } from '@/stores/routeStore'
 import { toast } from '@/stores/toastStore'
 import type { RunStatePayload } from '@/api/monitorApi'
 import { trainApi } from '@/api/trainApi'
-import { applyConfigBag, extractRunRestorable } from '@/lib/applyConfigBag'
 import { findRunRecord } from '@/stores/historyStore'
 import { LossChart } from './LossChart'
 import { TrainingQualityReportPanel } from './TrainingQualityReportPanel'
@@ -63,6 +62,11 @@ function StatusBanner({ run, etaText, stepsPerSec, stopping }: {
     const runId = String(run.run_id ?? '').trim()
     setRetraining(true)
     try {
+      // applyConfigBag → restoreConfigService → configStore → schemaIndex 是一整条
+      // 静态链;监控页是首屏默认页之一,静态 import 会把全量 schema(~740KB)拉进
+      // 首屏必需的依赖图。RETRAIN 是用户点击后才发生的动作,await 一次动态 import
+      // 正好落在既有的 setRetraining(true) 忙态里,不需要额外加载态。
+      const { applyConfigBag, extractRunRestorable } = await import('@/lib/applyConfigBag')
       const local = findRunRecord(runId, String(run.config_name ?? ''))
       if (local?.config && Object.keys(local.config).length) {
         if (

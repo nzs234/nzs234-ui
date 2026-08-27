@@ -19,6 +19,7 @@ import {
   getSectionsForType,
   buildRunConfig,
 } from '@/schema/schemaIndex.js'
+import { resolveTypeNote } from '@/i18n/useI18n'
 import { validateConfig } from '@/utils/configValidator'
 
 const WEBUI_OWNED_12 = [
@@ -65,6 +66,32 @@ describe('A/P0 resolved: 12 webui-owned types are visible and keep full data def
       expect(sections.length, typeId).toBeGreaterThan(3)
       expect(fieldOf(typeId, 'model_train_type')?.defaultValue, typeId).toBe(typeId)
     }
+  })
+
+  it('annotates all 12 with a bilingual entry note (configurable_not_verified + smoke advice)', () => {
+    // 「入口可见」不等于「已验证」：后端状态是 configurable_not_verified，
+    // 选卡处必须看到这层标注（渲染面 WizardPage.TypeChoices），否则用户会把
+    // 未验证的薄壳当成已就绪的训练类型直接开正式训练。
+    for (const typeId of WEBUI_OWNED_12) {
+      const entry = ALL_TRAINING_TYPES.find((t) => t.id === typeId)!
+      const note = String(entry.note ?? '')
+      const noteEn = String((entry as typeof entry & { note_en?: string }).note_en ?? '')
+      expect(note, typeId).toContain('configurable_not_verified')
+      expect(note, typeId).toContain('smoke')
+      // EN 通道非空且不复读中文（disabledReason_en 同构的类型级通道）。
+      expect(noteEn.trim(), `${typeId} note_en`).not.toBe('')
+      expect(noteEn, `${typeId} note_en`).not.toMatch(/[\u4e00-\u9fff]/)
+      expect(noteEn, `${typeId} note_en`).toContain('configurable_not_verified')
+    }
+  })
+
+  it('resolveTypeNote switches the 12 notes by UI language and leaves plain types blank', () => {
+    const krea2 = ALL_TRAINING_TYPES.find((t) => t.id === 'krea2-lora')!
+    expect(resolveTypeNote(krea2, 'zh')).toBe(krea2.note)
+    expect(resolveTypeNote(krea2, 'en')).toBe((krea2 as typeof krea2 & { note_en?: string }).note_en)
+    // 未标注的类型不凭空造出标注。
+    expect(resolveTypeNote(ALL_TRAINING_TYPES.find((t) => t.id === 'sdxl-lora'), 'en')).toBe('')
+    expect(resolveTypeNote(undefined, 'en')).toBe('')
   })
 })
 

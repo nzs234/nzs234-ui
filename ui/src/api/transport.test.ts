@@ -31,6 +31,10 @@ import {
   requestNative,
   unwrap,
 } from './transport'
+import { API_ERROR_CODE_KEYS } from './errorMessages'
+import { useLocaleStore } from '@/stores/localeStore'
+import en from '@/i18n/en.json'
+import zh from '@/i18n/zh.json'
 
 type FetchArgs = [input: string, init: RequestInit]
 
@@ -553,6 +557,74 @@ describe('transport: network failure', () => {
     })
     await expect(request(uniquePath())).rejects.toThrow(ApiError)
     expect(calls).toBeGreaterThan(0)
+  })
+})
+
+// ─── error-code channel (F2 收口) ────────────────────────────────────────────
+
+describe('transport: error-code → i18n channel', () => {
+  afterEach(() => {
+    useLocaleStore.setState({ language: 'zh' })
+  })
+
+  const PLATFORM_ISSUE_DETAIL = {
+    message: '训练配置存在冲突字段',
+    code: 'config.invalid',
+    issue: { code: 'config.invalid', severity: 'error', message: '训练配置存在冲突字段' },
+  }
+
+  test('a /train platform-issue error maps its stable code to localized text and keeps the raw', async () => {
+    // backend_native._issue_http_detail 把 PlatformIssue 序列化进 detail。
+    installFetch(async () => jsonResponse({ detail: PLATFORM_ISSUE_DETAIL }, 400))
+    try {
+      await request(uniquePath('/train/start'))
+      throw new Error('expected request to reject')
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError)
+      const apiError = error as ApiError
+      expect(apiError.code).toBe('config.invalid')
+      expect(apiError.message).toBe(zh[API_ERROR_CODE_KEYS['config.invalid'] as keyof typeof zh])
+      expect(apiError.rawMessage).toBe('训练配置存在冲突字段')
+      expect(apiError.status).toBe(400)
+    }
+  })
+
+  test('the mapped message is English under the en locale even when the raw is Chinese', async () => {
+    useLocaleStore.setState({ language: 'en' })
+    installFetch(async () => jsonResponse({ detail: PLATFORM_ISSUE_DETAIL }, 400))
+    try {
+      await request(uniquePath('/train/start'))
+      throw new Error('expected request to reject')
+    } catch (error) {
+      const apiError = error as ApiError
+      expect(apiError.message).toBe(en[API_ERROR_CODE_KEYS['config.invalid'] as keyof typeof en])
+      expect(apiError.message).not.toMatch(/[\u4e00-\u9fff]/)
+    }
+  })
+
+  test('en with an unknown code and a Chinese raw falls back to the status generic + keeps the detail line', async () => {
+    useLocaleStore.setState({ language: 'en' })
+    installFetch(async () => jsonResponse({ status: 'error', code: 'error', message: '导入格式不支持' }, 200))
+    try {
+      await request(uniquePath('/api/import'))
+      throw new Error('expected request to reject')
+    } catch (error) {
+      const apiError = error as ApiError
+      // HTTP 200 信封错误无法按状态分类 → 用 request_fail 做主行,
+      // 后端中文原文完整保留在次要行,信息不丢失、不重复拼接。
+      expect(apiError.message).toBe('Request failed:200')
+      expect(apiError.detail).toBe('导入格式不支持')
+      expect(apiError.rawMessage).toBe('导入格式不支持')
+    }
+  })
+
+  test('zh keeps the backend raw as the primary line (it is already the right language)', async () => {
+    installFetch(async () => jsonResponse({ status: 'error', code: 'error', message: '导入格式不支持' }, 200))
+    await expect(request(uniquePath('/api/import'))).rejects.toMatchObject({
+      message: '导入格式不支持',
+      detail: '',
+      rawMessage: '导入格式不支持',
+    })
   })
 })
 

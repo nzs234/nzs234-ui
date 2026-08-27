@@ -36,6 +36,7 @@ import { adapterCardLabel, adapterCardName, adapterCategoryButtonName, fieldLabe
 import { textPrefix } from '@/test/i18n'
 import { typeCardName } from '@/test/wizardQueries'
 import { currentDraft, resetStores, seedTrainApiDefaults } from '@/test/trainPageFixture'
+import { resolveTypeNote } from '@/i18n/useI18n'
 import type { UiLanguage } from '@/stores/localeStore'
 
 vi.mock('@/api/trainApi', () => ({
@@ -567,6 +568,44 @@ describe('WizardFlow: primary flows', () => {
       expect(select.querySelector(`option[value="${family}"]`)).toBeNull()
     }
   })
+})
+
+describe('WizardFlow: type card notes', () => {
+  test.each<UiLanguage>(I18N_LANGUAGES)(
+    '[%s] type cards render the registry note for annotated types and nothing for plain ones',
+    async (language) => {
+      resetStores(language)
+      const user = userEvent.setup()
+      render(<TrainPage />)
+
+      // 选卡处（model 步）必须暴露类型级标注：未验证的 webui-owned 薄壳与
+      // 既有的 universal-dit-lora 实验标注都要能看见，且跟随 UI 语言。
+      // 12 型共用同一段文案，所以按 aria-describedby 指向的元素逐类型定位，
+      // 而不是 findByText（会命中 6 张 LoRA 卡）。
+      await user.click(await screen.findByRole('button', { name: wizardCategoryLabelPrefix('lora') }))
+      const krea2Note = resolveTypeNote(typeMeta('krea2-lora'), language)
+      expect(krea2Note).not.toBe('')
+      // 标注挂在按钮外并由 aria-describedby 关联 —— 不能污染卡片的可访问名。
+      const krea2Card = await screen.findByRole('button', { name: typeCardName(typeMeta('krea2-lora')) })
+      expect(krea2Card.textContent).not.toContain(krea2Note)
+      const krea2NoteId = krea2Card.getAttribute('aria-describedby')
+      expect(krea2NoteId).toBe('lx-w-note-krea2-lora')
+      expect(document.getElementById(krea2NoteId!)).toHaveTextContent(krea2Note)
+      // 未标注类型（sdxl-lora）不带 describedby，也不渲染标注节点。
+      const plainCard = await screen.findByRole('button', { name: typeCardName(typeMeta('sdxl-lora')) })
+      expect(plainCard.getAttribute('aria-describedby')).toBeNull()
+      expect(document.getElementById('lx-w-note-sdxl-lora')).toBeNull()
+
+      // 既有 note 的实验类型同样显示（不是只给新 12 型加的一次性渲染）。
+      // 选完分类后停在 model 步、只列该分类的卡；先点步骤轨回到 type 步换分类。
+      await user.click(await screen.findByRole('button', { name: wizardStepButtonName('type') }))
+      await user.click(await screen.findByRole('button', { name: wizardCategoryLabelPrefix('specialized') }))
+      const ditNote = resolveTypeNote(typeMeta('universal-dit-lora'), language)
+      expect(ditNote).not.toBe('')
+      const ditCard = await screen.findByRole('button', { name: typeCardName(typeMeta('universal-dit-lora')) })
+      expect(document.getElementById(ditCard.getAttribute('aria-describedby')!)).toHaveTextContent(ditNote)
+    },
+  )
 })
 
 describe('WizardFlow: label sourcing', () => {

@@ -35,7 +35,7 @@ const GLOBALS = Object.fromEntries(
 )
 
 export default defineConfig([
-  globalIgnores(['dist/**', 'coverage/**', 'node_modules/**', 'public/**']),
+  globalIgnores(['dist/**', 'dist-probe/**', 'coverage/**', 'node_modules/**', 'public/**']),
 
   tseslint.configs.recommended,
   // 注意取 configs.flat.*:plugin 顶层的 configs.recommended 仍是 eslintrc 形状

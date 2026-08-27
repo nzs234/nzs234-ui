@@ -3,7 +3,6 @@ import { PageHead, Panel } from '@/components/layout'
 import { Badge, Button, Empty } from '@/components/primitives'
 import { toast } from '@/stores/toastStore'
 import { useRouteStore } from '@/stores/routeStore'
-import { useTrainConfigStore } from '@/stores/configStore'
 import { trainApi } from '@/api/trainApi'
 import { resourceCenterApi, buildSemanticProviderPatch, type AdapterStatus, type ProviderRole, type ResourceCatalogItem } from '@/api/resourceCenterApi'
 import { useI18n } from '@/i18n/useI18n'
@@ -13,7 +12,6 @@ import './resource-center.css'
 export default function ResourceCenterPage() {
   const { t } = useI18n()
   const navigate = useRouteStore((s) => s.navigate)
-  const applyValues = useTrainConfigStore((s) => s.applyValues)
   const [items, setItems] = useState<ResourceCatalogItem[]>([])
   const [query, setQuery] = useState('')
   const [role, setRole] = useState<ProviderRole | ''>('')
@@ -60,8 +58,18 @@ export default function ResourceCenterPage() {
     const haystack = `${item.title} ${item.key} ${item.provider_id} ${item.model_id}`.toLowerCase()
     return (!query || haystack.includes(query.toLowerCase())) && (!role || item.provider_role === role) && (!status || item.adapter_status === status)
   }), [items, query, role, status])
-  const select = (item: ResourceCatalogItem) => {
-    try { applyValues(buildSemanticProviderPatch(item)); toast.ok(t('resource.set_ok'), 'RESOURCE'); navigate('train') } catch (e) { toast.warn((e as Error).message, 'RESOURCE') }
+  // configStore 静态 import 会把全量 schema(~740KB)绑进本页 chunk;
+  // 「设为提供方」是点击后才发生的动作,此时再取 store 即可（随后立刻跳训练页,
+  // 那里本来就要加载 schema）。失败时不静默:提示与原先的 catch 分支一致。
+  const select = async (item: ResourceCatalogItem) => {
+    try {
+      const { useTrainConfigStore } = await import('@/stores/configStore')
+      useTrainConfigStore.getState().applyValues(buildSemanticProviderPatch(item))
+      toast.ok(t('resource.set_ok'), 'RESOURCE')
+      navigate('train')
+    } catch (e) {
+      toast.warn((e as Error).message, 'RESOURCE')
+    }
   }
   const download = async (item: ResourceCatalogItem) => {
     const accept = item.requires_license_acceptance || item.install_policy === 'manual-review' || item.install_policy === 'gated'
@@ -130,7 +138,7 @@ export default function ResourceCenterPage() {
               </dl>
               <footer>
                 {item.can_select ? (
-                  <Button variant="primary" onClick={() => select(item)}>{t('resource.set_provider')}</Button>
+                  <Button variant="primary" onClick={() => void select(item)}>{t('resource.set_provider')}</Button>
                 ) : item.can_download ? (
                   <Button onClick={() => void download(item)}>{item.install_policy === 'gated' ? t('resource.auth_and_download') : t('resource.download')}</Button>
                 ) : (

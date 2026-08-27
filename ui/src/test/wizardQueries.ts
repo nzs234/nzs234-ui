@@ -8,7 +8,7 @@
  */
 import { getFieldDefinition } from '@/schema/schemaIndex.js'
 import type { TrainingTypeMeta } from '@/schema/schemaIndex'
-import { resolveFieldLabel } from '@/i18n/useI18n'
+import { resolveFieldLabel } from '@/i18n/schemaFieldI18n'
 import { ADAPTER_CATEGORIES, adapterOptions } from '@/pages/train/wizard/adapterModel'
 import { wizardStepLabelKey } from '@/pages/train/wizard/primitives'
 import { activeLanguage, textContains, textPrefix, uiText, uiTextPrefix } from './i18n'

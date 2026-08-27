@@ -48,7 +48,7 @@ import {
   WizardShell,
   wizardStepLabelKey,
 } from './primitives'
-import { useI18n, resolveDisabledReason, type TranslateFn } from '@/i18n/useI18n'
+import { useI18n, resolveDisabledReason, resolveTypeNote, type TranslateFn } from '@/i18n/useI18n'
 import './wizard.css'
 
 interface ValidationSummary {
@@ -183,12 +183,14 @@ function TypeChoices({
   disabled,
   onSelect,
   t,
+  language,
 }: {
   category?: WizardCategory
   selected: string
   disabled?: boolean
   onSelect: (id: string) => void
   t: TranslateFn
+  language: string
 }) {
   const categories = category ? [category] : wizardCategories()
   return (
@@ -209,12 +211,23 @@ function TypeChoices({
               <span>{types.length} plans</span>
             </div>
             <div className="lx-w-choice-grid">
-              {types.map((type) => (
-                <button key={type.id} type="button" disabled={disabled} aria-pressed={selected === type.id} className={['lx-w-choice', selected === type.id ? 'is-selected' : ''].filter(Boolean).join(' ')} onClick={() => onSelect(type.id)}>
-                  <strong>{type.label}</strong>
-                  <small>{type.id}</small>
-                </button>
-              ))}
+              {types.map((type) => {
+                // 类型级入口标注（registry note）：实验/未验证属性必须在选卡处就可见，
+                // 而不是只藏在 TrainPage 侧栏的 title 里。EN 走 note_en 通道。
+                // 标注放在按钮**之外**并用 aria-describedby 关联：留在按钮内会被拼进
+                // 可访问名（"标准 LoRA" + id + 整段标注），使卡片的名字随文案漂移。
+                const note = resolveTypeNote(type, language)
+                const noteId = `lx-w-note-${type.id}`
+                return (
+                  <div key={type.id} className="lx-w-choice-cell">
+                    <button type="button" disabled={disabled} aria-pressed={selected === type.id} aria-describedby={note ? noteId : undefined} className={['lx-w-choice', selected === type.id ? 'is-selected' : ''].filter(Boolean).join(' ')} onClick={() => onSelect(type.id)}>
+                      <strong>{type.label}</strong>
+                      <small>{type.id}</small>
+                    </button>
+                    {note ? <p id={noteId} className="lx-w-choice-note">{note}</p> : null}
+                  </div>
+                )
+              })}
             </div>
           </section>
         )
@@ -758,7 +771,7 @@ export function WizardPage(props: WizardPageProps) {
 
         {activeId === 'model' ? (
           <>
-            <TypeChoices category={selectedCategory} selected={props.typeId} disabled={props.igniting} t={t} onSelect={chooseType} />
+            <TypeChoices category={selectedCategory} selected={props.typeId} disabled={props.igniting} t={t} language={language} onSelect={chooseType} />
             {modelGateError ? <p className="lx-w-gate-error" role="alert">{t('wizard.type.choose_hint')}</p> : null}
           </>
         ) : null}

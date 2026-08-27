@@ -291,6 +291,25 @@
 }
 .lx-w-choice strong { font-size: var(--lx-text-base); font-weight: 600; }
 .lx-w-choice small { color: var(--lx-dim); font-size: var(--lx-text-xs); }
+/* 单张方案卡的格位：按钮 + 类型级标注。标注在按钮外，避免被拼进可访问名。 */
+.lx-w-choice-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lx-w-choice-cell .lx-w-choice { flex: 1; }
+/* 类型级入口标注（registry note）：克制的小字次要色，与 disabledReason 的展示同调。
+   卡片在等宽网格里，标注最多显示 3 行，完整文案由 aria-describedby 交给读屏。 */
+.lx-w-choice-note {
+  margin: 0 2px;
+  color: var(--lx-dim);
+  font-size: var(--lx-text-xs);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .lx-w-choice:disabled { cursor: not-allowed; opacity: 0.45; }
 
 /* 适配器方法选择区（三层信息架构：基础算法 → 叠加增强 → 实体注入器） */

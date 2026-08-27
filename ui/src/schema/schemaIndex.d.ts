@@ -71,6 +71,8 @@ export interface TrainingTypeMeta {
   disabledReason?: string
   /** Non-blocking entry annotation (e.g. lab-probe launch surface) shown as the rail tooltip. */
   note?: string
+  /** English channel for `note` (mirrors disabledReason_en); resolved by resolveTypeNote. */
+  note_en?: string
 }
 
 export interface UiTab {

@@ -34,7 +34,6 @@ export default defineConfig({
         'src/test/**',
         // 快照式的静态 schema 表，没有分支可覆盖，计进去只会稀释信号。
         'src/schema/schemaFieldGroups.js',
-        'src/schema/schemaTypes*.js',
       ],
       // 故意不设 thresholds：当前基线还没量过，设死数字只会变成噪音门禁。
       all: false,

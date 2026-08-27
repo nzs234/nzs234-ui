@@ -33,6 +33,16 @@ export default defineConfig({
             if (/[\\/]node_modules[\\/](echarts|zrender)[\\/]/.test(id)) return 'vendor-echarts'
             return 'vendor'
           }
+          // 训练族 schema 定义(~810KB 源码)是纯数据 + 纯函数,不 import 任何
+          // node_modules,也不在启动链上 —— 上面那条"启动链依赖必须合并"的铁律
+          // 不适用。强制独立分包的原因是它默认会被 rollup 与 components/layout
+          // 这类全站共享模块塞进同一个 chunk:那样一来监控/队列/资源页只是为了
+          // 一个 <Panel> 就得下载全量 schema。独立成 chunk 后,它只跟真正读
+          // schema 的页面(训练页/向导)一起加载。
+          if (/[\\/]src[\\/]schema[\\/]/.test(id)) return 'schema'
+          // 按 field.key 索引的 EN 文案大包(labels/descs/options ~300KB):
+          // 同理只服务 schema 字段渲染,单独成包避免混进入口或全站共享 chunk。
+          if (/[\\/]src[\\/]i18n[\\/]schemaField/.test(id)) return 'i18n-schema-en'
         },
       },
     },
