@@ -239,9 +239,16 @@ const FAMILY_DESCRIPTIONS: Record<string, Bilingual> = {
   'diag-oft': bi('对角 OFT 正交微调。', 'Diagonal OFT orthogonal finetuning.'),
 }
 
-const BACKEND_CAPABILITY_MISSING_NOTICE = bi(
-  '当前后端能力未提供此适配器。',
-  'This adapter is not offered by current backend capabilities.',
+/**
+ * 后端 adapter_family_registry 是**确认信息**而不是准入门槛：注册表滞后于运行时
+ * （实体注入器 vera/tlora/flexrank/hydralora/krona 等运行时全部支持却未登记），
+ * 因此 schema 已暴露的字段不因注册表缺项而禁用，只落一条说明性提示。
+ * 真禁用只来自 schema option 自带的 disabled:true（后端硬校验，如 FLUX 非
+ * networks.lora）。
+ */
+const BACKEND_REGISTRY_UNLISTED_NOTE = bi(
+  'Schema 已暴露此适配器；后端能力注册表未列出（运行版本通常仍支持）。',
+  'Exposed by the type schema; missing from the backend capability registry (runtime usually still supports it).',
 )
 const SCHEMA_SUPPORTED_STRUCTURE_NOTICE = bi(
   '当前 schema 支持的适配器结构。',
@@ -499,15 +506,16 @@ export function adapterOptions(config: Record<string, unknown>, typeId: string):
     const values = identityValues(fieldKey, option.value, fields)
     const disabled = option.disabled === true
     let compatibility: AdapterCompatibility = 'available'
-    let disabledReason = resolveDisabledReason(option, currentLanguage())
+    let disabledReason: string | undefined = resolveDisabledReason(option, currentLanguage())
+    let registryNote: string | undefined
     if (disabled) {
+      // 唯一的真禁用来源：schema option 自带 disabled（后端硬校验）。
       compatibility = 'unsupported'
     } else if (backendPresent) {
-      if (backendKeys.has(family)) {
-        compatibility = 'available'
-      } else {
-        compatibility = 'unsupported'
-        disabledReason = disabledReason || localized(BACKEND_CAPABILITY_MISSING_NOTICE)
+      compatibility = 'available'
+      if (!backendKeys.has(family)) {
+        disabledReason = undefined
+        registryNote = localized(BACKEND_REGISTRY_UNLISTED_NOTE)
       }
     } else {
       compatibility = mergedKeys.has(family) ? 'available' : 'legacy'
@@ -517,7 +525,7 @@ export function adapterOptions(config: Record<string, unknown>, typeId: string):
       family,
       tier: adapterTierForFamily(family),
       label: identityOptionLabel(fieldKey, option) || (FAMILY_LABELS[family] && localized(FAMILY_LABELS[family])) || family,
-      description: disabledReason || (FAMILY_DESCRIPTIONS[family] && localized(FAMILY_DESCRIPTIONS[family])) || localized(SCHEMA_SUPPORTED_STRUCTURE_NOTICE),
+      description: disabledReason || registryNote || (FAMILY_DESCRIPTIONS[family] && localized(FAMILY_DESCRIPTIONS[family])) || localized(SCHEMA_SUPPORTED_STRUCTURE_NOTICE),
       values,
       compatibility,
       disabledReason,
@@ -529,13 +537,11 @@ export function adapterOptions(config: Record<string, unknown>, typeId: string):
 
   const buildFlagCard = (spec: FlagSpec): Omit<AdapterOption, 'selected'> => {
     let compatibility: AdapterCompatibility = 'available'
-    let disabledReason: string | undefined
+    let registryNote: string | undefined
     if (backendPresent) {
-      if (backendKeys.has(spec.family)) {
-        compatibility = 'available'
-      } else {
-        compatibility = 'unsupported'
-        disabledReason = localized(BACKEND_CAPABILITY_MISSING_NOTICE)
+      compatibility = 'available'
+      if (!backendKeys.has(spec.family)) {
+        registryNote = localized(BACKEND_REGISTRY_UNLISTED_NOTE)
       }
     } else {
       compatibility = mergedKeys.has(spec.family) ? 'available' : 'legacy'
@@ -545,10 +551,10 @@ export function adapterOptions(config: Record<string, unknown>, typeId: string):
       family: spec.family,
       tier: adapterTierForFamily(spec.family),
       label: spec.label || (FAMILY_LABELS[spec.family] && localized(FAMILY_LABELS[spec.family])) || spec.family,
-      description: (FAMILY_DESCRIPTIONS[spec.family] && localized(FAMILY_DESCRIPTIONS[spec.family])) || localized(SCHEMA_SUPPORTED_STRUCTURE_NOTICE),
+      description: registryNote || (FAMILY_DESCRIPTIONS[spec.family] && localized(FAMILY_DESCRIPTIONS[spec.family])) || localized(SCHEMA_SUPPORTED_STRUCTURE_NOTICE),
       values: targetIdentityValues(spec.family, fields, config),
       compatibility,
-      disabledReason,
+      disabledReason: undefined,
       clears: clearKeysFor(spec.key),
       enables: [spec.key],
       hides: aliasHiddenKeys(spec.family, spec.key, typeId),

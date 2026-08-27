@@ -461,7 +461,9 @@ describe('adapterModel selected state (winner-id based)', () => {
 })
 
 describe('adapterModel backend-present', () => {
-  test('backend present: families omitted by backend are unsupported even if in fallback (bug #4 regression)', () => {
+  test('backend present: registry gaps only annotate, schema-exposed families stay available', () => {
+    // 后端 adapter_family_registry 滞后于运行时（实体注入器全部未登记），因此
+    // 注册表缺项只是「确认信息」缺失，不构成禁用。
     applyBackendConfigOptions({
       adapter_families: {
         lora: { supports_rank: true, supports_alpha: true },
@@ -473,8 +475,47 @@ describe('adapterModel backend-present', () => {
     expect(findCard(cards, 'lora').compatibility).toBe('available')
     expect(findCard(cards, 'locon').compatibility).toBe('available')
     expect(cards.some((card) => card.family === 'dora')).toBe(false)
-    expect(findCard(cards, 'vera').compatibility).toBe('unsupported')
-    expect(findCard(cards, 'reslora').compatibility).toBe('unsupported')
+
+    const vera = findCard(cards, 'vera')
+    expect(vera.compatibility).toBe('available')
+    expect(vera.disabledReason).toBeUndefined()
+    expect(vera.description).toBe('Schema 已暴露此适配器；后端能力注册表未列出（运行版本通常仍支持）。')
+    const reslora = findCard(cards, 'reslora')
+    expect(reslora.compatibility).toBe('available')
+    expect(reslora.disabledReason).toBeUndefined()
+    expect(reslora.description).toBe(vera.description)
+  })
+
+  test('backend present: the registry-unlisted note follows the UI language', () => {
+    applyBackendConfigOptions({
+      adapter_families: {
+        lora: { supports_rank: true, supports_alpha: true },
+      },
+    })
+    const original = useLocaleStore.getState().language
+    try {
+      useLocaleStore.getState().setLanguage('en')
+      expect(findCard(adapterOptions({}, 'sdxl-lora'), 'vera').description)
+        .toBe('Exposed by the type schema; missing from the backend capability registry (runtime usually still supports it).')
+      useLocaleStore.getState().setLanguage('zh')
+      expect(findCard(adapterOptions({}, 'sdxl-lora'), 'vera').description)
+        .toBe('Schema 已暴露此适配器；后端能力注册表未列出（运行版本通常仍支持）。')
+    } finally {
+      useLocaleStore.getState().setLanguage(original)
+    }
+  })
+
+  test('backend present: schema-disabled options remain unsupported with their own reason', () => {
+    // 真禁用只来自 schema option 的 disabled:true（后端硬校验），与注册表无关。
+    applyBackendConfigOptions({
+      adapter_families: {
+        lora: { supports_rank: true, supports_alpha: true },
+      },
+    })
+    const diagOft = findCard(adapterOptions({}, 'flux-lora'), 'diag-oft')
+    expect(diagOft.compatibility).toBe('unsupported')
+    expect(diagOft.disabledReason).toMatch(/FLUX OFT/)
+    expect(diagOft.description).toBe(diagOft.disabledReason)
   })
 
   test('backend present: families provided by backend are available even if unknown locally', () => {
@@ -487,8 +528,13 @@ describe('adapterModel backend-present', () => {
     const cards = adapterOptions({}, 'sdxl-lora')
     // vera is not in the local fallback but is backend-provided -> available.
     expect(findCard(cards, 'vera').compatibility).toBe('available')
+    expect(findCard(cards, 'vera').description).not.toBe(
+      'Schema 已暴露此适配器；后端能力注册表未列出（运行版本通常仍支持）。',
+    )
     expect(findCard(cards, 'lora').compatibility).toBe('available')
-    expect(findCard(cards, 'locon').compatibility).toBe('unsupported')
+    // locon 未登记但 schema 已暴露 -> 仍可用，只带注册表说明。
+    expect(findCard(cards, 'locon').compatibility).toBe('available')
+    expect(findCard(cards, 'locon').disabledReason).toBeUndefined()
   })
 })
 
