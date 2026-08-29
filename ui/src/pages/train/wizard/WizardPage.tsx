@@ -37,6 +37,7 @@ import {
   type AdapterOption,
 } from './adapterModel'
 import { getAdapterEntityConflict, normalizeAdapterEntityMutex } from '@/schema/schemaCommon.js'
+import { FlaskConical } from 'lucide-react'
 import {
   PreflightPanel,
   ReviewSection,
@@ -212,10 +213,11 @@ function TypeChoices({
             </div>
             <div className="lx-w-choice-grid">
               {types.map((type) => {
-                // 类型级入口标注（registry note）：实验/未验证属性必须在选卡处就可见，
+                // 类型级入口标注（registry note）：实验/未验证属性必须在选卡处可见，
                 // 而不是只藏在 TrainPage 侧栏的 title 里。EN 走 note_en 通道。
                 // 标注放在按钮**之外**并用 aria-describedby 关联：留在按钮内会被拼进
                 // 可访问名（"标准 LoRA" + id + 整段标注），使卡片的名字随文案漂移。
+                // 视觉上收进卡片右上角的角标，悬停/聚焦时展开悬浮窗，保持网格整齐。
                 const note = resolveTypeNote(type, language)
                 const noteId = `lx-w-note-${type.id}`
                 return (
@@ -223,8 +225,15 @@ function TypeChoices({
                     <button type="button" disabled={disabled} aria-pressed={selected === type.id} aria-describedby={note ? noteId : undefined} className={['lx-w-choice', selected === type.id ? 'is-selected' : ''].filter(Boolean).join(' ')} onClick={() => onSelect(type.id)}>
                       <strong>{type.label}</strong>
                       <small>{type.id}</small>
+                      {note ? (
+                        <span className="lx-w-note-dot" aria-hidden="true">
+                          <FlaskConical size={11} strokeWidth={2.4} />
+                        </span>
+                      ) : null}
                     </button>
-                    {note ? <p id={noteId} className="lx-w-choice-note">{note}</p> : null}
+                    {note ? (
+                      <span id={noteId} role="note" className="lx-w-note-pop">{note}</span>
+                    ) : null}
                   </div>
                 )
               })}

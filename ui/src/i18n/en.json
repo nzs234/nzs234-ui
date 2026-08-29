@@ -5,6 +5,8 @@
   "topbar.motion.auto": "Motion·AUTO",
   "topbar.motion.full": "Motion·FULL",
   "topbar.motion.eco": "Motion·ECO",
+  "topbar.uiversion": "UI Version",
+  "topbar.uiversion_hint": "Switch between V1 / V2 UI skins (features unchanged)",
   "common.loading": "Loading…",
   "common.refresh": "Refresh",
   "common.other": "Other",

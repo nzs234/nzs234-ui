@@ -14,11 +14,15 @@ import './theme/themes/acid.css'
 import './theme/themes/glass.css'
 import './theme/tw.css'
 import './app/app.css'
+/* V2 皮肤层必须最后导入:与 html[data-theme=*] 主题层同特异性,靠层叠顺序在 V2 下整体接管 */
+import './theme/v2/v2.css'
 import { initTheme } from './stores/themeStore'
+import { initUiVersion } from './stores/uiVersionStore'
 import { AppShell } from './app/AppShell'
 import { installGlobalErrorReporter } from './api/transport'
 
 initTheme()
+initUiVersion()
 installGlobalErrorReporter()
 
 createRoot(document.getElementById('root')!).render(

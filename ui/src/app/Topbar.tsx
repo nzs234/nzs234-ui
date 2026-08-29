@@ -6,6 +6,7 @@ import type { MotionMode, ThemeId } from '@/stores/themeStore'
 import { Dot } from '@/components/primitives'
 import { useI18n } from '@/i18n/useI18n'
 import { useLocaleStore } from '@/stores/localeStore'
+import { useUiVersionStore } from '@/stores/uiVersionStore'
 import { Menu, X, Play, Image, Activity, ListOrdered, Layers, Cpu, Palette } from 'lucide-react'
 
 type Health = 'unknown' | 'ok' | 'down'
@@ -20,6 +21,8 @@ export function Topbar() {
   const motionMode = useThemeStore((s) => s.motionMode)
   const setMotionMode = useThemeStore((s) => s.setMotionMode)
   const trainingActive = useThemeStore((s) => s.trainingActive)
+  const uiVersion = useUiVersionStore((s) => s.version)
+  const setUiVersion = useUiVersionStore((s) => s.setVersion)
   const motionLabel = { auto: t('topbar.motion.auto'), full: t('topbar.motion.full'), eco: t('topbar.motion.eco') } as Record<MotionMode, string>
 
   const [health, setHealth] = useState<Health>('unknown')
@@ -107,6 +110,17 @@ export function Topbar() {
     setDrawerOpen(false)
   }
 
+  const versionSeg = (
+    <div className="lx-ver-seg" role="group" aria-label={t('topbar.uiversion')} title={t('topbar.uiversion_hint')}>
+      <button type="button" aria-pressed={uiVersion === 'v1'} className={uiVersion === 'v1' ? 'on' : ''} onClick={() => setUiVersion('v1')}>
+        V1
+      </button>
+      <button type="button" aria-pressed={uiVersion === 'v2'} className={uiVersion === 'v2' ? 'on' : ''} onClick={() => setUiVersion('v2')}>
+        V2
+      </button>
+    </div>
+  )
+
   // 统一路由可见性：dev 路由在生产构建下彻底不可达，开发下也仅当前正处于该页面时可见
   const visibleRoutes = ROUTES.filter((r) => isRouteAvailable(r.id) && (!r.dev || route === r.id))
 
@@ -188,6 +202,7 @@ export function Topbar() {
           >
             {motionLabel[motionMode]}
           </button>
+          {versionSeg}
         </div>
       </header>
 
@@ -244,22 +259,29 @@ export function Topbar() {
               ))}
             </nav>
             <div className="lx-mobile-drawer-foot">
-              <div className="lx-drawer-foot-row">
-                <span className="lx-drawer-label">{t('topbar.theme')}</span>
-                <div className="lx-theme-seg" role="group">
-                  {(Object.keys(THEME_META) as ThemeId[]).map((id) => (
-                    <button key={id} type="button" className={theme === id ? 'on' : ''} onClick={() => setTheme(id)}>
-                      {THEME_META[id].zh}
-                    </button>
-                  ))}
+              {/* V2 皮肤自带固定配色,主题段无意义,整行不渲染 */}
+              {uiVersion === 'v1' && (
+                <div className="lx-drawer-foot-row">
+                  <span className="lx-drawer-label">{t('topbar.theme')}</span>
+                  <div className="lx-theme-seg" role="group">
+                    {(Object.keys(THEME_META) as ThemeId[]).map((id) => (
+                      <button key={id} type="button" className={theme === id ? 'on' : ''} onClick={() => setTheme(id)}>
+                        {THEME_META[id].zh}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="lx-drawer-foot-row">
                 <span className="lx-drawer-label">Language</span>
                 <div className="lx-lang-seg" role="group">
                   <button type="button" className={language === 'zh' ? 'on' : ''} onClick={() => setLanguage('zh')}>中文</button>
                   <button type="button" className={language === 'en' ? 'on' : ''} onClick={() => setLanguage('en')}>EN</button>
                 </div>
+              </div>
+              <div className="lx-drawer-foot-row">
+                <span className="lx-drawer-label">{t('topbar.uiversion')}</span>
+                {versionSeg}
               </div>
             </div>
           </div>

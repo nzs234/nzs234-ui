@@ -4,6 +4,18 @@ Training WebUI for [Lulynx Trainer](https://github.com/WhitecrowAurora/lulynx-tr
 packaged as a `ui_theme` plugin. Three themes (Editorial / Acid / Glass), served
 by the trainer backend at `/ui/`.
 
+## UI Versions (V1 / V2)
+
+The topbar's right corner has a `V1 | V2` switch (also in the mobile drawer).
+V1 is the original topbar layout with the three selectable themes; V2 ("NOVA
+cockpit") is a full reskin: dark aurora palette, fixed left navigation rail, a
+floating glass HUD in the top-right, glassmorphism panels, pill buttons/tabs
+and gradient display type. Both versions share the same pages, stores and
+business logic — the switch only swaps the skin (`html[data-uiv]` +
+`src/theme/v2/v2.css`, persisted in `localStorage["lx-uiversion"]`), so no
+functionality differs between them. The V2 palette is fixed by design, so the
+theme selector only shows in V1.
+
 ## Install
 
 Clone into the trainer's `plugin/` directory and build the frontend:

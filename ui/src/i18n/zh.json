@@ -5,6 +5,8 @@
   "topbar.motion.auto": "动效·AUTO",
   "topbar.motion.full": "动效·FULL",
   "topbar.motion.eco": "动效·ECO",
+  "topbar.uiversion": "界面版本",
+  "topbar.uiversion_hint": "切换 V1 / V2 界面皮肤,功能保持不变",
   "common.loading": "加载中…",
   "common.refresh": "刷新",
   "common.other": "其他",

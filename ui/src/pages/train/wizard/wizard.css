@@ -255,62 +255,106 @@
 .lx-w-choice-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  /* 所有行等高:整片网格卡片完全均匀,不再随"有无标注"参差 */
+  grid-auto-rows: 1fr;
   gap: 8px;
 }
+/* 卡片外壳挂在 cell 上:按钮(可点区)与标注同处一张等高卡内,
+   标注不再悬挂在卡外造成"框大大小小"的观感。 */
+.lx-w-choice-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: var(--lx-border-w, 1px) solid var(--lx-border);
+  border-radius: var(--lx-radius, 6px);
+  background: var(--lx-field-bg);
+  transition: border-color var(--lx-dur-fast), background var(--lx-dur-fast), box-shadow var(--lx-dur-fast);
+}
+.lx-w-choice-cell:hover {
+  border-color: var(--lx-border-strong);
+  background: var(--lx-surface-2);
+}
+.lx-w-choice-cell:has(.lx-w-choice.is-selected) {
+  border-color: var(--lx-accent);
+  background: var(--lx-accent-soft);
+  box-shadow: 0 0 0 1px var(--lx-accent);
+}
+.lx-w-choice-cell:has(.lx-w-choice.is-selected):hover {
+  background: var(--lx-surface-2);
+  border-color: var(--lx-accent-hover, var(--lx-accent));
+}
+.lx-w-choice-cell:has(.lx-w-choice:disabled) { opacity: 0.45; }
 .lx-w-choice {
+  position: relative;
+  flex: 1;
   min-height: 64px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 3px;
   padding: 10px 12px;
-  border: var(--lx-border-w, 1px) solid var(--lx-border);
-  border-radius: var(--lx-radius, 6px);
-  background: var(--lx-field-bg);
   color: var(--lx-text);
   text-align: left;
   cursor: pointer;
-  transition: all var(--lx-dur-fast);
-}
-.lx-w-choice:hover:not(:disabled) {
-  border-color: var(--lx-border-strong);
-  background: var(--lx-surface-2);
-}
-.lx-w-choice.is-selected {
-  border-color: var(--lx-accent);
-  background: var(--lx-accent-soft);
-  box-shadow: 0 0 0 1px var(--lx-accent);
-}
-.lx-w-choice.is-selected:hover:not(:disabled) {
-  background: var(--lx-surface-2);
-  border-color: var(--lx-accent-hover, var(--lx-accent));
+  border-radius: inherit;
 }
 .lx-w-choice:focus-visible {
   outline: 2px solid var(--lx-accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
+.lx-w-choice:disabled { cursor: not-allowed; }
 .lx-w-choice strong { font-size: var(--lx-text-base); font-weight: 600; }
 .lx-w-choice small { color: var(--lx-dim); font-size: var(--lx-text-xs); }
-/* 单张方案卡的格位：按钮 + 类型级标注。标注在按钮外，避免被拼进可访问名。 */
-.lx-w-choice-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+
+/* 类型级入口标注（registry note）：卡片右上角的实验角标，悬停/聚焦时展开
+   完整悬浮窗 —— 网格保持整齐，标注全文仍可直达。标注节点在按钮外，
+   由 aria-describedby 关联（不污染可访问名），悬浮窗本身 pointer-events:none。 */
+.lx-w-note-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--lx-warn);
+  background: var(--lx-warn-soft, rgba(245, 158, 11, 0.12));
+  transition: transform var(--lx-dur-fast) var(--lx-ease), box-shadow var(--lx-dur-fast);
 }
-.lx-w-choice-cell .lx-w-choice { flex: 1; }
-/* 类型级入口标注（registry note）：克制的小字次要色，与 disabledReason 的展示同调。
-   卡片在等宽网格里，标注最多显示 3 行，完整文案由 aria-describedby 交给读屏。 */
-.lx-w-choice-note {
-  margin: 0 2px;
+.lx-w-choice-cell:hover .lx-w-note-dot {
+  transform: scale(1.15);
+  box-shadow: 0 0 10px var(--lx-warn-soft, rgba(245, 158, 11, 0.25));
+}
+.lx-w-note-pop {
+  position: absolute;
+  right: 6px;
+  bottom: calc(100% + 6px);
+  width: 256px;
+  z-index: calc(var(--lx-z-bar, 30) + 5);
+  margin: 0;
+  padding: 9px 12px;
+  border: var(--lx-border-w, 1px) solid var(--lx-border-strong);
+  border-left: 3px solid var(--lx-warn);
+  border-radius: 8px;
+  background: var(--lx-surface);
   color: var(--lx-dim);
   font-size: var(--lx-text-xs);
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  line-height: 1.55;
+  box-shadow: var(--lx-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.15));
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(3px);
+  transition: opacity var(--lx-dur-fast) var(--lx-ease), transform var(--lx-dur-fast) var(--lx-ease), visibility var(--lx-dur-fast);
+  pointer-events: none;
 }
-.lx-w-choice:disabled { cursor: not-allowed; opacity: 0.45; }
+.lx-w-choice-cell:has(.lx-w-note-dot:hover) .lx-w-note-pop,
+.lx-w-choice-cell:focus-within .lx-w-note-pop {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
 
 /* 适配器方法选择区（三层信息架构：基础算法 → 叠加增强 → 实体注入器） */
 .lx-w-adapter-selector {
@@ -641,9 +685,51 @@
 .lx-w-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(75px, auto);
   gap: 14px;
 }
 .lx-w-fields > * { min-width: 0; }
+
+/* 字段卡统一:开关/输入/下拉/滑条/文本域在向导网格里一律渲染为同构的
+   "字段卡"(标签行在上、控件区在下、同款边框底色内边距)。网格行内两列
+   自动等高,消除"开关大横条 vs 输入小框"的大小混排。 */
+.lx-w-fields .lx-field-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 12px;
+  border: var(--lx-border-w, 1px) solid var(--lx-border);
+  border-radius: var(--lx-radius, 6px);
+  background: var(--lx-field-bg);
+  min-width: 0;
+}
+/* 开关字段用"设置行"布局:标签居左、开关居右、整行垂直居中。
+   外观(边框/底色/内边距)仍由字段卡规则提供,行高与同排输入卡一致 */
+.lx-w-fields .lx-field-bool {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 0;
+}
+.lx-w-fields .lx-field-bool .lx-field-bool-slot {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+}
+/* 控件区统一最小高度:输入/滑条/开关行视觉节奏一致 */
+.lx-w-fields .lx-field-control-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 33px;
+}
+.lx-w-fields .lx-field-control-slot > .lx-input,
+.lx-w-fields .lx-field-control-slot > .lx-select-wrap,
+.lx-w-fields .lx-field-control-slot > .lx-slider-row {
+  width: 100%;
+}
 .lx-w-adapter-fields {
   margin-top: 16px;
   padding-top: 14px;
